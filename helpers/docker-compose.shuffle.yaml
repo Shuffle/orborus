@@ -1,0 +1,34 @@
+
+version: "3.9"
+services:
+  tenzir-node:
+    container_name: "shuffle"
+    image: tenzir/tenzir:latest
+    pull_policy: always
+    environment:
+      - TENZIR_PLUGINS__PLATFORM__API_KEY=2OCv_FIc-nJnuKsPoBS8kdPpEn9c3T07aXcheQNHkW4
+      - TENZIR_PLUGINS__PLATFORM__CONTROL_ENDPOINT=wss://ws.tenzir.app/production
+      - TENZIR_PLUGINS__PLATFORM__TENANT_ID=t-mplzs1ew
+      - TENZIR_ENDPOINT=tenzir-node:5158
+      - TENZIR_ALLOW_UNSAFE_PIPELINES=true
+    ports:
+      - 5158:5158
+    entrypoint:
+      - tenzir-node
+    volumes:
+      - tenzir-node:/var/lib/tenzir/
+      - tenzir-node:/var/log/tenzir/
+
+  tenzir:
+    image: tenzir/tenzir:latest
+    pull_policy: always
+    profiles:
+      - donotstart
+    depends_on:
+      - tenzir-node
+    environment:
+      - TENZIR_ENDPOINT=tenzir-node:5158
+
+volumes:
+  tenzir-node:
+    driver: local
