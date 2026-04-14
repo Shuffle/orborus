@@ -14,11 +14,9 @@ If ran in Shuffle, sensors require a Sensor Group. This is a Runtime Location wi
 <img width="1044" height="326" alt="Sensor Monitor list" src="https://github.com/user-attachments/assets/128f4ee0-06d0-4632-83b8-589bea6c230f" />
 <img width="1149" height="838" alt="Optional Sensor RCE" src="https://github.com/user-attachments/assets/267c2df9-fbb0-4654-aded-8cb9f31e67a4" />
 
-Need help to run it as a service? Contact support@shuffler.io :)
-```
-1. Go to https://github.com/Shuffle/orborus/releases
-2. Download the relevant version (e.g. 
-```
+To install it on linux/macOS/windows, go to the [Orborus downloader](https://shuffler.io/api/v1/orborus). This has the script you want. The full command is available on https://security.shuffler.io/monitors
+
+For windows, go to [?os=windows](https://shuffler.io/api/v1/orborus?os=windows) - `Invoke-WebRequest -Uri <url> -UseBasicParsing | Invoke-Expression`
 
 ## 2. Container Orchestrator mode
 This is primarily used for running Workflows in Shuffle. Works with Docker and Kubernetes.
