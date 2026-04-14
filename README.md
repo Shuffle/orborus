@@ -1,5 +1,13 @@
 # Shuffle Orborus 
-A general job runner for endpoint monitoring and response, as well as container orchestration
+A general job runner with two modes:
+
+1. Sensor: endpoint monitoring and response. Optional live-debugging (`--response_actions=full`)
+2. Container orchestrator: manages automation and scale. Primarily used for Shuffle Workflows.
+
+<img width="1044" height="326" alt="Sensor Monitor list" src="https://github.com/user-attachments/assets/128f4ee0-06d0-4632-83b8-589bea6c230f" />
+
+<img width="1149" height="838" alt="Optional Sensor RCE" src="https://github.com/user-attachments/assets/267c2df9-fbb0-4654-aded-8cb9f31e67a4" />
+
 
 ## Monitor & Respond
 ```
