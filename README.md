@@ -5,17 +5,25 @@ A general job runner with two modes:
 2. Container orchestrator: manages automation and scale. Primarily used for Shuffle Workflows.
 
 
-## Monitor & Respond
-<img width="1044" height="326" alt="Sensor Monitor list" src="https://github.com/user-attachments/assets/128f4ee0-06d0-4632-83b8-589bea6c230f" />
+## 1. Monitor & Respond
+Retrieves the relevant data you want from a host based on enabled features. 
 
+If ran in Shuffle, sensors require a Sensor Group. This is a Runtime Location with the "sensor_group: true" flag. 
+
+<img width="618" height="837" alt="Creating a new host in a sensor group" src="https://github.com/user-attachments/assets/d750ee72-1403-4c41-b7a0-99cbadb4501d" />
+<img width="1044" height="326" alt="Sensor Monitor list" src="https://github.com/user-attachments/assets/128f4ee0-06d0-4632-83b8-589bea6c230f" />
 <img width="1149" height="838" alt="Optional Sensor RCE" src="https://github.com/user-attachments/assets/267c2df9-fbb0-4654-aded-8cb9f31e67a4" />
 
 
 ```
 ```
 
-## Container Orchestrator mode
+## 2. Container Orchestrator mode
 This is primarily used for running Workflows in Shuffle. Works with Docker and Kubernetes.
+
+<img width="1185" height="580" alt="image" src="https://github.com/user-attachments/assets/55eee895-9f91-4245-90b2-70d02e5c36b2" />
+
+
 ```
 docker run -d \
 	--restart=always \
@@ -64,3 +72,8 @@ go run orborus.go <flags>
 --screenlock_check=true
 --response_actions=full
 ```
+
+## How it works (monitoring sensor)
+1. Polls for tasks every 2-60 seconds, while sending details back realtime: `POST /api/v1/streams -H "Org-Id: queuename" -H "Org: orgid" -H "Authorization: auth" -d '{"id": "queuename"}'`. The headers are used for authentication. The full available data struct is [OrborusStats{} here](https://github.com/Shuffle/shuffle-shared/blob/main/structs.go#L4274).
+2. Performs the tasks and sends the result back to the correct area (usually workflow execution)
+3. Repeat
