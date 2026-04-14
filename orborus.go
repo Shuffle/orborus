@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/shuffle/shuffle-shared"
+	"github.com/shirou/gopsutil/v3/process"
 
 	"math/rand"
 	//"os/signal"
@@ -2096,7 +2097,7 @@ func parseResourceUsage(body io.Reader) (float64, float64, error) {
 func getHostname() (string, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
-		return "", fmt.Errorf("failed to get hostname: %w", err)
+		return "", fmt.Errorf("Failed to get hostname: %w", err)
 	}
 
 	// Split away TLD
@@ -2105,6 +2106,7 @@ func getHostname() (string, error) {
 		hostname = parts[0]
 	}
 
+	// Always uppercase just in case
 	hostname = strings.ToUpper(hostname)
 	return hostname, nil
 }
@@ -2410,6 +2412,32 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 	}
 
 	log.Printf("[INFO] Starting Orborus - host monitoring mode (sensor/agent)")
+	time.Sleep(2)
+
+	procs, err := process.Processes()
+	if err != nil {
+		log.Printf("[ERROR] Problem listing processes: %s", err)
+	} else {
+		target := strings.ToLower("orborus-agent")
+
+		orborusCount := 0
+		for _, p := range procs {
+			name, err := p.Name()
+			if err != nil {
+				continue
+			}
+
+			name = strings.ToLower(name)
+			if strings.HasPrefix(name, target) || strings.HasPrefix(target, name) {
+				orborusCount += 1
+			}
+		}
+
+		if orborusCount > 1 { 
+			panic(fmt.Sprintf("%d Orborus instances are already running. Exiting to prevent multiple instances.", orborusCount))
+		}
+	}
+
 
 	// Check if inside Docker/Kubernetes. Use Docker/Kubernetes libraries
 	if isKubernetes == "true" || shuffle.IsRunningInCluster() {
