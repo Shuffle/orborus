@@ -2547,7 +2547,7 @@ func main() {
 		}
 	}
 
-	log.Println("[INFO] Setting up execution environment for env '%s'", environment)
+	log.Printf("[INFO] Setting up execution environment for env '%s'", environment)
 	if baseUrl == "" {
 		baseUrl = "https://uk.shuffler.io"
 	}
