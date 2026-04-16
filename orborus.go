@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
@@ -2164,6 +2165,10 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 			newStats.SensorDetails.Hostname = hostname
 		}
 
+		u, err := user.Current()
+		if err == nil { 
+			newStats.SensorDetails.User = fmt.Sprintf("%s", u.Username)
+		}
 		newStats.SensorDetails.OS = runtime.GOOS
 		newStats.SensorDetails.Arch = runtime.GOARCH
 		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
@@ -2506,6 +2511,10 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 
 // Initial loop etc
 func main() {
+	mainLoop()
+}
+
+func mainLoop() {
 
 	// Checks for whether sensor mode is enabled for detection/response
 	sensorMode := shuffle.SensorMode{
@@ -2990,7 +2999,7 @@ func main() {
 							}
 
 							if sensorMode.ResponseActions != "" {
-								go shuffle.HandleSensorResponseAction(sensorMode, incRequest)
+								go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
 							}
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						} else {
