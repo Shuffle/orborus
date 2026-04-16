@@ -2153,6 +2153,7 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 				}
 
 				newStats.SensorDetails.InstalledSoftware = []shuffle.Software{}
+				newStats.SensorDetails.CodeScanner = []shuffle.ProjectInfo{}
 				return newStats
 			}
 			// If there's an error, we ignore the cache and continue to gather details
@@ -2174,18 +2175,23 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
 		newStats.SensorDetails.Serial = shuffle.GetProfiler()
 
-		if sensorMode.SoftwareListEnabled {
+		if sensorMode.SoftwareListEnabled == "true" { 
 			// Check cache first before running the command
 			newStats.SensorDetails.InstalledSoftware = shuffle.ListInstalledSoftware()
 		}
 
-		if sensorMode.HdEncryptedCheck {
+		if sensorMode.CodeScannerEnabled == "true" { 
+			newStats.SensorDetails.CodeScanner = shuffle.ListCodeScannerProjects() 
+		}
+
+		if sensorMode.HdEncryptedCheck == "true" { 
 			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", shuffle.IsDiskEncrypted())
 		}
 
-		if sensorMode.ScreenlockCheck {  
+		if sensorMode.ScreenlockCheck == "true" { 
 			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", shuffle.IsAutomaticScreenlockEnabled())
 		}
+
 
 		if len(sensorMode.LogForwarding) > 0 {
 			newStats.SensorDetails.LogForwarding = fmt.Sprintf("not implemented: %s", sensorMode.LogForwarding)
@@ -2520,9 +2526,10 @@ func mainLoop() {
 	sensorMode := shuffle.SensorMode{
 		Enabled: os.Getenv("SHUFFLE_AGENT_SENSOR_MODE") == "true",
 
-		SoftwareListEnabled: os.Getenv("SHUFFLE_SOFTWARE_LIST_ENABLED") == "true",
-		HdEncryptedCheck: os.Getenv("SHUFFLE_HD_ENCRYPTED_CHECK") == "true",
-		ScreenlockCheck: os.Getenv("SHUFFLE_SCREENLOCK_CHECK") == "true",
+		SoftwareListEnabled: os.Getenv("SHUFFLE_SOFTWARE_LIST_ENABLED"), 
+		CodeScannerEnabled: os.Getenv("SHUFFLE_CODE_SCANNER_ENABLED"), 
+		HdEncryptedCheck: os.Getenv("SHUFFLE_HD_ENCRYPTED_CHECK"), 
+		ScreenlockCheck: os.Getenv("SHUFFLE_SCREENLOCK_CHECK"), 
 
 		LogForwarding: os.Getenv("SHUFFLE_LOG_FORWARDING"),
 		ResponseActions: os.Getenv("SHUFFLE_RESPONSE_ACTIONS"), 
@@ -2592,6 +2599,20 @@ func mainLoop() {
 			log.Printf("[WARNING] Invalid response actions mode '%s'. Disabling. Valid options are 'full', 'controlled', or empty.", sensorMode.ResponseActions)
 			sensorMode.ResponseActions = ""
 
+		}
+
+		// Autoconfig these. They are off if set to false
+		if len(sensorMode.SoftwareListEnabled) == 0 { 
+			sensorMode.SoftwareListEnabled = "true"
+		} 
+		if len(sensorMode.CodeScannerEnabled) == 0 { 
+			sensorMode.CodeScannerEnabled= "true"
+		} 
+		if len(sensorMode.HdEncryptedCheck) == 0 {
+			sensorMode.HdEncryptedCheck = "true"
+		} 
+		if len(sensorMode.ScreenlockCheck) == 0 {
+			sensorMode.ScreenlockCheck = "true"
 		}
 
 		log.Printf("[INFO] Running in sensor/agent mode. Starting the agent.")
