@@ -2193,11 +2193,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		}
 
 
-		if len(sensorMode.LogForwarding) > 0 {
+		if len(sensorMode.LogForwarding) > 0 && sensorMode.LogForwarding != "false" {
 			newStats.SensorDetails.LogForwarding = fmt.Sprintf("not implemented: %s", sensorMode.LogForwarding)
 		}
 
-		if len(sensorMode.ResponseActions) > 0 { 
+		if len(sensorMode.ResponseActions) > 0 {
 			newStats.SensorDetails.ResponseActions = sensorMode.ResponseActions
 		}
 
@@ -2597,7 +2597,7 @@ func mainLoop() {
 
 		if sensorMode.ResponseActions != "full" && sensorMode.ResponseActions != "controlled" { 
 			log.Printf("[WARNING] Invalid response actions mode '%s'. Disabling. Valid options are 'full', 'controlled', or empty.", sensorMode.ResponseActions)
-			sensorMode.ResponseActions = ""
+			sensorMode.ResponseActions = "false"
 
 		}
 
@@ -3020,7 +3020,13 @@ func mainLoop() {
 							}
 
 							if sensorMode.ResponseActions != "" {
-								go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+								// Specific for 
+								if incRequest.ExecutionArgument == "script:disable_rce" {
+									sensorMode.ResponseActions = "false"
+									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
+								} else {
+									go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+								}
 							}
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						} else {
