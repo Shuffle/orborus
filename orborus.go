@@ -2175,20 +2175,24 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
 		newStats.SensorDetails.Serial = shuffle.GetProfiler()
 
-		if sensorMode.SoftwareListEnabled == "true" { 
+		if sensorMode.SoftwareListEnabled != "false" { 
 			// Check cache first before running the command
 			newStats.SensorDetails.InstalledSoftware = shuffle.ListInstalledSoftware()
 		}
 
-		if sensorMode.CodeScannerEnabled == "true" { 
+		if sensorMode.CodeScannerEnabled != "false" { 
 			newStats.SensorDetails.CodeScanner = shuffle.ListCodeScannerProjects() 
+
+			if debug { 
+				log.Printf("[DEBUG] FOUND %d CODE PROJECTS", len(newStats.SensorDetails.CodeScanner))
+			}
 		}
 
-		if sensorMode.HdEncryptedCheck == "true" { 
+		if sensorMode.HdEncryptedCheck != "false" { 
 			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", shuffle.IsDiskEncrypted())
 		}
 
-		if sensorMode.ScreenlockCheck == "true" { 
+		if sensorMode.ScreenlockCheck != "false" { 
 			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", shuffle.IsAutomaticScreenlockEnabled())
 		}
 
@@ -2606,7 +2610,7 @@ func mainLoop() {
 			sensorMode.SoftwareListEnabled = "true"
 		} 
 		if len(sensorMode.CodeScannerEnabled) == 0 { 
-			sensorMode.CodeScannerEnabled= "true"
+			sensorMode.CodeScannerEnabled = "true"
 		} 
 		if len(sensorMode.HdEncryptedCheck) == 0 {
 			sensorMode.HdEncryptedCheck = "true"
@@ -3020,8 +3024,8 @@ func mainLoop() {
 							}
 
 							if sensorMode.ResponseActions != "" {
-								// Specific for 
-								if incRequest.ExecutionArgument == "script:disable_rce" {
+								// Special handler for disabling RCE entirely 
+								if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
 									sensorMode.ResponseActions = "false"
 									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
 								} else {
