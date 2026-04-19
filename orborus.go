@@ -2853,6 +2853,8 @@ func mainLoop() {
 
 	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v", fullUrl, environment, sensorMode.Enabled)
 
+	connectionFailed := false
+	unmarshalFailed := false
 	hostname, err := getHostname()
 	hasStarted := false
 	for {
@@ -2939,13 +2941,21 @@ func mainLoop() {
 		if newresp.StatusCode == 409 {
 			log.Printf("[INFO] Another Orborus is already handling jobs. Polling every 30 seconds in case Leader stops. Resp: %s", string(body))
 			time.Sleep(time.Duration(30) * time.Second)
+			connectionFailed = true 
 			continue
 		} else if newresp.StatusCode != 200 {
 			log.Printf("[ERROR] Backend connection failed for url '%s', or is missing (%d): %s", fullUrl, newresp.StatusCode, string(body))
+			connectionFailed = true 
 		} else {
 			if !hasStarted {
-				log.Printf("[DEBUG] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+				log.Printf("[INFO] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+			} else if connectionFailed == true && unmarshalFailed == true {
+				log.Printf("[INFO] Successfully reconnected to backend at %s. Resuming normal operation. Status code: %d", fullUrl, newresp.StatusCode)
+
 			}
+
+			connectionFailed = false
+			unmarshalFailed = false
 
 			if os.Getenv("SHUFFLE_SWARM_CONFIG") == "run" && os.Getenv("SHUFFLE_SCALE_REPLICAS") == "" {
 				//go AutoScale(ctx)
@@ -2957,6 +2967,7 @@ func mainLoop() {
 		err = json.Unmarshal(body, &executionRequests)
 		if err != nil {
 			log.Printf("[WARNING] Failed executionrequest in queue unmarshaling: %s", err)
+			unmarshalFailed = true 
 			if !sensorMode.Enabled { 
 				sleepTime = 10
 			}
@@ -2966,6 +2977,7 @@ func mainLoop() {
 				go zombiecheck(ctx, workerTimeout, sensorMode)
 				zombiecounter = 0
 			}
+
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 			continue
 		}
