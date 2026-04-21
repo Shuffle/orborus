@@ -2148,10 +2148,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 
 				// Not necessary to always send as it's big
 				// Backend optimises this anyway
-				if len(newStats.SensorDetails.Serial) > 100 { 
-					newStats.SensorDetails.Serial = ""
+				if len(newStats.SensorDetails.Serial) > 500 { 
+					newStats.SensorDetails.Serial = newStats.SensorDetails.Serial[:500]
 				}
 
+				newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 				newStats.SensorDetails.InstalledSoftware = []shuffle.Software{}
 				newStats.SensorDetails.CodeScanner = []shuffle.ProjectInfo{}
 				return newStats
@@ -2170,6 +2171,7 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		if err == nil { 
 			newStats.SensorDetails.User = fmt.Sprintf("%s", u.Username)
 		}
+		newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 		newStats.SensorDetails.OS = runtime.GOOS
 		newStats.SensorDetails.Arch = runtime.GOARCH
 		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
