@@ -2990,7 +2990,7 @@ func main() {
 							}
 
 							if sensorMode.ResponseActions != "" {
-								go shuffle.HandleSensorResponseAction(sensorMode, incRequest)
+								go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
 							}
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						} else {
