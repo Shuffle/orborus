@@ -27,8 +27,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/shuffle/shuffle-shared"
 	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shuffle/shuffle-shared"
 
 	"math/rand"
 	//"os/signal"
@@ -4673,80 +4673,110 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 		log.Printf("[DEBUG][%s] Worker request to be sent to URL: %s", workflowExecution.ExecutionId, streamUrl)
 	}
 
-	req, err := http.NewRequest(
-		"POST",
-		streamUrl,
-		bytes.NewBuffer([]byte(data)),
-	)
+	dispatchRetries := 3
+	retryDelay := 2 * time.Second
 
-	if err != nil {
-		log.Printf("[ERROR] Failed creating worker request: %s", err)
-		if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-			workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
-			if len(newWorkerImage) > 0 {
-				workerImage = newWorkerImage
+	var body []byte
+	for attempt := 1; attempt <= dispatchRetries; attempt++ {
+		req, err := http.NewRequest(
+			"POST",
+			streamUrl,
+			bytes.NewBuffer([]byte(data)),
+		)
+	
+		if err != nil {
+			log.Printf("[ERROR] Failed creating worker request: %s", err)
+
+			// Never happening but okay
+			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
+				if len(newWorkerImage) > 0 {
+					workerImage = newWorkerImage
+				}
+
+				if isKubernetes == "true" {
+					deployK8sWorker(workerImage, identifier, env)
+				} else {
+					deployServiceWorkers(workerImage)
+				}
+
+				time.Sleep(time.Duration(10) * time.Second)
+				//err = sendWorkerRequest(executionRequest)
 			}
 
-			if isKubernetes == "true" {
-				deployK8sWorker(workerImage, identifier, env)
-			} else {
-				deployServiceWorkers(workerImage)
-			}
-
-			time.Sleep(time.Duration(10) * time.Second)
-			//err = sendWorkerRequest(executionRequest)
+			return err
 		}
 
-		return err
-	}
+		newresp, err := client.Do(req)
+		if err != nil {
+			// Connection refused?
+			if !strings.Contains(fmt.Sprintf("%s", err), "timeout") {
+				if attempt < dispatchRetries {
+					log.Printf("[DEBUG][%s] Worker dispatch timeout (attempt %d/%d). Retrying in %s", workflowExecution.ExecutionId, attempt, dispatchRetries, retryDelay)
+					
+					time.Sleep(retryDelay)
+					continue
+				}
 
-	newresp, err := client.Do(req)
-	if err != nil {
-		// Connection refused?
-		if !strings.Contains(fmt.Sprintf("%s", err), "timeout") {
-			log.Printf("[ERROR][%s] Error running worker request to %s (1): %s", workflowExecution.ExecutionId, streamUrl, err)
-		}
-
-		if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-			workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
-			if len(newWorkerImage) > 0 {
-				workerImage = newWorkerImage
+				return err
 			}
 
-			if isKubernetes == "true" {
-				deployK8sWorker(workerImage, identifier, env)
-			} else {
-				deployServiceWorkers(workerImage)
+			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
+				if len(newWorkerImage) > 0 {
+					workerImage = newWorkerImage
+				}
+	
+				if isKubernetes == "true" {
+					deployK8sWorker(workerImage, identifier, env)
+				} else {
+					deployServiceWorkers(workerImage)
+				}
+	
+				time.Sleep(time.Duration(10) * time.Second)
+				//err = sendWorkerRequest(executionRequest)
+	
+				if attempt < dispatchRetries {
+					log.Printf("[DEBUG][%s] Worker dispatch connection error (attempt %d/%d). Retrying in %s", workflowExecution.ExecutionId, attempt, dispatchRetries, retryDelay)
+					continue
+				}
 			}
+			
+			log.Printf("[ERROR][%s] Error running worker request to %s (attempt %d/%d): %s", workflowExecution.ExecutionId, streamUrl, attempt, dispatchRetries, err)
+			return err
+		}
+	
 
-			time.Sleep(time.Duration(10) * time.Second)
-			//err = sendWorkerRequest(executionRequest)
+		defer newresp.Body.Close()
+		body, err := ioutil.ReadAll(newresp.Body)
+		if err != nil {
+			log.Printf("[ERROR] Failed reading body in worker request body to worker on %s: %s", streamUrl, err)
+			return err
+		}
+		window.AddEvent(time.Now())
+
+		// 200 - simple worker behavior, 202 - accepted by async execute queue (new worker ack)
+		if newresp.StatusCode == 200 || newresp.StatusCode == 202 {
+			break
 		}
 
-		return err
-	}
+		if newresp.StatusCode == 503 || newresp.StatusCode == 429 {
+			if attempt < dispatchRetries {
+				if debug {
+					log.Printf("[DEBUG][%s] Worker overloaded (status %d) attempt %d/%d. Retrying in %s", workflowExecution.ExecutionId, newresp.StatusCode, attempt, dispatchRetries, retryDelay)
+				}
 
-	defer newresp.Body.Close()
-	body, err := ioutil.ReadAll(newresp.Body)
-	if err != nil {
-		log.Printf("[ERROR] Failed reading body in worker request body to worker on %s: %s", streamUrl, err)
-		return err
-	}
-	window.AddEvent(time.Now())
+				time.Sleep(retryDelay)
+				continue
+			}
+		}
 
-	if newresp.StatusCode != 200 {
-		log.Printf("[WARNING] POTENTIAL error running worker request (2) - status code is %d for %s, not 200. Body: %s", newresp.StatusCode, streamUrl, string(body))
-
-		// In case of old executions
-		if strings.Contains(strings.ToLower(string(body)), "bad status ") {
+		log.Printf("[WARNING] POTENTIAL error running worker request (2) - status code is %d for %s. Body: %s", newresp.StatusCode, streamUrl, string(body))
+		if strings.Contains(strings.ToLower(string(body)), "bad status ") || strings.Contains(strings.ToLower(string(body)), "no apps to handle") {
 			return nil
 		}
 
-		if strings.Contains(strings.ToLower(string(body)), "no apps to handle") {
-			return nil
-		}
-
-		return errors.New(fmt.Sprintf("Bad statuscode from worker: %d - expecting 200", newresp.StatusCode))
+		return errors.New(fmt.Sprintf("Bad statuscode from worker: %d - expecting 200/202", newresp.StatusCode))
 	}
 
 	_ = body
@@ -4756,7 +4786,9 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 		debugCommand = fmt.Sprintf("kubectl logs -n %s deployment/shuffle-workers | grep %s", kubernetesNamespace, workflowExecution.ExecutionId)
 	}
 
+
 	log.Printf("[DEBUG][%s] Ran worker from requests. Worker URL: %s. DEBUGGING:\n%s", workflowExecution.ExecutionId, streamUrl, debugCommand)
+
 	return nil
 }
 
