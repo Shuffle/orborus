@@ -2621,6 +2621,9 @@ func mainLoop() {
 			sensorMode.ScreenlockCheck = "true"
 		}
 
+		// Just making sure it's not set for no reason. This means a restart of the agent doesn't check it well tho
+		os.Setenv("HOST_ISOLATED", "false")
+
 		log.Printf("[INFO] Running in sensor/agent mode. Starting the agent.")
 		err := StartAgentSensor(sensorMode)
 		if err != nil { 
