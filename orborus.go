@@ -857,6 +857,11 @@ func deployServiceWorkers(image string) {
 		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_INTERNAL_HTTPS_PROXY=%s", overrideHttpsProxy))
 	}
 
+	proxyConfigOverride := os.Getenv("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE")
+	if len(proxyConfigOverride) > 0 {
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE=%s", proxyConfigOverride))
+	}
+
 	serviceOptions := types.ServiceCreateOptions{}
 	_, err = dockercli.ServiceCreate(
 		ctx,
@@ -3349,6 +3354,11 @@ func mainLoop() {
 
 			if len(overrideHttpsProxy) > 0 {
 				env = append(env, fmt.Sprintf("SHUFFLE_INTERNAL_HTTPS_PROXY=%s", overrideHttpsProxy))
+			}
+
+			proxyConfigOverride := os.Getenv("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE")
+			if len(proxyConfigOverride) > 0 {
+				env = append(env, fmt.Sprintf("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE=%s", proxyConfigOverride))
 			}
 
 			if len(os.Getenv("SHUFFLE_MAX_SWARM_NODES")) > 0 {
