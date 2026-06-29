@@ -1883,6 +1883,11 @@ func initializeImages() {
 
 	log.Printf("[DEBUG] Setting swarm config to %#v. Default is empty.", swarmConfig)
 
+	if len(workerVersion) == 0 {
+		workerVersion = "latest"
+		log.Printf("[INFO] SHUFFLE_WORKER_VERSION not defined. Defaulting to %#v", workerVersion)
+	}
+
 	// This is now always static
 	newWorker := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 	if len(newWorkerImage) > 0 {
