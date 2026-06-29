@@ -2578,6 +2578,11 @@ func mainLoop() {
 
 	ctx := context.Background()
 	workerTimeout := 600
+	if len(workerVersion) == 0 {
+		workerVersion = "latest"
+		log.Printf("[INFO] SHUFFLE_WORKER_VERSION not defined. Defaulting to %#v", workerVersion)
+	}
+
 	workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 	if len(newWorkerImage) > 0 {
 		workerImage = newWorkerImage
