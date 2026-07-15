@@ -1877,8 +1877,17 @@ func initializeImages() {
 	if os.Getenv("SHUFFLE_AUTO_IMAGE_DOWNLOAD") == "false" {
 		log.Printf("[DEBUG] Skipping image download as SHUFFLE_AUTO_IMAGE_DOWNLOAD is set to false")
 	} else {
+		appSdkImage := "frikky/shuffle:app_sdk"
+		if baseimageregistry != "" && baseimagename != "" {
+			appSdkImage = fmt.Sprintf("%s/%s:app_sdk", baseimageregistry, baseimagename)
+		} else if baseimagename != "" {
+			appSdkImage = fmt.Sprintf("%s:app_sdk", baseimagename)
+		} else if baseimageregistry != "" {
+			appSdkImage = fmt.Sprintf("%s/frikky/shuffle:app_sdk", baseimageregistry)
+		}
+
 		images := []string{
-			fmt.Sprintf("frikky/shuffle:app_sdk"),
+			appSdkImage,
 			newWorker,
 		}
 
