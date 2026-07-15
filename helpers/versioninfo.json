@@ -1,0 +1,30 @@
+{
+  "FixedFileInfo": {
+    "FileVersion": {
+      "Major": 0,
+      "Minor": 3,
+      "Patch": 6,
+      "Build": 0
+    },
+    "ProductVersion": {
+      "Major": 0,
+      "Minor": 3,
+      "Patch": 6,
+      "Build": 0
+    },
+    "FileFlagsMask": "3f",
+    "FileFlags": "00",
+    "FileOS": "VOS_NT_WINDOWS32",
+    "FileType": "VFT_APP",
+    "FileSubType": "0"
+  },
+  "StringFileInfo": {
+    "CompanyName": "Shuffle AS",
+    "FileDescription": "Orborus Agent",
+    "ProductName": "Orborus",
+    "ProductVersion": "{build_number}",
+    "FileVersion": "{build_number}",
+    "OriginalFilename": "orborus-agent.exe",
+    "LegalCopyright": "Copyright (c) 2026"
+  }
+}

@@ -2879,7 +2879,20 @@ func mainLoop() {
 	unmarshalFailed := false
 	hostname, err := getHostname()
 	hasStarted := false
+
+	// Added to handle 
+	originalSleepTime := sleepTime
+	previousCommandTime := int64(-1)
 	for {
+
+		// Increased polling just after runs happened for sensors
+		// This makes them more interactive
+		timenow := time.Now().Unix()
+		if originalSleepTime != sleepTime && previousCommandTime != -1 && timenow - previousCommandTime > 90 {
+			log.Printf("[INFO] Resetting sleep time to original value of %d seconds last command. Previous command time: %d", originalSleepTime, previousCommandTime)
+			sleepTime = originalSleepTime
+		}
+
 		if req.Method == "POST" && !sensorMode.Enabled {
 			// Should find data to send (memory etc.)
 
@@ -3066,6 +3079,11 @@ func mainLoop() {
 									go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
 								}
 							}
+
+							// Sets polling rate to 1 second in case of jobs for this host to process them faster. Will be set back to default after 60 seconds without jobs for this host to avoid hitting rate limits.
+							sleepTime = 1
+							previousCommandTime = time.Now().Unix()
+
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						} else {
 							// Just ignore as other machines will handle it.
