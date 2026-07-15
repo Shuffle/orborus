@@ -1,7 +1,7 @@
 package main
 
 /*
-	Orborus exists to listen for new jobs from Shuffle. This is to run workflows, pipelines, and other tasks.
+  Orborus exists to listen for new jobs from Shuffle. This is to run workflows, pipelines, and other tasks.
 */
 import (
 	"archive/zip"
@@ -697,15 +697,11 @@ func deployServiceWorkers(image string) {
 				Replicas: &replicatedJobs,
 			},
 		},
-		Networks: func() []swarm.NetworkAttachmentConfig {
-			networks := []swarm.NetworkAttachmentConfig{
-				{Target: networkID},
-			}
-			if strings.ToLower(os.Getenv("SHUFFLE_ATTACH_INGRESS_NETWORK")) != "false" {
-				networks = append(networks, swarm.NetworkAttachmentConfig{Target: "ingress"})
-			}
-			return networks
-		}(),
+		Networks: []swarm.NetworkAttachmentConfig{
+			swarm.NetworkAttachmentConfig{
+				Target: networkID,
+			},
+		},
 		EndpointSpec: &swarm.EndpointSpec{
 			Mode: "vip",
 			Ports: []swarm.PortConfig{
@@ -802,6 +798,15 @@ func deployServiceWorkers(image string) {
 		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("no_proxy=%s", os.Getenv("no_proxy")))
 	}
 
+	if strings.ToLower(os.Getenv("SHUFFLE_PASS_APP_PROXY")) == "true" {
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_HTTP_PROXY=%s", os.Getenv("HTTP_PROXY")))
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_HTTPS_PROXY=%s", os.Getenv("HTTPS_PROXY")))
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_NO_PROXY=%s", os.Getenv("NO_PROXY")))
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_no_proxy=%s", os.Getenv("no_proxy")))
+	}
+
+	serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_PASS_APP_PROXY=%s", os.Getenv("SHUFFLE_PASS_APP_PROXY")))
+
 	if len(workerServerUrl) > 0 {
 		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_WORKER_SERVER_URL=%s", os.Getenv("SHUFFLE_WORKER_SERVER_URL")))
 	}
@@ -879,22 +884,38 @@ func deployServiceWorkers(image string) {
 		services, serr := dockercli.ServiceList(ctx, types.ServiceListOptions{})
 		if serr == nil {
 			for _, svc := range services {
-				if svc.Spec.Annotations.Name == innerContainerName {
-					log.Printf("[DEBUG] Found service %s (%s) — patching network attach", innerContainerName, svc.ID)
+				if svc.Spec.Annotations.Name != innerContainerName {
+					continue
+				}
 
-					spec := svc.Spec
-					spec.TaskTemplate.Networks = append(spec.TaskTemplate.Networks, swarm.NetworkAttachmentConfig{
-						Target: networkID,
-					})
-
-					_, uerr := dockercli.ServiceUpdate(ctx, svc.ID, svc.Version, spec, types.ServiceUpdateOptions{})
-					if uerr != nil {
-						log.Printf("[WARNING] Failed to patch service %s with network %s: %v", innerContainerName, networkID, uerr)
-					} else {
-						log.Printf("[INFO] Successfully attached network %s to service %s", networkID, innerContainerName)
+				// Check if the network already exists or not
+				networkFound := false
+				for _, net := range svc.Spec.TaskTemplate.Networks {
+					if net.Target == networkID {
+						networkFound = true
+						break
 					}
+				}
+
+				if networkFound {
+					log.Printf("[DEBUG] Network %s already attached to service %s, skipping patch", networkID, innerContainerName)
 					break
 				}
+
+				log.Printf("[DEBUG] Found service %s (%s) — patching network attach", innerContainerName, svc.ID)
+
+				spec := svc.Spec
+				spec.TaskTemplate.Networks = append(spec.TaskTemplate.Networks, swarm.NetworkAttachmentConfig{
+					Target: networkID,
+				})
+
+				_, uerr := dockercli.ServiceUpdate(ctx, svc.ID, svc.Version, spec, types.ServiceUpdateOptions{})
+				if uerr != nil {
+					log.Printf("[WARNING] Failed to patch service %s with network %s: %v", innerContainerName, networkID, uerr)
+				} else {
+					log.Printf("[INFO] Successfully attached network %s to service %s", networkID, innerContainerName)
+				}
+				break
 			}
 		} else {
 			log.Printf("[WARNING] Failed to list services for patching network attach: %v", serr)
@@ -1862,6 +1883,11 @@ func initializeImages() {
 
 	log.Printf("[DEBUG] Setting swarm config to %#v. Default is empty.", swarmConfig)
 
+	if len(workerVersion) == 0 {
+		workerVersion = "latest"
+		log.Printf("[INFO] SHUFFLE_WORKER_VERSION not defined. Defaulting to %#v", workerVersion)
+	}
+
 	// This is now always static
 	newWorker := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 	if len(newWorkerImage) > 0 {
@@ -2552,6 +2578,11 @@ func mainLoop() {
 
 	ctx := context.Background()
 	workerTimeout := 600
+	if len(workerVersion) == 0 {
+		workerVersion = "latest"
+		log.Printf("[INFO] SHUFFLE_WORKER_VERSION not defined. Defaulting to %#v", workerVersion)
+	}
+
 	workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 	if len(newWorkerImage) > 0 {
 		workerImage = newWorkerImage
@@ -2771,7 +2802,6 @@ func mainLoop() {
 		// FIXME - during init, BUILD and/or LOAD worker and app_sdk
 		// Build/load app_sdk so it can be loaded as 127.0.0.1:5000/walkoff_app_sdk
 		log.Printf("[INFO] Setting up Docker environment. Downloading worker and App SDK!")
-
 		initializeImages()
 
 		if swarmConfig == "run" || swarmConfig == "swarm" || isKubernetes == "true" {
@@ -4359,7 +4389,8 @@ func removeFile(fileName string) error {
 	containerName := "tenzir-node"
 	srcPath := fmt.Sprintf("/var/lib/tenzir/sigma_rules/%s", fileName)
 
-	checkSrcCmd := exec.Command("docker", "exec", containerName, "sh", "-c", fmt.Sprintf("test -f %s", srcPath))
+	//checkSrcCmd := exec.Command("docker", "exec", containerName, "sh", "-c", fmt.Sprintf("test -f %s", srcPath))
+	checkSrcCmd := exec.Command("docker", "exec", containerName, "test", "-f", srcPath)
 	if err := checkSrcCmd.Run(); err != nil {
 		// If the file does not exist, simply return nil
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
@@ -4776,6 +4807,10 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 
 			// Never happening but okay
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
+				if workerVersion == "" { 
+					workerVersion = "latest"
+				}
+
 				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage
@@ -4809,6 +4844,10 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 			}
 
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
+				if len(workerVersion) == 0 {
+					workerVersion = "latest"
+				}
+
 				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage

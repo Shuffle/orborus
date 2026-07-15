@@ -10,7 +10,7 @@
 #	ghcr.io/frikky/shuffle-orborus:nightly
 
 docker run \
-	--env DOCKER_API_VERSION=1.40 \
+	--env DOCKER_API_VERSION=1.44 \
 	--env ENVIRONMENT_NAME="Another env" \
 	--env ORG="2e7b6a08-b63b-4fc2-bd70-718091509db1" \
 	--env AUTH="env auth" \

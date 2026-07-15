@@ -1,0 +1,164 @@
+name: Docker Release & Latest
+
+on:
+  release:
+    types: [published]
+  push:
+    branches:
+      - main
+    paths:
+      - "**"
+      - "!.github/**"
+      - "!**.md"
+      - "!docker-compose.yml"
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        required: true
+        default: "latest"
+        type: choice
+        options:
+          - latest
+          - release
+          - both
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "amd64,arm64"
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to Ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine build type and version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            BUILD_TYPE="release"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION="latest"
+            BUILD_TYPE="latest"
+          else
+            BUILD_TYPE="${{ github.event.inputs.build_type }}"
+            VERSION="latest"
+          fi
+
+          echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+          STRIPPED_VERSION=$(echo "${VERSION}" | sed 's/^v//')
+          echo "stripped_version=${STRIPPED_VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}, Stripped: ${STRIPPED_VERSION}, Type: ${BUILD_TYPE}"
+
+      # === LATEST BUILD (push to main or workflow_dispatch) ===
+
+      - name: Build and push latest (primary)
+        if: steps.version.outputs.build_type == 'latest' || steps.version.outputs.build_type == 'both'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/shuffle/orborus:latest
+            ghcr.io/shuffle/orborus:2.2.1
+
+      - name: Copy latest to DockerHub
+        if: steps.version.outputs.build_type == 'latest' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/orborus:latest \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/orborus:2.2.1 \
+            ghcr.io/shuffle/orborus:latest
+
+      - name: Copy latest to shuffle DockerHub
+        if: steps.version.outputs.build_type == 'latest' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag shuffle/orborus:latest \
+            --tag shuffle/orborus:2.2.1 \
+            ghcr.io/shuffle/orborus:latest
+
+      - name: Copy latest to frikky
+        if: steps.version.outputs.build_type == 'latest' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag frikky/orborus:latest \
+            --tag frikky/orborus:2.2.1 \
+            --tag frikky/shuffle:orborus \
+            ghcr.io/shuffle/orborus:latest
+
+      # === RELEASE BUILD (GitHub release or workflow_dispatch) ===
+
+      - name: Build and push release (primary)
+        if: steps.version.outputs.build_type == 'release' || steps.version.outputs.build_type == 'both'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/shuffle/orborus:${{ steps.version.outputs.version }}
+            ghcr.io/shuffle/orborus:${{ steps.version.outputs.stripped_version }}
+
+      - name: Copy release to DockerHub
+        if: steps.version.outputs.build_type == 'release' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/orborus:${{ steps.version.outputs.version }} \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/orborus:${{ steps.version.outputs.stripped_version }} \
+            ghcr.io/shuffle/orborus:${{ steps.version.outputs.version }}
+
+      - name: Copy release to shuffle DockerHub
+        if: steps.version.outputs.build_type == 'release' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag shuffle/orborus:${{ steps.version.outputs.version }} \
+            --tag shuffle/orborus:${{ steps.version.outputs.stripped_version }} \
+            ghcr.io/shuffle/orborus:${{ steps.version.outputs.version }}
+
+      - name: Copy release to frikky
+        if: steps.version.outputs.build_type == 'release' || steps.version.outputs.build_type == 'both'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            --tag frikky/orborus:${{ steps.version.outputs.version }} \
+            --tag frikky/orborus:${{ steps.version.outputs.stripped_version }} \
+            ghcr.io/shuffle/orborus:${{ steps.version.outputs.version }}

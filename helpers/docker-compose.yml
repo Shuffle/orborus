@@ -12,7 +12,7 @@ services:
       - ORG_ID=Shuffle
       - ENVIRONMENT_NAME=Shuffle
       - BASE_URL=http://192.168.86.39:5001
-      - DOCKER_API_VERSION=1.40
+      - DOCKER_API_VERSION=1.44
       - SHUFFLE_SCALE_REPLICAS=5
       - SHUFFLE_SWARM_CONFIG=run
     restart: unless-stopped
