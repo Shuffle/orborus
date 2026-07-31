@@ -4461,7 +4461,7 @@ func sendPipelineHealthStatus(sensorMode shuffle.SensorMode) (shuffle.LakeConfig
 
 	err := deployTenzirNode()
 	if err != nil {
-		if (!strings.Contains(err.Error(), "SHUFFLE_SKIP_PIPELINES") && !strings.Contains(err.Error(), "Kubernetes not implemented for Tenzir node")) && !strings.Contains(err.Error(), "Tenzir Node is already running") && !strings.Contains(err.Error(), "docker daemon") {
+		if (!strings.Contains(err.Error(), "SHUFFLE_SKIP_PIPELINES") && !strings.Contains(err.Error(), "Tenzir not implemented for k8s")) && !strings.Contains(err.Error(), "Tenzir Node is already running") && !strings.Contains(err.Error(), "docker daemon") {
 			log.Printf("[ERROR] Tenzir node connection problem: %s", err)
 
 		} else {
