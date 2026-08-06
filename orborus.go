@@ -30,6 +30,7 @@ import (
 
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/shuffle/shuffle-shared"
+	"github.com/shuffle/osctrl"
 
 	"math/rand"
 	//"os/signal"
@@ -2215,11 +2216,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 		newStats.SensorDetails.OS = runtime.GOOS
 		newStats.SensorDetails.Arch = runtime.GOARCH
-		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
-		newStats.SensorDetails.Serial = shuffle.GetProfiler()
+		newStats.SensorDetails.ElevatedAccess = osctrl.IsElevated()
+		newStats.SensorDetails.Serial = osctrl.GetProfiler()
 
 		if sensorMode.ProcessListEnabled != "false" {
-			processes, err := shuffle.ListProcesses()
+			processes, err := osctrl.ListProcesses()
 			if err == nil { 
 				newStats.SensorDetails.ProcessList = processes
 			}
@@ -2227,11 +2228,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 
 		if sensorMode.SoftwareListEnabled != "false" { 
 			// Check cache first before running the command
-			newStats.SensorDetails.InstalledSoftware = shuffle.ListInstalledSoftware()
+			newStats.SensorDetails.InstalledSoftware = osctrl.ListInstalledSoftware()
 		}
 
 		if sensorMode.CodeScannerEnabled != "false" {
-			newStats.SensorDetails.CodeScanner = shuffle.ListCodeScannerProjects()
+			newStats.SensorDetails.CodeScanner = osctrl.ListCodeScannerProjects()
 
 			if debug {
 				log.Printf("[DEBUG] FOUND %d CODE PROJECTS", len(newStats.SensorDetails.CodeScanner))
@@ -2239,11 +2240,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		}
 
 		if sensorMode.HdEncryptedCheck != "false" {
-			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", shuffle.IsDiskEncrypted())
+			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", osctrl.IsDiskEncrypted())
 		}
 
 		if sensorMode.ScreenlockCheck != "false" {
-			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", shuffle.IsAutomaticScreenlockEnabled())
+			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", osctrl.IsAutomaticScreenlockEnabled())
 		}
 
 
@@ -2540,7 +2541,7 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 			})
 		}
 
-		collector, err := shuffle.NewAuditLogCollector(telemetryConfig)
+		collector, err := osctrl.NewAuditLogCollector(telemetryConfig)
 		if err != nil {
 			log.Printf("[ERROR] Failed to create audit log collector: %v", err)
 		} else {
@@ -3115,7 +3116,7 @@ func mainLoop() {
 									sensorMode.ResponseActions = "false"
 									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
 								} else {
-									go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+									go osctrl.HandleSensorResponseAction(hostname, sensorMode, incRequest)
 								}
 							}
 
