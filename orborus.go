@@ -1722,7 +1722,7 @@ func deployWorker(image string, identifier string, env []string, executionReques
 	)
 
 	if err != nil {
-		if strings.Contains(fmt.Sprintf("%s", err), "Conflict. The container name ") {
+		if strings.Contains(fmt.Sprintf("%s", err), "Conflict. The container name ") || strings.Contains(fmt.Sprintf("%s", err), "is already in use") { 
 			identifier = fmt.Sprintf("%s-%s", identifier, parsedUuid)
 			//log.Printf("[INFO] 2 - Identifier: %s", identifier)
 			cont, err = dockercli.ContainerCreate(
@@ -3024,6 +3024,7 @@ func mainLoop() {
 		} else {
 			if !hasStarted {
 				log.Printf("[INFO] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+
 			} else if connectionFailed == true && unmarshalFailed == true {
 				log.Printf("[INFO] Successfully reconnected to backend at %s. Resuming normal operation. Status code: %d", fullUrl, newresp.StatusCode)
 
@@ -3092,6 +3093,7 @@ func mainLoop() {
 				deduplicatedJobs = append(deduplicatedJobs, incRequest)
 			}
 
+			// Handles incoming backend jobs
 			executionRequests.Data = deduplicatedJobs
 			for _, incRequest := range executionRequests.Data {
 
@@ -3106,29 +3108,30 @@ func mainLoop() {
 						}
 
 						if parsedHostname == hostname {
-							if debug { 
-								log.Printf("[DEBUG] CORRECT HOSTNAME: %#v matches sensor hostname %#v. Removing from queue without processing.", parsedHostname, hostname)
-							}
-
-							if sensorMode.ResponseActions != "" {
-								// Special handler for disabling RCE entirely
-								if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
-									sensorMode.ResponseActions = "false"
-									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
-								} else {
-									go osctrl.HandleSensorResponseAction(hostname, sensorMode, incRequest)
-								}
-							}
-
-							// Sets polling rate to 1 second in case of jobs for this host to process them faster. Will be set back to default after 60 seconds without jobs for this host to avoid hitting rate limits.
-							sleepTime = 1
-							previousCommandTime = time.Now().Unix()
-
-							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
-						} else {
-							// Just ignore as other machines will handle it.
-							//log.Printf("[WARNING] Hostname '%s' from job does not match sensor hostname '%s'. Removing from queue without processing. Job: %#v", parsedHostname, hostname, incRequest)
+							continue
 						}
+
+						if debug {
+							log.Printf("[DEBUG] Got job with correct hostname: %#v matches sensor hostname %#v. ResponseActions: %#v", parsedHostname, hostname, sensorMode.ResponseActions)
+						}
+
+						if sensorMode.ResponseActions != "" {
+							// Special handler for disabling RCE entirely
+							if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
+								log.Printf("[INFO] Disabling RCE for this sensor. This will prevent any response actions from being executed. This is a permanent change until the sensor is re-enabled. SensorMode: %#v", sensorMode)
+
+								sensorMode.ResponseActions = "false"
+								os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
+							} else {
+								go osctrl.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+							}
+						}
+
+						// Sets polling rate to 1 second in case of jobs for this host to process them faster. Will be set back to default after 60 seconds without jobs for this host to avoid hitting rate limits.
+						sleepTime = 1
+						previousCommandTime = time.Now().Unix()
+
+						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 					} else {
 						// Invalid command
 						if debug { 
