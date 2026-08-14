@@ -36,7 +36,7 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: "amd64,arm64,arm"
+          platforms: "amd64,arm64"
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -57,7 +57,7 @@ jobs:
         with:
           context: ${{ matrix.path }}/
           file: ${{ matrix.path }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64/v8
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
