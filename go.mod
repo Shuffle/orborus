@@ -7,6 +7,7 @@ replace github.com/shuffle/shuffle-shared => ../shuffle-shared
 replace github.com/shuffle/osctrl => ../osctrl
 
 require (
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/satori/go.uuid v1.2.0

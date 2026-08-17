@@ -48,6 +48,7 @@ import (
 	//"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	uuid "github.com/satori/go.uuid"
+	"github.com/denisbrodbeck/machineid"
 
 	//"github.com/mackerelio/go-osstat/disk"
 	//"github.com/mackerelio/go-osstat/memory"
@@ -2204,10 +2205,7 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		}
 
 		newStats.SensorDetails.SensorMode = true
-		hostname, err := getHostname()
-		if err == nil { 
-			newStats.SensorDetails.Hostname = hostname
-		}
+		newStats.SensorDetails.Hostname = sensorMode.Hostname
 
 		u, err := user.Current()
 		if err == nil { 
@@ -2913,11 +2911,27 @@ func mainLoop() {
 		swarmControlMode = true
 	}
 
-	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v", fullUrl, environment, sensorMode.Enabled)
-
 	connectionFailed := false
 	unmarshalFailed := false
 	hostname, err := getHostname()
+	if err != nil { 
+		log.Printf("[ERROR] Failed to get hostname: %s", err)
+	}
+
+	machineId := ""
+	if sensorMode.Enabled { 
+		machineId, err = machineid.ID()
+		if err != nil {
+			log.Printf("[ERROR] Failed to get machine ID: %s", err)
+		} else {
+			hostname = fmt.Sprintf("%s|%s", hostname, machineId)
+		}
+	}
+
+	sensorMode.Hostname = hostname
+
+	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v. Hostname: %#v", fullUrl, environment, sensorMode.Enabled, hostname)
+
 	hasStarted := false
 
 	// Added to handle 
@@ -3107,12 +3121,14 @@ func mainLoop() {
 							parsedHostname = strings.ToUpper(parsedHostnameSplit[0])
 						}
 
-						if parsedHostname == hostname {
-							continue
+						if debug {
+							log.Printf("[DEBUG] Got job with hostname: %#v. matches sensor hostname %#v? ResponseActions: %#v", parsedHostname, hostname, sensorMode.ResponseActions)
 						}
 
-						if debug {
-							log.Printf("[DEBUG] Got job with correct hostname: %#v matches sensor hostname %#v. ResponseActions: %#v", parsedHostname, hostname, sensorMode.ResponseActions)
+						if parsedHostname != hostname {
+							if !strings.HasSuffix(parsedHostname, machineId) { 
+								continue
+							}
 						}
 
 						if sensorMode.ResponseActions != "" {
