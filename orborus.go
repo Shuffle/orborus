@@ -2993,12 +2993,16 @@ func mainLoop() {
 		newresp, err := client.Do(req)
 		if err != nil {
 			log.Printf("[WARNING] Failed making request to %s: %s", fullUrl, err)
+			connectionFailed = true
+			unmarshalFailed = true
+			sleepTime = 15
 
 			zombiecounter += 1
 			if zombiecounter*sleepTime > workerTimeout {
 				go zombiecheck(ctx, workerTimeout, sensorMode)
 				zombiecounter = 0
 			}
+
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 			continue
 		}
