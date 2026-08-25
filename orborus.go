@@ -2570,6 +2570,18 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 
 // Initial loop etc
 func main() {
+	if debug { 
+		/*
+		screenshots, _ := osctrl.ScreenshotAllDisplaysMacos() 
+		for _, screenshot := range screenshots { 
+			screenshot.Image = []byte{}
+			//screenshot.ImageBase64 = ""
+			log.Printf("SCREENSHOT: %#v", screenshot)
+		}
+		os.Exit(3)
+		*/
+	}
+
 	mainLoop()
 }
 
