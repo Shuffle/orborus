@@ -3187,6 +3187,12 @@ func mainLoop() {
 						}
 
 						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
+					} else if incRequest.Type == "WORKER_CLEANUP" {
+						if err := handleCleanupRequest(ctx); err != nil {
+							log.Printf("[ERROR] Failed handling CLEANUP request: %s. Deleting job anyway.", err)
+						}
+
+						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 
 					} else if incRequest.Type == "CATEGORY_UPDATE" {
 						os.Setenv("SHUFFLE_SKIP_PIPELINES", "false")
@@ -4957,6 +4963,59 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 
 
 	log.Printf("[DEBUG][%s] Ran worker from requests. Worker URL: %s. DEBUGGING:\n%s", workflowExecution.ExecutionId, streamUrl, debugCommand)
+	if swarmConfig == "run" || swarmConfig == "swarm" {
+		scheduleExecutionRerun(workflowExecution)
+	}
+
+	return nil
+}
+
+func executionRerunDelay() time.Duration {
+	delay := 300
+	if configured, err := strconv.Atoi(os.Getenv("SHUFFLE_RERUN_SCHEDULE")); err == nil && configured >= delay {
+		delay = configured
+	}
+
+	return time.Duration(delay) * time.Second
+}
+
+func scheduleExecutionRerun(execution shuffle.ExecutionRequest) {
+	if strings.ToLower(os.Getenv("SHUFFLE_DISABLE_RERUN_AND_ABORT")) == "true" || execution.ExecutionId == "" || execution.WorkflowId == "" || execution.Authorization == "" {
+		return
+	}
+
+	// @yashsinghcodes: in-process timer; the persisted unfinished-execution scan is the restart fallback.
+	time.AfterFunc(executionRerunDelay(), func() {
+		client := shuffle.GetExternalClient(baseUrl)
+		client.Timeout = 15 * time.Second
+		if err := requestExecutionRerun(client, baseUrl, execution); err != nil {
+			log.Printf("[WARNING][%s] Failed scheduled rerun check: %s", execution.ExecutionId, err)
+		}
+	})
+}
+
+func requestExecutionRerun(client *http.Client, backendUrl string, execution shuffle.ExecutionRequest) error {
+	if execution.ExecutionId == "" || execution.WorkflowId == "" || execution.Authorization == "" {
+		return errors.New("execution ID, workflow ID and authorization are required for rerun")
+	}
+
+	targetUrl := fmt.Sprintf("%s/api/v1/workflows/%s/executions/%s/rerun", strings.TrimRight(backendUrl, "/"), execution.WorkflowId, execution.ExecutionId)
+	req, err := http.NewRequest("POST", targetUrl, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+execution.Authorization)
+
+	response, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 1024))
+		return fmt.Errorf("rerun endpoint returned %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+	}
 
 	return nil
 }
@@ -5058,9 +5117,65 @@ func queueScaleFactor(numQueue int, queuePerMin int) float64 {
 	return 1.0
 }
 
+func handleCleanupRequest(ctx context.Context) error {
+	if swarmConfig != "run" && swarmConfig != "swarm" {
+		return fmt.Errorf("CLEANUP requests are only supported in swarm mode")
+	}
+
+	memcachedAddress := ""
+	available, err := checkMemcached(ctx, dockercli)
+	if err != nil {
+		log.Printf("[WARNING] Failed checking shuffle-cache before worker restart: %s", err)
+	} else if available {
+		memcachedAddress = "shuffle-cache:11211"
+	}
+
+	return restartSwarmWorkers(ctx, dockercli, memcachedAddress)
+}
+
+func restartSwarmWorkers(ctx context.Context, client *dockerclient.Client, memcachedAddress string) error {
+	service, _, err := client.ServiceInspectWithRaw(ctx, "shuffle-workers", types.ServiceInspectOptions{})
+	if err != nil {
+		return err
+	}
+
+	if service.Spec.TaskTemplate.ContainerSpec == nil {
+		return errors.New("shuffle-workers has no container spec")
+	}
+
+	prepareWorkerRestart(&service, memcachedAddress)
+	_, err = client.ServiceUpdate(ctx, service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[INFO] Restarted shuffle-workers after CLEANUP request")
+	return nil
+}
+
+func prepareWorkerRestart(service *swarm.Service, memcachedAddress string) {
+	if memcachedAddress != "" {
+		memcachedEnv := "SHUFFLE_MEMCACHED=" + memcachedAddress
+		found := false
+		for index, env := range service.Spec.TaskTemplate.ContainerSpec.Env {
+			if strings.HasPrefix(env, "SHUFFLE_MEMCACHED=") {
+				service.Spec.TaskTemplate.ContainerSpec.Env[index] = memcachedEnv
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			service.Spec.TaskTemplate.ContainerSpec.Env = append(service.Spec.TaskTemplate.ContainerSpec.Env, memcachedEnv)
+		}
+	}
+
+	service.Spec.TaskTemplate.ForceUpdate++
+}
+
 func checkMemcached(ctx context.Context, dockercli *dockerclient.Client) (bool, error) {
 	containerName := "shuffle-cache"
-	continer, err := dockercli.ContainerInspect(context.Background(), containerName)
+	continer, err := dockercli.ContainerInspect(ctx, containerName)
 	if err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return false, nil
@@ -5068,9 +5183,15 @@ func checkMemcached(ctx context.Context, dockercli *dockerclient.Client) (bool, 
 		return false, err
 	}
 	networkName := "shuffle_swarm_executions"
-	err = dockercli.NetworkConnect(ctx, networkName, containerName, nil)
-	if err != nil {
-		log.Printf("[WARNING] Failed connecting memcached container to network: %s", err)
+	if swarmNetworkName != "" {
+		networkName = swarmNetworkName
+	}
+
+	if continer.NetworkSettings == nil || continer.NetworkSettings.Networks[networkName] == nil {
+		err = dockercli.NetworkConnect(ctx, networkName, containerName, nil)
+		if err != nil {
+			return false, fmt.Errorf("connect %s to %s: %w", containerName, networkName, err)
+		}
 	}
 
 	if continer.State.Running == false {
