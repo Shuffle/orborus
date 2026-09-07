@@ -30,6 +30,7 @@ import (
 
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/shuffle/shuffle-shared"
+	"github.com/shuffle/osctrl"
 
 	"math/rand"
 	//"os/signal"
@@ -47,6 +48,7 @@ import (
 	//"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	uuid "github.com/satori/go.uuid"
+	"github.com/denisbrodbeck/machineid"
 
 	//"github.com/mackerelio/go-osstat/disk"
 	//"github.com/mackerelio/go-osstat/memory"
@@ -860,6 +862,11 @@ func deployServiceWorkers(image string) {
 
 	if len(overrideHttpsProxy) > 0 {
 		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_INTERNAL_HTTPS_PROXY=%s", overrideHttpsProxy))
+	}
+
+	proxyConfigOverride := os.Getenv("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE")
+	if len(proxyConfigOverride) > 0 {
+		serviceSpec.TaskTemplate.ContainerSpec.Env = append(serviceSpec.TaskTemplate.ContainerSpec.Env, fmt.Sprintf("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE=%s", proxyConfigOverride))
 	}
 
 	serviceOptions := types.ServiceCreateOptions{}
@@ -1716,7 +1723,7 @@ func deployWorker(image string, identifier string, env []string, executionReques
 	)
 
 	if err != nil {
-		if strings.Contains(fmt.Sprintf("%s", err), "Conflict. The container name ") {
+		if strings.Contains(fmt.Sprintf("%s", err), "Conflict. The container name ") || strings.Contains(fmt.Sprintf("%s", err), "is already in use") { 
 			identifier = fmt.Sprintf("%s-%s", identifier, parsedUuid)
 			//log.Printf("[INFO] 2 - Identifier: %s", identifier)
 			cont, err = dockercli.ContainerCreate(
@@ -1898,8 +1905,17 @@ func initializeImages() {
 	if os.Getenv("SHUFFLE_AUTO_IMAGE_DOWNLOAD") == "false" {
 		log.Printf("[DEBUG] Skipping image download as SHUFFLE_AUTO_IMAGE_DOWNLOAD is set to false")
 	} else {
+		appSdkImage := "frikky/shuffle:app_sdk"
+		if baseimageregistry != "" && baseimagename != "" {
+			appSdkImage = fmt.Sprintf("%s/%s:app_sdk", baseimageregistry, baseimagename)
+		} else if baseimagename != "" {
+			appSdkImage = fmt.Sprintf("%s:app_sdk", baseimagename)
+		} else if baseimageregistry != "" {
+			appSdkImage = fmt.Sprintf("%s/frikky/shuffle:app_sdk", baseimageregistry)
+		}
+
 		images := []string{
-			fmt.Sprintf("frikky/shuffle:app_sdk"),
+			appSdkImage,
 			newWorker,
 		}
 
@@ -2189,10 +2205,7 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		}
 
 		newStats.SensorDetails.SensorMode = true
-		hostname, err := getHostname()
-		if err == nil { 
-			newStats.SensorDetails.Hostname = hostname
-		}
+		newStats.SensorDetails.Hostname = sensorMode.Hostname
 
 		u, err := user.Current()
 		if err == nil { 
@@ -2201,11 +2214,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 		newStats.SensorDetails.OS = runtime.GOOS
 		newStats.SensorDetails.Arch = runtime.GOARCH
-		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
-		newStats.SensorDetails.Serial = shuffle.GetProfiler()
+		newStats.SensorDetails.ElevatedAccess = osctrl.IsElevated()
+		newStats.SensorDetails.Serial = osctrl.GetProfiler()
 
 		if sensorMode.ProcessListEnabled != "false" {
-			processes, err := shuffle.ListProcesses()
+			processes, err := osctrl.ListProcesses()
 			if err == nil { 
 				newStats.SensorDetails.ProcessList = processes
 			}
@@ -2213,11 +2226,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 
 		if sensorMode.SoftwareListEnabled != "false" { 
 			// Check cache first before running the command
-			newStats.SensorDetails.InstalledSoftware = shuffle.ListInstalledSoftware()
+			newStats.SensorDetails.InstalledSoftware = osctrl.ListInstalledSoftware()
 		}
 
 		if sensorMode.CodeScannerEnabled != "false" {
-			newStats.SensorDetails.CodeScanner = shuffle.ListCodeScannerProjects()
+			newStats.SensorDetails.CodeScanner = osctrl.ListCodeScannerProjects()
 
 			if debug {
 				log.Printf("[DEBUG] FOUND %d CODE PROJECTS", len(newStats.SensorDetails.CodeScanner))
@@ -2225,11 +2238,11 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 		}
 
 		if sensorMode.HdEncryptedCheck != "false" {
-			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", shuffle.IsDiskEncrypted())
+			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", osctrl.IsDiskEncrypted())
 		}
 
 		if sensorMode.ScreenlockCheck != "false" {
-			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", shuffle.IsAutomaticScreenlockEnabled())
+			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", osctrl.IsAutomaticScreenlockEnabled())
 		}
 
 
@@ -2526,7 +2539,7 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 			})
 		}
 
-		collector, err := shuffle.NewAuditLogCollector(telemetryConfig)
+		collector, err := osctrl.NewAuditLogCollector(telemetryConfig)
 		if err != nil {
 			log.Printf("[ERROR] Failed to create audit log collector: %v", err)
 		} else {
@@ -2898,11 +2911,27 @@ func mainLoop() {
 		swarmControlMode = true
 	}
 
-	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v", fullUrl, environment, sensorMode.Enabled)
-
 	connectionFailed := false
 	unmarshalFailed := false
 	hostname, err := getHostname()
+	if err != nil { 
+		log.Printf("[ERROR] Failed to get hostname: %s", err)
+	}
+
+	machineId := ""
+	if sensorMode.Enabled { 
+		machineId, err = machineid.ID()
+		if err != nil {
+			log.Printf("[ERROR] Failed to get machine ID: %s", err)
+		} else {
+			hostname = fmt.Sprintf("%s|%s", hostname, machineId)
+		}
+	}
+
+	sensorMode.Hostname = hostname
+
+	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v. Hostname: %#v", fullUrl, environment, sensorMode.Enabled, hostname)
+
 	hasStarted := false
 
 	// Added to handle 
@@ -2964,12 +2993,16 @@ func mainLoop() {
 		newresp, err := client.Do(req)
 		if err != nil {
 			log.Printf("[WARNING] Failed making request to %s: %s", fullUrl, err)
+			connectionFailed = true
+			unmarshalFailed = true
+			sleepTime = 15
 
 			zombiecounter += 1
 			if zombiecounter*sleepTime > workerTimeout {
 				go zombiecheck(ctx, workerTimeout, sensorMode)
 				zombiecounter = 0
 			}
+
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 			continue
 		}
@@ -3009,6 +3042,7 @@ func mainLoop() {
 		} else {
 			if !hasStarted {
 				log.Printf("[INFO] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+
 			} else if connectionFailed == true && unmarshalFailed == true {
 				log.Printf("[INFO] Successfully reconnected to backend at %s. Resuming normal operation. Status code: %d", fullUrl, newresp.StatusCode)
 
@@ -3077,6 +3111,7 @@ func mainLoop() {
 				deduplicatedJobs = append(deduplicatedJobs, incRequest)
 			}
 
+			// Handles incoming backend jobs
 			executionRequests.Data = deduplicatedJobs
 			for _, incRequest := range executionRequests.Data {
 
@@ -3090,30 +3125,33 @@ func mainLoop() {
 							parsedHostname = strings.ToUpper(parsedHostnameSplit[0])
 						}
 
-						if parsedHostname == hostname {
-							if debug { 
-								log.Printf("[DEBUG] CORRECT HOSTNAME: %#v matches sensor hostname %#v. Removing from queue without processing.", parsedHostname, hostname)
-							}
-
-							if sensorMode.ResponseActions != "" {
-								// Special handler for disabling RCE entirely
-								if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
-									sensorMode.ResponseActions = "false"
-									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
-								} else {
-									go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
-								}
-							}
-
-							// Sets polling rate to 1 second in case of jobs for this host to process them faster. Will be set back to default after 60 seconds without jobs for this host to avoid hitting rate limits.
-							sleepTime = 1
-							previousCommandTime = time.Now().Unix()
-
-							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
-						} else {
-							// Just ignore as other machines will handle it.
-							//log.Printf("[WARNING] Hostname '%s' from job does not match sensor hostname '%s'. Removing from queue without processing. Job: %#v", parsedHostname, hostname, incRequest)
+						if debug {
+							log.Printf("[DEBUG] Got job with hostname: %#v. matches sensor hostname %#v? ResponseActions: %#v", parsedHostname, hostname, sensorMode.ResponseActions)
 						}
+
+						if parsedHostname != hostname {
+							if !strings.HasSuffix(parsedHostname, machineId) { 
+								continue
+							}
+						}
+
+						if sensorMode.ResponseActions != "" {
+							// Special handler for disabling RCE entirely
+							if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
+								log.Printf("[INFO] Disabling RCE for this sensor. This will prevent any response actions from being executed. This is a permanent change until the sensor is re-enabled. SensorMode: %#v", sensorMode)
+
+								sensorMode.ResponseActions = "false"
+								os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
+							} else {
+								go osctrl.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+							}
+						}
+
+						// Sets polling rate to 1 second in case of jobs for this host to process them faster. Will be set back to default after 60 seconds without jobs for this host to avoid hitting rate limits.
+						sleepTime = 1
+						previousCommandTime = time.Now().Unix()
+
+						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 					} else {
 						// Invalid command
 						if debug { 
@@ -3146,6 +3184,12 @@ func mainLoop() {
 							go handleBackendImageDownload(ctx, incRequest.ExecutionArgument)
 						} else {
 							log.Printf("[ERROR] No image name provided for download. Removing job from queue.")
+						}
+
+						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
+					} else if incRequest.Type == "WORKER_CLEANUP" {
+						if err := handleCleanupRequest(ctx); err != nil {
+							log.Printf("[ERROR] Failed handling CLEANUP request: %s. Deleting job anyway.", err)
 						}
 
 						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
@@ -3397,6 +3441,11 @@ func mainLoop() {
 
 			if len(overrideHttpsProxy) > 0 {
 				env = append(env, fmt.Sprintf("SHUFFLE_INTERNAL_HTTPS_PROXY=%s", overrideHttpsProxy))
+			}
+
+			proxyConfigOverride := os.Getenv("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE")
+			if len(proxyConfigOverride) > 0 {
+				env = append(env, fmt.Sprintf("SHUFFLE_APP_PROXY_CONFIG_OVERRIDE=%s", proxyConfigOverride))
 			}
 
 			if len(os.Getenv("SHUFFLE_MAX_SWARM_NODES")) > 0 {
@@ -4442,7 +4491,7 @@ func sendPipelineHealthStatus(sensorMode shuffle.SensorMode) (shuffle.LakeConfig
 
 	err := deployTenzirNode()
 	if err != nil {
-		if (!strings.Contains(err.Error(), "SHUFFLE_SKIP_PIPELINES") && !strings.Contains(err.Error(), "Kubernetes not implemented for Tenzir node")) && !strings.Contains(err.Error(), "Tenzir Node is already running") && !strings.Contains(err.Error(), "docker daemon") {
+		if (!strings.Contains(err.Error(), "SHUFFLE_SKIP_PIPELINES") && !strings.Contains(err.Error(), "Tenzir not implemented for k8s")) && !strings.Contains(err.Error(), "Tenzir Node is already running") && !strings.Contains(err.Error(), "docker daemon") {
 			log.Printf("[ERROR] Tenzir node connection problem: %s", err)
 
 		} else {
@@ -4914,6 +4963,59 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 
 
 	log.Printf("[DEBUG][%s] Ran worker from requests. Worker URL: %s. DEBUGGING:\n%s", workflowExecution.ExecutionId, streamUrl, debugCommand)
+	if swarmConfig == "run" || swarmConfig == "swarm" {
+		scheduleExecutionRerun(workflowExecution)
+	}
+
+	return nil
+}
+
+func executionRerunDelay() time.Duration {
+	delay := 300
+	if configured, err := strconv.Atoi(os.Getenv("SHUFFLE_RERUN_SCHEDULE")); err == nil && configured >= delay {
+		delay = configured
+	}
+
+	return time.Duration(delay) * time.Second
+}
+
+func scheduleExecutionRerun(execution shuffle.ExecutionRequest) {
+	if strings.ToLower(os.Getenv("SHUFFLE_DISABLE_RERUN_AND_ABORT")) == "true" || execution.ExecutionId == "" || execution.WorkflowId == "" || execution.Authorization == "" {
+		return
+	}
+
+	// @yashsinghcodes: in-process timer; the persisted unfinished-execution scan is the restart fallback.
+	time.AfterFunc(executionRerunDelay(), func() {
+		client := shuffle.GetExternalClient(baseUrl)
+		client.Timeout = 15 * time.Second
+		if err := requestExecutionRerun(client, baseUrl, execution); err != nil {
+			log.Printf("[WARNING][%s] Failed scheduled rerun check: %s", execution.ExecutionId, err)
+		}
+	})
+}
+
+func requestExecutionRerun(client *http.Client, backendUrl string, execution shuffle.ExecutionRequest) error {
+	if execution.ExecutionId == "" || execution.WorkflowId == "" || execution.Authorization == "" {
+		return errors.New("execution ID, workflow ID and authorization are required for rerun")
+	}
+
+	targetUrl := fmt.Sprintf("%s/api/v1/workflows/%s/executions/%s/rerun", strings.TrimRight(backendUrl, "/"), execution.WorkflowId, execution.ExecutionId)
+	req, err := http.NewRequest("POST", targetUrl, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+execution.Authorization)
+
+	response, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 1024))
+		return fmt.Errorf("rerun endpoint returned %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+	}
 
 	return nil
 }
@@ -5015,9 +5117,65 @@ func queueScaleFactor(numQueue int, queuePerMin int) float64 {
 	return 1.0
 }
 
+func handleCleanupRequest(ctx context.Context) error {
+	if swarmConfig != "run" && swarmConfig != "swarm" {
+		return fmt.Errorf("CLEANUP requests are only supported in swarm mode")
+	}
+
+	memcachedAddress := ""
+	available, err := checkMemcached(ctx, dockercli)
+	if err != nil {
+		log.Printf("[WARNING] Failed checking shuffle-cache before worker restart: %s", err)
+	} else if available {
+		memcachedAddress = "shuffle-cache:11211"
+	}
+
+	return restartSwarmWorkers(ctx, dockercli, memcachedAddress)
+}
+
+func restartSwarmWorkers(ctx context.Context, client *dockerclient.Client, memcachedAddress string) error {
+	service, _, err := client.ServiceInspectWithRaw(ctx, "shuffle-workers", types.ServiceInspectOptions{})
+	if err != nil {
+		return err
+	}
+
+	if service.Spec.TaskTemplate.ContainerSpec == nil {
+		return errors.New("shuffle-workers has no container spec")
+	}
+
+	prepareWorkerRestart(&service, memcachedAddress)
+	_, err = client.ServiceUpdate(ctx, service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[INFO] Restarted shuffle-workers after CLEANUP request")
+	return nil
+}
+
+func prepareWorkerRestart(service *swarm.Service, memcachedAddress string) {
+	if memcachedAddress != "" {
+		memcachedEnv := "SHUFFLE_MEMCACHED=" + memcachedAddress
+		found := false
+		for index, env := range service.Spec.TaskTemplate.ContainerSpec.Env {
+			if strings.HasPrefix(env, "SHUFFLE_MEMCACHED=") {
+				service.Spec.TaskTemplate.ContainerSpec.Env[index] = memcachedEnv
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			service.Spec.TaskTemplate.ContainerSpec.Env = append(service.Spec.TaskTemplate.ContainerSpec.Env, memcachedEnv)
+		}
+	}
+
+	service.Spec.TaskTemplate.ForceUpdate++
+}
+
 func checkMemcached(ctx context.Context, dockercli *dockerclient.Client) (bool, error) {
 	containerName := "shuffle-cache"
-	continer, err := dockercli.ContainerInspect(context.Background(), containerName)
+	continer, err := dockercli.ContainerInspect(ctx, containerName)
 	if err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return false, nil
@@ -5025,9 +5183,15 @@ func checkMemcached(ctx context.Context, dockercli *dockerclient.Client) (bool, 
 		return false, err
 	}
 	networkName := "shuffle_swarm_executions"
-	err = dockercli.NetworkConnect(ctx, networkName, containerName, nil)
-	if err != nil {
-		log.Printf("[WARNING] Failed connecting memcached container to network: %s", err)
+	if swarmNetworkName != "" {
+		networkName = swarmNetworkName
+	}
+
+	if continer.NetworkSettings == nil || continer.NetworkSettings.Networks[networkName] == nil {
+		err = dockercli.NetworkConnect(ctx, networkName, containerName, nil)
+		if err != nil {
+			return false, fmt.Errorf("connect %s to %s: %w", containerName, networkName, err)
+		}
 	}
 
 	if continer.State.Running == false {
