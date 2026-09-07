@@ -2,9 +2,9 @@ module orborus
 
 go 1.25.6
 
-replace github.com/shuffle/shuffle-shared => ../shuffle-shared
+//replace github.com/shuffle/shuffle-shared => ../shuffle-shared
 
-replace github.com/shuffle/osctrl => ../osctrl
+//replace github.com/shuffle/osctrl => ../osctrl
 
 require (
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -13,7 +13,7 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/shuffle/osctrl v0.0.0-00010101000000-000000000000
-	github.com/shuffle/shuffle-shared v1.2.88-memcache-test.0.20260805084925-40aead795119
+	github.com/shuffle/shuffle-shared v1.3.10
 	k8s.io/api v0.34.2
 	k8s.io/apimachinery v0.34.2
 )
