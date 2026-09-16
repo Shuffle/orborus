@@ -1315,6 +1315,12 @@ func deployK8sWorker(image string, identifier string, env []string) error {
 		env = append(env, fmt.Sprintf("REGISTRY_URL=%s", os.Getenv("REGISTRY_URL")))
 	}
 
+	for _, key := range []string{"SHUFFLE_HYBRID", "SHUFFLE_CLOUD", "SHUFFLE_STREAM_PRIVATE_REGISTRY", "SHUFFLE_STREAM_PRIVATE_REGISTRY_INSECURE"} {
+		if value := os.Getenv(key); value != "" {
+			env = append(env, fmt.Sprintf("%s=%s", key, value))
+		}
+	}
+
 	if len(os.Getenv("SHUFFLE_USE_GHCR_OVERRIDE_FOR_AUTODEPLOY")) > 0 {
 		env = append(env, fmt.Sprintf("SHUFFLE_USE_GHCR_OVERRIDE_FOR_AUTODEPLOY=%s", os.Getenv("SHUFFLE_USE_GHCR_OVERRIDE_FOR_AUTODEPLOY")))
 	}
