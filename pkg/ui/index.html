@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orborus Agent Runner</title>
+<style>
+  :root {
+    --bg-app: #09090b;
+    --bg-sidebar: #111113;
+    --bg-card: #18181b;
+    --bg-hover: #222226;
+    --bg-active: #27272a;
+    --bg-code: #131316;
+    --border: #27272a;
+    --border-hover: #3f3f46;
+    --border-subtle: #1e1e22;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #0284c7;
+    --accent-blue-hover: #0369a1;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ---------------- Left Sidebar ---------------- */
+  .sidebar {
+    width: 270px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar-top {
+    padding: 14px 14px 8px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Traffic lights & header controls */
+  .window-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 24px;
+  }
+  .traffic-lights {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+  }
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .dot-red { background: #ff5f56; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #27c93f; }
+
+  .window-nav-icons {
+    display: flex;
+    gap: 6px;
+    color: var(--text-muted);
+  }
+  .nav-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    padding: 3px;
+  }
+  .nav-icon-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  /* New conversation button */
+  .btn-new-chat {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-new-chat:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+
+  /* Sidebar Navigation Items */
+  .sidebar-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .nav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .nav-item-left {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .shortcut-badge {
+    font-size: 10px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: var(--text-muted);
+  }
+
+  /* Projects Section */
+  .projects-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 14px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-header-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .projects-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 220px;
+  }
+  .projects-list::-webkit-scrollbar {
+    width: 4px;
+  }
+  .projects-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  .project-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .project-row:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .project-row.active {
+    color: var(--text-primary);
+    background: var(--bg-active);
+  }
+  .project-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .project-name-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------------- Bottom Left Status Area ---------------- */
+  .sidebar-bottom {
+    padding: 12px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--bg-sidebar);
+  }
+
+  /* Auth / Login Status Card */
+  .status-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.15s ease;
+  }
+  .status-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .status-title-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.connected {
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+  }
+  .status-dot.disconnected {
+    background: var(--amber);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+  }
+  .status-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .status-subtext {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  .status-details {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: "SF Mono", Menlo, Monaco, monospace;
+    background: var(--bg-code);
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+  .status-details.visible {
+    display: flex;
+  }
+  .status-btn {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    border: 1px solid var(--border);
+  }
+  .status-btn.btn-login {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: white;
+  }
+  .status-btn.btn-login:hover {
+    background: var(--accent-blue-hover);
+  }
+  .status-btn.btn-manage {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+  .status-btn.btn-manage:hover {
+    color: var(--text-primary);
+    background: var(--bg-active);
+  }
+
+  .sidebar-settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sidebar-settings-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  /* ---------------- Main Content Workspace ---------------- */
+  .main-workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 20px 30px 40px 30px;
+    position: relative;
+  }
+
+  .center-container {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14vh;
+    transition: margin-top 0.3s ease;
+  }
+  .center-container.has-history {
+    margin-top: 20px;
+  }
+
+  /* Project Picker Row */
+  .project-selector-row {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+  }
+  .project-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+  .project-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  /* Project Dropdown */
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 320px;
+    max-height: 380px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 50;
+  }
+  .dropdown-menu.visible {
+    display: flex;
+  }
+  .dropdown-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dropdown-search {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    outline: none;
+  }
+  .dropdown-search:focus {
+    border-color: var(--border-hover);
+  }
+  .project-items-list {
+    overflow-y: auto;
+    max-height: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dropdown-item {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .dropdown-item:hover {
+    background: var(--bg-hover);
+  }
+  .dropdown-item.active {
+    background: var(--bg-active);
+  }
+  .dropdown-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .dropdown-item-path {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dropdown-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+  .dropdown-custom-btn {
+    font-size: 12px;
+    color: var(--accent-blue);
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .dropdown-custom-btn:hover {
+    background: var(--bg-hover);
+  }
+
+  /* Centered Input Card */
+  .input-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px 18px 12px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s ease;
+  }
+  .input-card:focus-within {
+    border-color: var(--border-hover);
+  }
+
+  .prompt-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 38px;
+    max-height: 180px;
+    font-family: inherit;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .prompt-textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* Inner Card Toolbar */
+  .card-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+  .icon-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  .model-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .model-pill:hover {
+    color: var(--text-primary);
+    background: var(--bg-active);
+  }
+
+  .btn-send {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--border);
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: not-allowed;
+    transition: all 0.15s ease;
+  }
+  .btn-send.active {
+    background: var(--accent-blue);
+    color: white;
+    cursor: pointer;
+  }
+  .btn-send.active:hover {
+    background: var(--accent-blue-hover);
+  }
+
+  /* Card Footer Row */
+  .card-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .footer-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .footer-dropdown-btn:hover {
+    color: var(--text-secondary);
+  }
+
+  /* Execution Stream */
+  .execution-stream {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  /* Approval Banner */
+  .approval-card {
+    background: rgba(2, 132, 199, 0.08);
+    border: 1px solid rgba(2, 132, 199, 0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .approval-card.visible {
+    display: flex;
+  }
+  .approval-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: #38bdf8;
+  }
+  .approval-cmd {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #fde047;
+    word-break: break-all;
+  }
+  .approval-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-approve {
+    background: var(--green);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-deny {
+    background: var(--red);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .status-pill:hover {
+    color: var(--text-secondary);
+  }
+
+  .exec-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .exec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-code);
+  }
+  .exec-prompt {
+    color: #fde047;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 13px;
+  }
+  .exec-body {
+    padding: 14px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #f4f4f5;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 380px;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .spinner {
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--text-muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ---------------- Auth / Login Modal ---------------- */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.visible {
+    display: flex;
+  }
+  .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 440px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  }
+  .modal-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .modal-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .form-input {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+  }
+  .form-input:focus {
+    border-color: var(--accent-blue);
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .btn-modal-cancel {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-modal-submit {
+    background: var(--accent-blue);
+    border: none;
+    color: white;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-modal-submit:hover {
+    background: var(--accent-blue-hover);
+  }
+</style>
+</head>
+<body>
+
+  <!-- ================= Left Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <!-- Traffic Lights & Nav -->
+      <div class="window-controls-row">
+        <div class="traffic-lights">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+        </div>
+        <div class="window-nav-icons">
+          <button class="nav-icon-btn" title="Toggle Sidebar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- New Conversation Button -->
+      <button class="btn-new-chat" onclick="startNewSession()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>New Conversation</span>
+      </button>
+
+      <!-- Sidebar Navigation Rows -->
+      <div class="sidebar-nav-list">
+        <div class="nav-item">
+          <div class="nav-item-left">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Conversation History</span>
+          </div>
+          <span class="shortcut-badge">Cmd Y</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-left">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>Scheduled Tasks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects Section -->
+      <div class="projects-section">
+        <div class="section-header">
+          <span>Projects</span>
+          <div class="section-header-actions">
+            <button class="nav-icon-btn" title="Scan Repositories" onclick="scanRepositories()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="nav-icon-btn" title="Add Project" onclick="chooseCustomDirectory()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="sidebar-projects-list" class="projects-list">
+          <div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">Scanning repositories...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Left Status & Auth Area (User Requested) -->
+    <div class="sidebar-bottom">
+      <div id="auth-status-card" class="status-card">
+        <div class="status-card-header">
+          <div class="status-title-group">
+            <div id="status-indicator-dot" class="status-dot disconnected"></div>
+            <span id="status-indicator-label" class="status-label">Shuffle OAuth2 Required</span>
+          </div>
+        </div>
+
+        <div id="status-subtext" class="status-subtext">
+          Requires Shuffle OAuth2 login to run tasks. Or provide OrgId, Auth, or Environment to bypass.
+        </div>
+
+        <div id="status-details-box" class="status-details">
+          <div>Org: <span id="lbl-org" style="color:var(--text-primary)">-</span></div>
+          <div>Env: <span id="lbl-env" style="color:var(--text-primary)">-</span></div>
+        </div>
+
+        <button id="btn-auth-action" class="status-btn btn-login" onclick="handleAuthAction()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          <span id="lbl-btn-auth">Log in with Shuffle</span>
+        </button>
+      </div>
+
+      <button class="sidebar-settings-btn" onclick="openLoginModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Authentication &amp; Credentials</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= Main Workspace Area ================= -->
+  <main class="main-workspace">
+    <div id="main-container" class="center-container">
+
+      <!-- Project Picker Dropdown (Above Input Box) -->
+      <div class="project-selector-row">
+        <button id="project-dropdown-btn" class="project-btn" onclick="toggleProjectDropdown()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span id="active-project-name">Orborus Agent Runner</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        <div id="project-dropdown-menu" class="dropdown-menu">
+          <div class="dropdown-header">
+            <span>Local Repositories</span>
+            <span id="repo-count" style="font-size:10px; color:var(--text-muted);">0 found</span>
+          </div>
+          <input id="project-search" class="dropdown-search" type="text" placeholder="Filter projects..." oninput="filterProjects(this.value)">
+          <div id="project-items" class="project-items-list">
+            <div style="font-size:12px; color:var(--text-muted); padding:8px;">Scanning local filesystem...</div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-custom-btn" onclick="chooseCustomDirectory()">
+            + Select custom directory...
+          </button>
+        </div>
+      </div>
+
+      <!-- Centered Input Card Matching Screenshot -->
+      <div class="input-card">
+        <textarea id="prompt-input" class="prompt-textarea" rows="2" placeholder="Ask anything, @ to mention, / for actions" oninput="handleInput(this)" onkeydown="handleKeyDown(event)"></textarea>
+        
+        <div class="card-toolbar">
+          <div class="toolbar-left">
+            <button class="icon-btn" title="Add File / Context" onclick="chooseCustomDirectory()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            
+            <div class="model-pill" title="Model Selector">
+              <span>Gemini 3.8 Flash High</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="toolbar-right">
+            <button class="icon-btn" title="Dictate">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+
+            <button id="btn-send" class="btn-send" title="Run Execution (Enter)" onclick="submitPrompt()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Footer Row -->
+      <div class="card-footer-row">
+        <button class="footer-dropdown-btn" title="Environment" onclick="openLoginModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="2" y1="20" x2="22" y2="20"/>
+          </svg>
+          <span id="env-label">Local</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        <button class="footer-dropdown-btn" title="Agent Role">
+          <span>Main Agent</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Execution Results Stream -->
+      <div id="execution-stream" class="execution-stream">
+        <div id="approval-card" class="approval-card">
+          <div class="approval-header">
+            <span>Action Requires Permission</span>
+            <span style="font-size:11px; color:var(--text-muted);">Requested in active project</span>
+          </div>
+          <div id="approval-cmd" class="approval-cmd"></div>
+          <div class="approval-actions">
+            <button class="btn-approve" onclick="respondApproval(true)">Approve &amp; Run</button>
+            <button class="btn-deny" onclick="respondApproval(false)">Deny</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= Login / Credentials Modal ================= -->
+  <div id="login-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Shuffle Authentication</h3>
+        <p class="modal-desc">Log in with your Shuffle account via OAuth2, or provide OrgId, Auth, or Environment to bypass.</p>
+      </div>
+
+      <!-- OAuth2 Section -->
+      <div style="background:var(--bg-code); border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:600; color:#38bdf8;">Shuffle OAuth2 Login</span>
+          <span style="font-size:11px; color:var(--text-muted);">Recommended</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
+          Authenticate directly with your Shuffle account in browser to authorize this local agent runner.
+        </p>
+        <button class="status-btn btn-login" style="padding:8px 14px;" onclick="loginWithOAuth()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          <span>Open Shuffle OAuth2 Login</span>
+        </button>
+
+        <div style="display:flex; gap:6px; margin-top:2px;">
+          <input id="input-oauth-token" class="form-input" style="flex:1; font-size:11px;" type="text" placeholder="Paste OAuth2 Token / Session key (optional)">
+          <button class="btn-modal-cancel" style="padding:6px 10px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="display:flex; align-items:center; gap:8px; margin:2px 0;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span style="font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:0.5px;">OR BYPASS WITH CREDENTIALS</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Shuffle Base URL</label>
+        <input id="input-base-url" class="form-input" type="text" placeholder="https://shuffler.io">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Organization ID (OrgId)</label>
+        <input id="input-org-id" class="form-input" type="text" placeholder="e.g. 1a2b3c4d-5e6f-7g8h">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Auth API Key</label>
+        <input id="input-auth-key" class="form-input" type="password" placeholder="API key or execution token">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Environment Name</label>
+        <input id="input-env-name" class="form-input" type="text" placeholder="e.g. onprem, cloud, local">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeLoginModal()">Close</button>
+        <button class="btn-modal-submit" onclick="submitAuth()">Save &amp; Bypass</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let currentApprovalId = null;
+let activeProjectPath = ".";
+let allProjects = [];
+let isLoggedIn = false;
+let isBypassed = false;
+
+async function init() {
+  if (!window.getInitialState) return;
+
+  try {
+    const raw = await window.getInitialState();
+    const state = JSON.parse(raw);
+
+    updateAuthState(state);
+
+    if (state.active_project) {
+      setActiveProject(state.active_project);
+    }
+
+    if (state.projects && state.projects.length > 0) {
+      renderProjects(state.projects);
+    }
+  } catch (err) {
+    console.error("Failed to load initial state:", err);
+  }
+
+  // Trigger code repo scan immediately
+  scanRepositories();
+}
+
+function updateAuthState(state) {
+  isLoggedIn = !!state.is_logged_in;
+  isBypassed = !!state.is_bypassed;
+
+  const dot = document.getElementById("status-indicator-dot");
+  const label = document.getElementById("status-indicator-label");
+  const subtext = document.getElementById("status-subtext");
+  const details = document.getElementById("status-details-box");
+  const btnAuth = document.getElementById("btn-auth-action");
+  const btnLabel = document.getElementById("lbl-btn-auth");
+  const envLabel = document.getElementById("env-label");
+
+  document.getElementById("input-base-url").value = state.base_url || "";
+  document.getElementById("input-org-id").value = state.org_id || "";
+  document.getElementById("input-auth-key").value = state.auth || "";
+  document.getElementById("input-env-name").value = state.environment || "";
+
+  if (isLoggedIn) {
+    dot.className = "status-dot connected";
+    if (isBypassed) {
+      label.innerText = "Authenticated (Bypassed)";
+      subtext.innerText = "Bypassed via OrgId, Auth, or Environment.";
+    } else {
+      label.innerText = "Connected via OAuth2";
+      subtext.innerText = "Ready to run executions.";
+    }
+    details.classList.add("visible");
+    document.getElementById("lbl-org").innerText = state.org_id || "configured";
+    document.getElementById("lbl-env").innerText = state.environment || "configured";
+    btnAuth.className = "status-btn btn-manage";
+    btnLabel.innerText = "Manage";
+    envLabel.innerText = state.environment || "Connected";
+  } else {
+    dot.className = "status-dot disconnected";
+    label.innerText = "Shuffle OAuth2 Required";
+    subtext.innerText = "Requires Shuffle OAuth2 login to run tasks. Or provide OrgId, Auth, or Environment to bypass.";
+    details.classList.remove("visible");
+    btnAuth.className = "status-btn btn-login";
+    btnLabel.innerText = "Log in with Shuffle";
+    envLabel.innerText = state.is_standalone ? "Local (Offline)" : "Disconnected";
+  }
+}
+
+function handleAuthAction() {
+  openLoginModal();
+}
+
+async function loginWithOAuth() {
+  const baseUrl = document.getElementById("input-base-url").value.trim() || "https://shuffler.io";
+  if (window.startOAuthLogin) {
+    await window.startOAuthLogin(baseUrl);
+  } else {
+    window.open(baseUrl + "/login", "_blank");
+  }
+}
+
+async function submitOAuthToken() {
+  const token = document.getElementById("input-oauth-token").value.trim();
+  const org = document.getElementById("input-org-id").value.trim();
+  const env = document.getElementById("input-env-name").value.trim();
+  if (!token) {
+    alert("Please enter a token or session key.");
+    return;
+  }
+
+  if (window.setOAuthToken) {
+    const raw = await window.setOAuthToken(token, org, env);
+    const res = JSON.parse(raw);
+    closeLoginModal();
+    updateAuthState({
+      is_logged_in: true,
+      is_bypassed: false,
+      org_id: res.org_id,
+      environment: res.environment
+    });
+  }
+}
+
+function openLoginModal() {
+  document.getElementById("login-modal").classList.add("visible");
+}
+
+function closeLoginModal() {
+  document.getElementById("login-modal").classList.remove("visible");
+}
+
+async function submitAuth() {
+  const baseUrl = document.getElementById("input-base-url").value.trim();
+  const orgId = document.getElementById("input-org-id").value.trim();
+  const auth = document.getElementById("input-auth-key").value.trim();
+  const env = document.getElementById("input-env-name").value.trim();
+
+  try {
+    const raw = await window.updateAuth({
+      base_url: baseUrl,
+      org_id: orgId,
+      auth: auth,
+      environment: env
+    });
+    const res = JSON.parse(raw);
+    closeLoginModal();
+    updateAuthState({
+      is_logged_in: res.is_logged_in,
+      is_bypassed: res.is_bypassed,
+      base_url: res.base_url,
+      org_id: res.org_id,
+      auth: auth,
+      environment: res.environment
+    });
+  } catch (err) {
+    alert("Failed to update credentials: " + err);
+  }
+}
+
+async function scanRepositories() {
+  if (!window.listProjects) return;
+
+  try {
+    const raw = await window.listProjects();
+    const projects = JSON.parse(raw);
+    renderProjects(projects);
+  } catch (err) {
+    console.error("Scan error:", err);
+  }
+}
+
+function renderProjects(projects) {
+  if (!projects || projects.length === 0) return;
+  allProjects = projects;
+
+  document.getElementById("repo-count").innerText = projects.length + " found";
+
+  // Sidebar list
+  const sidebarContainer = document.getElementById("sidebar-projects-list");
+  sidebarContainer.innerHTML = "";
+
+  // Dropdown list
+  const dropdownContainer = document.getElementById("project-items");
+  dropdownContainer.innerHTML = "";
+
+  projects.forEach(p => {
+    const name = p.Name || p.Path.split("/").pop();
+    const isCur = p.Path === activeProjectPath;
+
+    // Sidebar row
+    const sideRow = document.createElement("div");
+    sideRow.className = "project-row" + (isCur ? " active" : "");
+    sideRow.innerHTML = `
+      <div class="project-row-left">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="project-name-truncate">${escapeHtml(name)}</span>
+      </div>
+    `;
+    sideRow.onclick = () => selectProject(p.Path, name);
+    sidebarContainer.appendChild(sideRow);
+
+    // Dropdown row
+    const dropItem = document.createElement("div");
+    dropItem.className = "dropdown-item" + (isCur ? " active" : "");
+    dropItem.innerHTML = `
+      <span class="dropdown-item-name">${escapeHtml(name)}</span>
+      <span class="dropdown-item-path">${escapeHtml(p.Path)}</span>
+    `;
+    dropItem.onclick = () => {
+      selectProject(p.Path, name);
+      toggleProjectDropdown(false);
+    };
+    dropdownContainer.appendChild(dropItem);
+  });
+}
+
+function filterProjects(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    renderProjects(allProjects);
+    return;
+  }
+  const filtered = allProjects.filter(p => {
+    const name = (p.Name || "").toLowerCase();
+    const path = (p.Path || "").toLowerCase();
+    return name.includes(q) || path.includes(q);
+  });
+  renderProjects(filtered);
+}
+
+function toggleProjectDropdown(forceState) {
+  const menu = document.getElementById("project-dropdown-menu");
+  if (typeof forceState === "boolean") {
+    menu.classList.toggle("visible", forceState);
+  } else {
+    menu.classList.toggle("visible");
+  }
+  if (menu.classList.contains("visible")) {
+    document.getElementById("project-search").focus();
+  }
+}
+
+async function selectProject(path, displayName) {
+  if (window.selectProject) {
+    await window.selectProject(path);
+  }
+  setActiveProject(path, displayName);
+  renderProjects(allProjects);
+}
+
+function setActiveProject(path, displayName) {
+  activeProjectPath = path;
+  let name = displayName;
+  if (!name) {
+    const parts = path.split("/").filter(Boolean);
+    name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+  }
+  document.getElementById("active-project-name").innerText = name;
+}
+
+async function chooseCustomDirectory() {
+  const custom = prompt("Enter project directory path:", activeProjectPath);
+  if (custom && custom.trim()) {
+    await selectProject(custom.trim());
+    toggleProjectDropdown(false);
+  }
+}
+
+function startNewSession() {
+  document.getElementById("execution-stream").innerHTML = "";
+  document.getElementById("main-container").classList.remove("has-history");
+  document.getElementById("prompt-input").value = "";
+  document.getElementById("prompt-input").focus();
+}
+
+function handleInput(el) {
+  const btn = document.getElementById("btn-send");
+  if (el.value.trim().length > 0) {
+    btn.classList.add("active");
+  } else {
+    btn.classList.remove("active");
+  }
+
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 180) + "px";
+}
+
+function handleKeyDown(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    submitPrompt();
+  }
+}
+
+async function submitPrompt() {
+  const textarea = document.getElementById("prompt-input");
+  const prompt = textarea.value.trim();
+  if (!prompt) return;
+
+  if (!isLoggedIn) {
+    openLoginModal();
+    return;
+  }
+
+  textarea.value = "";
+  textarea.style.height = "auto";
+  document.getElementById("btn-send").classList.remove("active");
+
+  document.getElementById("main-container").classList.add("has-history");
+
+  const stream = document.getElementById("execution-stream");
+
+  const workingDiv = document.createElement("div");
+  workingDiv.innerHTML = `
+    <div class="status-pill">
+      <span>Executing in ${escapeHtml(activeProjectPath)}...</span>
+      <div class="spinner"></div>
+    </div>
+  `;
+  stream.prepend(workingDiv);
+
+  const startTime = Date.now();
+
+  try {
+    const raw = await window.runPrompt(prompt, false);
+    workingDiv.remove();
+    const res = JSON.parse(raw);
+
+    if (res.needs_login) {
+      openLoginModal();
+      renderErrorResult(prompt, res.error);
+      return;
+    }
+
+    if (res.needs_approval) {
+      currentApprovalId = res.id;
+      document.getElementById("approval-cmd").innerText = res.prompt;
+      document.getElementById("approval-card").classList.add("visible");
+      stream.prepend(document.getElementById("approval-card"));
+      return;
+    }
+
+    const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+    renderExecutionResult(res, elapsed);
+  } catch (err) {
+    workingDiv.remove();
+    renderErrorResult(prompt, err.toString());
+  }
+}
+
+function renderExecutionResult(item, elapsedSec) {
+  const stream = document.getElementById("execution-stream");
+
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.gap = "8px";
+
+  const status = document.createElement("div");
+  status.className = "status-pill";
+  status.innerHTML = `
+    <span>Worked for ${elapsedSec}s (${item.duration || "0ms"})</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  `;
+
+  const card = document.createElement("div");
+  card.className = "exec-card";
+  card.innerHTML = `
+    <div class="exec-header">
+      <span class="exec-prompt">$ ${escapeHtml(item.prompt)}</span>
+      <span>${item.timestamp || ""}</span>
+    </div>
+    <div class="exec-body">${escapeHtml(item.output || item.error || "Completed with no output.")}</div>
+  `;
+
+  wrapper.appendChild(status);
+  wrapper.appendChild(card);
+  stream.prepend(wrapper);
+}
+
+function renderErrorResult(prompt, err) {
+  const stream = document.getElementById("execution-stream");
+  const card = document.createElement("div");
+  card.className = "exec-card";
+  card.innerHTML = `
+    <div class="exec-header">
+      <span class="exec-prompt" style="color:var(--red);">$ ${escapeHtml(prompt)}</span>
+    </div>
+    <div class="exec-body" style="color:var(--red);">${escapeHtml(err)}</div>
+  `;
+  stream.prepend(card);
+}
+
+async function respondApproval(approved) {
+  if (!currentApprovalId) return;
+  document.getElementById("approval-card").classList.remove("visible");
+
+  const raw = await window.respondApproval(currentApprovalId, approved);
+  currentApprovalId = null;
+  const res = JSON.parse(raw);
+  renderExecutionResult(res, 1);
+}
+
+function escapeHtml(text) {
+  if (!text) return "";
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+document.addEventListener("click", (e) => {
+  const selector = document.querySelector(".project-selector-row");
+  if (selector && !selector.contains(e.target)) {
+    toggleProjectDropdown(false);
+  }
+});
+
+window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
