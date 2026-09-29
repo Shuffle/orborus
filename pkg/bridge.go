@@ -1,13 +1,15 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,35 +21,51 @@ import (
 
 // ExecutionEntry tracks an executed prompt or command
 type ExecutionEntry struct {
-	ID        string `json:"id"`
-	Timestamp string `json:"timestamp"`
-	Prompt    string `json:"prompt"`
-	Output    string `json:"output"`
-	Status    string `json:"status"` // "success", "error", "pending"
-	Duration  string `json:"duration"`
+	ID        string                 `json:"id"`
+	Timestamp string                 `json:"timestamp"`
+	Prompt    string                 `json:"prompt"`
+	Output    string                 `json:"output"`
+	Status    string                 `json:"status"` // "success", "error", "pending"
+	Duration  string                 `json:"duration"`
+	DebugInfo map[string]interface{} `json:"debug_info,omitempty"`
 }
 
 // ApprovalRequest tracks an action waiting for user permission
 type ApprovalRequest struct {
-	ID          string `json:"id"`
-	Action      string `json:"action"`
-	Description string `json:"description"`
-	Timestamp   string `json:"timestamp"`
+	ID            string `json:"id"`
+	Action        string `json:"action"`
+	CommandPrefix string `json:"command_prefix"`
+	Description   string `json:"description"`
+	Timestamp     string `json:"timestamp"`
+	Project       string `json:"project"`
 }
 
 // AgentBridge manages direct in-memory state and execution between Go and JS
 type AgentBridge struct {
-	cfg              *Config
-	mu               sync.Mutex
-	activeProject    string
-	permissionPolicy string // "ask_all", "safe_auto", "full_auto"
-	history          []ExecutionEntry
-	pendingApproval  *ApprovalRequest
-	approvalCh       chan bool
-	projects         []shuffle.ProjectInfo
-	projectsScanned  bool
-	oauthLoggedIn    bool
-	oauthToken       string
+	cfg                     *Config
+	mu                      sync.Mutex
+	activeProject           string
+	permissionPolicy        string // "ask_all", "safe_auto", "full_auto", "custom"
+	terminalExecutionPolicy string // "sandbox", "prompt", "safe_auto", "full_auto"
+	fileAccessPolicy        string // "ask", "workspace_only", "read_only", "allow_all"
+	sandboxMode             bool
+	queuedMessages          string // "queue" or "immediate"
+	projectPermissions      map[string]ProjectPermission
+	history                 []ExecutionEntry
+	pendingApproval         *ApprovalRequest
+	approvalCh              chan bool
+	projects                []shuffle.ProjectInfo
+	projectsScanned         bool
+	isScanning              bool
+	scanWaitCh              chan struct{}
+	oauthLoggedIn           bool
+	oauthToken              string
+	onAuthUpdated           func(stateJSON string)
+	aiApiKey                string
+	aiApiUrl                string
+	aiModel                 string
+	approvalRules           []ApprovalRule
+	pinnedConvs             []string
 }
 
 // NewAgentBridge initializes a new direct bridge
@@ -57,13 +75,111 @@ func NewAgentBridge(cfg *Config) *AgentBridge {
 		cwd = "."
 	}
 
+	saved := LoadLocalStore()
+
+	policy := saved.PermissionPolicy
+	if policy == "" {
+		policy = "ask_all"
+	}
+
+	termPolicy := saved.TerminalExecutionPolicy
+	if termPolicy == "" {
+		termPolicy = "sandbox"
+	}
+
+	filePolicy := saved.FileAccessPolicy
+	if filePolicy == "" {
+		filePolicy = "ask"
+	}
+
+	queuedMsgs := saved.QueuedMessages
+	if queuedMsgs == "" {
+		queuedMsgs = "queue"
+	}
+
+	sandboxMode := true
+	if saved.PermissionPolicy != "" {
+		sandboxMode = saved.SandboxMode
+	}
+
+	projectPerms := saved.ProjectPermissions
+	if projectPerms == nil {
+		projectPerms = make(map[string]ProjectPermission)
+	}
+
+	activeProject := cwd
+	if saved.ActiveProject != "" {
+		if fi, err := os.Stat(saved.ActiveProject); err == nil && fi.IsDir() {
+			activeProject = saved.ActiveProject
+		}
+	}
+
+	aiUrl := os.Getenv("AI_API_URL")
+	if aiUrl == "" && saved.AiApiUrl != "" {
+		aiUrl = saved.AiApiUrl
+		_ = os.Setenv("AI_API_URL", aiUrl)
+	}
+	aiKey := os.Getenv("AI_API_KEY")
+	if aiKey == "" && saved.AiApiKey != "" {
+		aiKey = saved.AiApiKey
+		_ = os.Setenv("AI_API_KEY", aiKey)
+	}
+	aiModel := os.Getenv("AI_MODEL")
+	if aiModel == "" && saved.AiModel != "" {
+		aiModel = saved.AiModel
+	}
+	if aiModel == "" {
+		aiModel = "gemini-3.8-flash-high"
+	}
+	_ = os.Setenv("AI_MODEL", aiModel)
+
+	oauthLoggedIn := false
+	oauthToken := ""
+	if saved.OAuthToken != "" {
+		oauthToken = saved.OAuthToken
+		oauthLoggedIn = saved.IsLoggedIn
+		if cfg.Auth == "" {
+			cfg.Auth = saved.OAuthToken
+		}
+		if cfg.Org == "" && saved.OrgID != "" {
+			cfg.Org = saved.OrgID
+		}
+		if (cfg.Environment == "" || cfg.Environment == "standalone") && saved.Environment != "" {
+			cfg.Environment = saved.Environment
+		}
+		if cfg.BaseURL == "" && saved.BaseURL != "" {
+			cfg.BaseURL = saved.BaseURL
+		}
+	}
+
+	rules := saved.ApprovalRules
+	if rules == nil {
+		rules = make([]ApprovalRule, 0)
+	}
+	pinned := saved.PinnedConversations
+	if pinned == nil {
+		pinned = make([]string, 0)
+	}
+
 	b := &AgentBridge{
-		cfg:              cfg,
-		activeProject:    cwd,
-		permissionPolicy: "ask_all",
-		history:          make([]ExecutionEntry, 0),
-		approvalCh:       make(chan bool, 1),
-		projects:         make([]shuffle.ProjectInfo, 0),
+		cfg:                     cfg,
+		activeProject:           activeProject,
+		permissionPolicy:        policy,
+		terminalExecutionPolicy: termPolicy,
+		fileAccessPolicy:        filePolicy,
+		sandboxMode:             sandboxMode,
+		queuedMessages:          queuedMsgs,
+		projectPermissions:      projectPerms,
+		history:                 make([]ExecutionEntry, 0),
+		approvalCh:              make(chan bool, 1),
+		projects:                make([]shuffle.ProjectInfo, 0),
+		aiApiKey:                aiKey,
+		aiApiUrl:                aiUrl,
+		aiModel:                 aiModel,
+		oauthLoggedIn:           oauthLoggedIn,
+		oauthToken:              oauthToken,
+		approvalRules:           rules,
+		pinnedConvs:             pinned,
 	}
 
 	// Trigger code repository scan immediately on initial startup
@@ -72,8 +188,41 @@ func NewAgentBridge(cfg *Config) *AgentBridge {
 	return b
 }
 
-// isAuthBypassed checks if OrgId, Auth, or Environment was provided by default
+func (b *AgentBridge) saveLocalStoreLocked() {
+	store := &LocalAgentStore{
+		PermissionPolicy:        b.permissionPolicy,
+		TerminalExecutionPolicy: b.terminalExecutionPolicy,
+		FileAccessPolicy:        b.fileAccessPolicy,
+		SandboxMode:             b.sandboxMode,
+		QueuedMessages:          b.queuedMessages,
+		ProjectPermissions:      b.projectPermissions,
+		AiApiUrl:                b.aiApiUrl,
+		AiApiKey:                b.aiApiKey,
+		AiModel:                 b.aiModel,
+		ActiveProject:           b.activeProject,
+		BaseURL:                 b.cfg.BaseURL,
+		OrgID:                   b.cfg.Org,
+		Environment:             b.cfg.Environment,
+		OAuthToken:              b.oauthToken,
+		IsLoggedIn:              b.oauthLoggedIn,
+		ApprovalRules:           b.approvalRules,
+		PinnedConversations:     b.pinnedConvs,
+	}
+	if err := SaveLocalStore(store); err != nil {
+		log.Printf("[WARN] Failed to persist local agent store: %v", err)
+	}
+}
+
+// isAuthBypassed checks if OrgId, Auth, Environment, custom AI, or standalone is active
 func (b *AgentBridge) isAuthBypassed() bool {
+	// Custom AI credentials bypass remote login
+	if (b.aiApiKey != "" && b.aiApiUrl != "") || (os.Getenv("AI_API_KEY") != "" && os.Getenv("AI_API_URL") != "") {
+		return true
+	}
+	// Standalone mode is local and does not enforce Shuffle login
+	if b.cfg.IsStandalone {
+		return true
+	}
 	if b.cfg.HasExplicitOrg || b.cfg.HasExplicitAuth || b.cfg.HasExplicitEnv {
 		return true
 	}
@@ -88,6 +237,43 @@ func (b *AgentBridge) isAuthBypassed() bool {
 
 // ScanProjects scans the machine for repositories in background
 func (b *AgentBridge) ScanProjects() []shuffle.ProjectInfo {
+	b.mu.Lock()
+	if b.projectsScanned && len(b.projects) > 0 {
+		projs := b.projects
+		b.mu.Unlock()
+		return projs
+	}
+
+	if b.isScanning {
+		waitCh := b.scanWaitCh
+		b.mu.Unlock()
+		if waitCh != nil {
+			<-waitCh
+		}
+		b.mu.Lock()
+		projs := b.projects
+		b.mu.Unlock()
+		return projs
+	}
+
+	b.isScanning = true
+	waitCh := make(chan struct{})
+	b.scanWaitCh = waitCh
+	b.mu.Unlock()
+
+	var closeOnce sync.Once
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] Recovered from panic during repository scan: %v", r)
+		}
+		b.mu.Lock()
+		b.isScanning = false
+		b.mu.Unlock()
+		closeOnce.Do(func() {
+			close(waitCh)
+		})
+	}()
+
 	log.Printf("[INFO] Starting initial code repository scan...")
 	projs := osctrl.ListCodeScannerProjects()
 	b.mu.Lock()
@@ -107,47 +293,134 @@ func (b *AgentBridge) GetInitialState() string {
 	isLoggedIn := isBypassed || b.oauthLoggedIn
 
 	state := map[string]interface{}{
-		"hostname":          b.cfg.Hostname,
-		"machine_id":        b.cfg.MachineID,
-		"os":                runtime.GOOS,
-		"arch":              runtime.GOARCH,
-		"is_standalone":     b.cfg.IsStandalone,
-		"base_url":          b.cfg.BaseURL,
-		"active_project":    b.activeProject,
-		"permission_policy": b.permissionPolicy,
-		"history":           b.history,
-		"pending_approval":  b.pendingApproval,
-		"projects":          b.projects,
-		"projects_scanned":  b.projectsScanned,
-		"is_logged_in":      isLoggedIn,
-		"is_bypassed":       isBypassed,
-		"org_id":            b.cfg.Org,
-		"auth":              b.cfg.Auth,
-		"environment":       b.cfg.Environment,
+		"hostname":                  b.cfg.Hostname,
+		"machine_id":                b.cfg.MachineID,
+		"os":                        runtime.GOOS,
+		"arch":                      runtime.GOARCH,
+		"is_standalone":             b.cfg.IsStandalone,
+		"base_url":                  b.cfg.BaseURL,
+		"active_project":            b.activeProject,
+		"permission_policy":         b.permissionPolicy,
+		"terminal_execution_policy": b.terminalExecutionPolicy,
+		"file_access_policy":        b.fileAccessPolicy,
+		"sandbox_mode":              b.sandboxMode,
+		"queued_messages":           b.queuedMessages,
+		"project_permissions":       b.projectPermissions,
+		"history":                   b.history,
+		"pending_approval":          b.pendingApproval,
+		"projects":                  b.projects,
+		"projects_scanned":          b.projectsScanned,
+		"is_logged_in":              isLoggedIn,
+		"is_bypassed":               isBypassed,
+		"org_id":                    b.cfg.Org,
+		"auth":                      b.cfg.Auth,
+		"environment":               b.cfg.Environment,
+		"ai_api_url":                b.aiApiUrl,
+		"ai_api_key":                b.aiApiKey,
+		"ai_model":                  b.aiModel,
+		"approval_rules":            b.approvalRules,
+		"pinned_conversations":      b.pinnedConvs,
+		"debug":                     (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1",
 	}
 
 	data, _ := json.Marshal(state)
 	return string(data)
 }
 
-// StartOAuthLogin opens the Shuffle OAuth2 login flow
-func (b *AgentBridge) StartOAuthLogin(customBaseURL string) string {
-	baseURL := "https://shuffler.io"
-	if customBaseURL != "" {
-		baseURL = customBaseURL
-	} else if b.cfg.BaseURL != "" {
-		baseURL = b.cfg.BaseURL
+// SetAiConfig configures local AI credentials and updates process environment
+func (b *AgentBridge) SetAiConfig(apiUrl, apiKey, model string) string {
+	b.mu.Lock()
+
+	b.aiApiUrl = strings.TrimSpace(apiUrl)
+	b.aiApiKey = strings.TrimSpace(apiKey)
+	if trimmedModel := strings.TrimSpace(model); trimmedModel != "" {
+		b.aiModel = trimmedModel
 	}
 
-	loginURL := fmt.Sprintf("%s/login", strings.TrimRight(baseURL, "/"))
-	log.Printf("[INFO] Opening Shuffle OAuth2 login: %s", loginURL)
-	if runtime.GOOS == "darwin" {
-		_ = exec.Command("open", loginURL).Start()
+	if b.aiApiUrl != "" {
+		_ = os.Setenv("AI_API_URL", b.aiApiUrl)
+	} else {
+		_ = os.Unsetenv("AI_API_URL")
+	}
+
+	if b.aiApiKey != "" {
+		_ = os.Setenv("AI_API_KEY", b.aiApiKey)
+	} else {
+		_ = os.Unsetenv("AI_API_KEY")
+	}
+
+	if b.aiModel != "" {
+		_ = os.Setenv("AI_MODEL", b.aiModel)
+	}
+
+	b.saveLocalStoreLocked()
+
+	isBypassed := b.isAuthBypassed()
+	isLoggedIn := isBypassed || b.oauthLoggedIn
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":            "ok",
+		"ai_api_url":        b.aiApiUrl,
+		"ai_api_key":        b.aiApiKey,
+		"ai_model":          b.aiModel,
+		"permission_policy": b.permissionPolicy,
+		"is_logged_in":      isLoggedIn,
+		"is_bypassed":       isBypassed,
+		"org_id":            b.cfg.Org,
+		"environment":       b.cfg.Environment,
+	})
+
+	cb := b.onAuthUpdated
+	b.mu.Unlock()
+
+	if cb != nil {
+		go func() {
+			cb(b.GetInitialState())
+		}()
+	}
+
+	return string(resp)
+}
+
+// GetConfig returns the underlying runtime configuration
+func (b *AgentBridge) GetConfig() *Config {
+	return b.cfg
+}
+
+// SetOnAuthUpdated registers a listener for auth state changes
+func (b *AgentBridge) SetOnAuthUpdated(fn func(string)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onAuthUpdated = fn
+}
+
+// StartOAuthLogin opens the Shuffle OAuth2 login flow with dynamic auth matching ChatGPT MCP logins
+func (b *AgentBridge) StartOAuthLogin(customBaseURL string) string {
+	targetURL := customBaseURL
+	if targetURL == "" {
+		targetURL = b.cfg.BaseURL
+	}
+	if targetURL == "" || strings.Contains(targetURL, "shuffler.io") {
+		targetURL = "https://shuffle.security"
+	}
+
+	authURL, err := b.StartDynamicOAuth2Flow(targetURL, func(token, orgID, env string) {
+		log.Printf("[INFO] Dynamic OAuth2 authorization complete for org: %s", orgID)
+		b.mu.Lock()
+		cb := b.onAuthUpdated
+		b.mu.Unlock()
+		if cb != nil {
+			cb(b.GetInitialState())
+		}
+	})
+	if err != nil {
+		log.Printf("[ERROR] Failed to start dynamic OAuth2 flow: %v", err)
+		return fmt.Sprintf(`{"status": "error", "error": %q}`, err.Error())
 	}
 
 	resp, _ := json.Marshal(map[string]interface{}{
 		"status": "opened",
-		"url":    loginURL,
+		"url":    authURL,
 	})
 	return string(resp)
 }
@@ -168,6 +441,8 @@ func (b *AgentBridge) SetOAuthToken(token, orgID, env string) string {
 	if token != "" {
 		b.cfg.Auth = token
 	}
+
+	b.saveLocalStoreLocked()
 
 	resp, _ := json.Marshal(map[string]interface{}{
 		"status":       "ok",
@@ -212,6 +487,8 @@ func (b *AgentBridge) UpdateAuth(payload string) string {
 		b.cfg.IsStandalone = false
 	}
 
+	b.saveLocalStoreLocked()
+
 	resp, _ := json.Marshal(map[string]interface{}{
 		"status":       "ok",
 		"is_logged_in": isLoggedIn,
@@ -244,6 +521,7 @@ func (b *AgentBridge) SelectProject(path string) string {
 	defer b.mu.Unlock()
 
 	b.activeProject = path
+	b.saveLocalStoreLocked()
 	return b.activeProject
 }
 
@@ -252,14 +530,272 @@ func (b *AgentBridge) SetPermissionPolicy(policy string) string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.permissionPolicy = policy
+	if policy != "" {
+		b.permissionPolicy = policy
+		b.saveLocalStoreLocked()
+	}
 	return b.permissionPolicy
 }
 
+// SaveAllSettings updates global settings, AI configuration, and project permissions
+func (b *AgentBridge) SaveAllSettings(payload string) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	var req struct {
+		PermissionPolicy        string                       `json:"permission_policy"`
+		TerminalExecutionPolicy string                       `json:"terminal_execution_policy"`
+		FileAccessPolicy        string                       `json:"file_access_policy"`
+		SandboxMode             *bool                        `json:"sandbox_mode"`
+		QueuedMessages          string                       `json:"queued_messages"`
+		ProjectPermissions      map[string]ProjectPermission `json:"project_permissions"`
+		AiApiUrl                string                       `json:"ai_api_url"`
+		AiApiKey                string                       `json:"ai_api_key"`
+		AiModel                 string                       `json:"ai_model"`
+	}
+
+	if err := json.Unmarshal([]byte(payload), &req); err != nil {
+		log.Printf("[WARN] Failed to unmarshal SaveAllSettings: %v", err)
+		return `{"status": "error", "error": "invalid json payload"}`
+	}
+
+	if req.PermissionPolicy != "" {
+		b.permissionPolicy = req.PermissionPolicy
+	}
+	if req.TerminalExecutionPolicy != "" {
+		b.terminalExecutionPolicy = req.TerminalExecutionPolicy
+	}
+	if req.FileAccessPolicy != "" {
+		b.fileAccessPolicy = req.FileAccessPolicy
+	}
+	if req.SandboxMode != nil {
+		b.sandboxMode = *req.SandboxMode
+	}
+	if req.QueuedMessages != "" {
+		b.queuedMessages = req.QueuedMessages
+	}
+	if req.ProjectPermissions != nil {
+		if b.projectPermissions == nil {
+			b.projectPermissions = make(map[string]ProjectPermission)
+		}
+		for k, v := range req.ProjectPermissions {
+			b.projectPermissions[k] = v
+		}
+	}
+	if req.AiApiUrl != "" {
+		b.aiApiUrl = strings.TrimSpace(req.AiApiUrl)
+		_ = os.Setenv("AI_API_URL", b.aiApiUrl)
+	}
+	if req.AiApiKey != "" {
+		b.aiApiKey = strings.TrimSpace(req.AiApiKey)
+		_ = os.Setenv("AI_API_KEY", b.aiApiKey)
+	}
+	if req.AiModel != "" {
+		b.aiModel = strings.TrimSpace(req.AiModel)
+		_ = os.Setenv("AI_MODEL", b.aiModel)
+	}
+
+	b.saveLocalStoreLocked()
+
+	return b.getInitialStateLocked()
+}
+
+// SetProjectPermissions saves permissions for a specific project
+func (b *AgentBridge) SetProjectPermissions(projectPath string, perms ProjectPermission) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.projectPermissions == nil {
+		b.projectPermissions = make(map[string]ProjectPermission)
+	}
+	b.projectPermissions[projectPath] = perms
+	b.saveLocalStoreLocked()
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":      "ok",
+		"project":     projectPath,
+		"permissions": perms,
+	})
+	return string(resp)
+}
+
+func (b *AgentBridge) getInitialStateLocked() string {
+	isBypassed := b.isAuthBypassed()
+	isLoggedIn := isBypassed || b.oauthLoggedIn
+
+	state := map[string]interface{}{
+		"hostname":                  b.cfg.Hostname,
+		"machine_id":                b.cfg.MachineID,
+		"os":                        runtime.GOOS,
+		"arch":                      runtime.GOARCH,
+		"is_standalone":             b.cfg.IsStandalone,
+		"base_url":                  b.cfg.BaseURL,
+		"active_project":            b.activeProject,
+		"permission_policy":         b.permissionPolicy,
+		"terminal_execution_policy": b.terminalExecutionPolicy,
+		"file_access_policy":        b.fileAccessPolicy,
+		"sandbox_mode":              b.sandboxMode,
+		"queued_messages":           b.queuedMessages,
+		"project_permissions":       b.projectPermissions,
+		"history":                   b.history,
+		"pending_approval":          b.pendingApproval,
+		"projects":                  b.projects,
+		"projects_scanned":          b.projectsScanned,
+		"is_logged_in":              isLoggedIn,
+		"is_bypassed":               isBypassed,
+		"org_id":                    b.cfg.Org,
+		"auth":                      b.cfg.Auth,
+		"environment":               b.cfg.Environment,
+		"ai_api_url":                b.aiApiUrl,
+		"ai_api_key":                b.aiApiKey,
+		"ai_model":                  b.aiModel,
+		"approval_rules":            b.approvalRules,
+		"pinned_conversations":      b.pinnedConvs,
+		"debug":                     (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1",
+	}
+
+	data, _ := json.Marshal(state)
+	return string(data)
+}
+
+// ClearHistory wipes in-memory execution history
+func (b *AgentBridge) ClearHistory() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.history = make([]ExecutionEntry, 0)
+	return `{"status": "ok"}`
+}
+
+// extractCommandPrefix extracts the primary command prefix (e.g. "git show", "docker ps", "npm")
+func extractCommandPrefix(cmd string) string {
+	trimmed := strings.TrimSpace(cmd)
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return ""
+	}
+	if len(parts) > 1 && (parts[0] == "git" || parts[0] == "docker" || parts[0] == "kubectl" || parts[0] == "cargo") {
+		return parts[0] + " " + parts[1]
+	}
+	return parts[0]
+}
+
+// generateApprovalDescription creates a clear, user-facing summary of what is being approved
+func generateApprovalDescription(cmd string) string {
+	trimmed := strings.TrimSpace(cmd)
+	parts := strings.Fields(trimmed)
+	if len(parts) >= 2 && parts[0] == "git" {
+		switch parts[1] {
+		case "show":
+			if len(parts) >= 3 && !strings.HasPrefix(parts[2], "-") {
+				return fmt.Sprintf("Allow viewing commit %s?", parts[2])
+			}
+			return "Allow viewing commit details?"
+		case "diff":
+			return "Allow viewing git diff?"
+		case "log":
+			return "Allow viewing commit history?"
+		case "status":
+			return "Allow viewing git status?"
+		case "checkout", "switch":
+			return "Allow switching git branch?"
+		case "pull":
+			return "Allow pulling git changes?"
+		case "push":
+			return "Allow pushing git commits?"
+		}
+	}
+	prefix := extractCommandPrefix(cmd)
+	if prefix != "" {
+		return fmt.Sprintf("Allow running '%s'?", prefix)
+	}
+	return "Allow running command?"
+}
+
+// isApprovedByRulesLocked checks if a command is covered by any remembered approval rules
+func (b *AgentBridge) isApprovedByRulesLocked(cmd, convID string) bool {
+	trimmed := strings.TrimSpace(cmd)
+	for _, rule := range b.approvalRules {
+		rCmd := strings.TrimSpace(rule.Command)
+		if rCmd == "" {
+			continue
+		}
+		matches := trimmed == rCmd || strings.HasPrefix(trimmed, rCmd+" ") || strings.HasPrefix(trimmed, rCmd)
+		if !matches {
+			continue
+		}
+		switch rule.Scope {
+		case "global":
+			return true
+		case "project":
+			if rule.ScopeID == b.activeProject || rule.ScopeID == "" {
+				return true
+			}
+		case "conversation":
+			if convID != "" && rule.ScopeID == convID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isCommandAllowedLocked checks if a command is permitted by remembered rules or project-specific allowed commands
+func (b *AgentBridge) isCommandAllowedLocked(cmd, convID, projectPath string) bool {
+	if b.isApprovedByRulesLocked(cmd, convID) {
+		return true
+	}
+	if projectPath != "" && b.projectPermissions != nil {
+		if pPerm, ok := b.projectPermissions[projectPath]; ok && pPerm.AllowedCommands != "" {
+			trimmed := strings.TrimSpace(cmd)
+			cmds := strings.FieldsFunc(pPerm.AllowedCommands, func(r rune) bool {
+				return r == ',' || r == '\n' || r == ';'
+			})
+			for _, allowed := range cmds {
+				allowed = strings.TrimSpace(allowed)
+				if allowed != "" && (trimmed == allowed || strings.HasPrefix(trimmed, allowed+" ") || strings.HasPrefix(trimmed, allowed)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// isSafeCommand returns true for non-destructive read operations
+func isSafeCommand(cmd string) bool {
+	trimmed := strings.TrimSpace(cmd)
+	if strings.Contains(trimmed, ">") || strings.Contains(trimmed, "|") || strings.Contains(trimmed, ";") || strings.Contains(trimmed, "&") {
+		return false
+	}
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return true
+	}
+	safeBins := map[string]bool{
+		"ls": true, "cat": true, "pwd": true, "echo": true, "head": true,
+		"tail": true, "grep": true, "find": true, "which": true, "whoami": true,
+		"date": true, "uptime": true, "uname": true, "df": true, "du": true,
+	}
+	if parts[0] == "git" && len(parts) > 1 {
+		safeGit := map[string]bool{
+			"status": true, "log": true, "diff": true, "branch": true, "show": true,
+		}
+		return safeGit[parts[1]]
+	}
+	return safeBins[parts[0]]
+}
+
+
 // RunPrompt executes an agent action directly in-memory using osctrl
-func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool) string {
+func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...string) string {
 	start := time.Now()
 	execID := fmt.Sprintf("exec-%d", time.Now().UnixNano())
+
+	cID := ""
+	if len(convID) > 0 {
+		cID = convID[0]
+	}
 
 	b.mu.Lock()
 	isBypassed := b.isAuthBypassed()
@@ -271,7 +807,7 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool) string {
 			ID:        execID,
 			Timestamp: time.Now().Format("15:04:05"),
 			Prompt:    prompt,
-			Output:    "Shuffle OAuth2 Login Required: Please authenticate with Shuffle OAuth2 in the bottom-left sidebar, or provide OrgId, Auth, or Environment by default to bypass.",
+			Output:    "AI Configuration or Shuffle Login Required: Please configure AI_API_KEY and AI_API_URL in Settings, or authenticate with Shuffle.",
 			Status:    "error",
 			Duration:  "0ms",
 		}
@@ -280,46 +816,128 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool) string {
 		b.mu.Unlock()
 
 		resp, _ := json.Marshal(map[string]interface{}{
-			"id":          execID,
-			"status":      "error",
-			"error":       entry.Output,
-			"needs_login": true,
-			"prompt":      prompt,
-			"duration":    "0ms",
+			"id":              execID,
+			"status":          "error",
+			"error":           entry.Output,
+			"needs_login":     false,
+			"needs_ai_config": true,
+			"prompt":          prompt,
+			"duration":        "0ms",
 		})
 		return string(resp)
 	}
 
 	b.mu.Lock()
-	needsApproval := b.permissionPolicy == "ask_all" && !forceApprove
+	needsApproval := false
+	if !forceApprove {
+		// First check remembered approval rules and project allowed commands
+		if b.isCommandAllowedLocked(prompt, cID, b.activeProject) {
+			needsApproval = false
+		} else {
+			policyToUse := b.permissionPolicy
+			termPolicyToUse := b.terminalExecutionPolicy
+			if termPolicyToUse == "" {
+				termPolicyToUse = "sandbox"
+			}
+
+			if b.activeProject != "" && b.projectPermissions != nil {
+				if pPerm, ok := b.projectPermissions[b.activeProject]; ok {
+					if pPerm.PermissionPolicy != "" && pPerm.PermissionPolicy != "inherit" {
+						policyToUse = pPerm.PermissionPolicy
+					}
+					if pPerm.TerminalExecutionPolicy != "" && pPerm.TerminalExecutionPolicy != "inherit" {
+						termPolicyToUse = pPerm.TerminalExecutionPolicy
+					}
+				}
+			}
+
+			if policyToUse == "full_auto" || termPolicyToUse == "full_auto" {
+				needsApproval = false
+			} else if policyToUse == "ask_all" || policyToUse == "" || termPolicyToUse == "prompt" {
+				needsApproval = true
+			} else if policyToUse == "safe_auto" || termPolicyToUse == "safe_auto" {
+				needsApproval = !isSafeCommand(prompt)
+			} else {
+				needsApproval = !isSafeCommand(prompt)
+			}
+		}
+	}
 	if needsApproval {
+		prefix := extractCommandPrefix(prompt)
+		desc := generateApprovalDescription(prompt)
 		b.pendingApproval = &ApprovalRequest{
-			ID:          execID,
-			Action:      prompt,
-			Description: fmt.Sprintf("Execute command in '%s'", b.activeProject),
-			Timestamp:   time.Now().Format("15:04:05"),
+			ID:            execID,
+			Action:        prompt,
+			CommandPrefix: prefix,
+			Description:   desc,
+			Timestamp:     time.Now().Format("15:04:05"),
+			Project:       b.activeProject,
 		}
 		b.mu.Unlock()
 
-		// Return pending approval notification
+		// Return pending approval notification with rich options metadata
 		resp, _ := json.Marshal(map[string]interface{}{
-			"id":             execID,
-			"status":         "pending_approval",
-			"needs_approval": true,
-			"prompt":         prompt,
+			"id":              execID,
+			"status":          "pending_approval",
+			"needs_approval":  true,
+			"prompt":          prompt,
+			"command_prefix":  prefix,
+			"description":     desc,
+			"project":         b.activeProject,
+			"conversation_id": cID,
 		})
 		return string(resp)
 	}
 	b.mu.Unlock()
 
-	// Execute command via osctrl directly
-	log.Printf("[INFO] Direct In-Memory Execution: %s", prompt)
-	output, err := b.executeDirect(prompt)
+	// Execute command or dispatch to AI endpoint
+	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
+
+	b.mu.Lock()
+	hasAiEndpoint := b.aiApiUrl != ""
+	activeModel := b.aiModel
+	activeUrl := b.aiApiUrl
+	project := b.activeProject
+	b.mu.Unlock()
+
+	var output string
+	var err error
+	var debugInfo map[string]interface{}
+
+	if isDebug {
+		log.Printf("[DEBUG] RunPrompt initiated: prompt=%q, forceApprove=%v, project=%q, hasAi=%v, url=%q, model=%q",
+			prompt, forceApprove, project, hasAiEndpoint, activeUrl, activeModel)
+	}
+
+	if hasAiEndpoint {
+		log.Printf("[INFO] AI Agent Execution (%s) via %s: %s", activeModel, activeUrl, prompt)
+		output, err = b.executeAiRequest(prompt)
+		debugInfo = map[string]interface{}{
+			"mode":    "ai_endpoint",
+			"target":  activeUrl,
+			"model":   activeModel,
+			"project": project,
+		}
+	} else {
+		log.Printf("[INFO] Direct In-Memory Execution in %s: %s", project, prompt)
+		output, err = b.executeDirect(prompt)
+		debugInfo = map[string]interface{}{
+			"mode":    "direct_exec",
+			"target":  project,
+			"model":   "local_shell",
+			"project": project,
+		}
+	}
 
 	status := "success"
 	if err != nil {
 		status = "error"
 		output = fmt.Sprintf("Error: %v\nOutput: %s", err, output)
+		if isDebug {
+			log.Printf("[DEBUG] RunPrompt completed with error: %v", err)
+		}
+	} else if isDebug {
+		log.Printf("[DEBUG] RunPrompt completed successfully (output bytes: %d)", len(output))
 	}
 
 	duration := time.Since(start).Round(time.Millisecond).String()
@@ -331,6 +949,7 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool) string {
 		Output:    output,
 		Status:    status,
 		Duration:  duration,
+		DebugInfo: debugInfo,
 	}
 
 	b.mu.Lock()
@@ -345,8 +964,16 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool) string {
 	return string(resp)
 }
 
-// RespondApproval handles user decision from the UI
+// RespondApproval handles basic boolean user decision from the UI
 func (b *AgentBridge) RespondApproval(execID string, approved bool) string {
+	if !approved {
+		return b.RespondApprovalWithOptions(execID, 5, "", "", "")
+	}
+	return b.RespondApprovalWithOptions(execID, 1, "", "", "")
+}
+
+// RespondApprovalWithOptions handles user decision from the UI with remembered rule scope
+func (b *AgentBridge) RespondApprovalWithOptions(execID string, option int, commandPrefix, scope, scopeID string) string {
 	b.mu.Lock()
 	req := b.pendingApproval
 	if req == nil || req.ID != execID {
@@ -355,14 +982,14 @@ func (b *AgentBridge) RespondApproval(execID string, approved bool) string {
 	}
 	prompt := req.Action
 	b.pendingApproval = nil
-	b.mu.Unlock()
 
-	if !approved {
+	if option == 5 {
+		b.mu.Unlock()
 		entry := ExecutionEntry{
 			ID:        execID,
 			Timestamp: time.Now().Format("15:04:05"),
 			Prompt:    prompt,
-			Output:    "[Denied by user]",
+			Output:    "[Denied by user: Tell the agent what to do instead]",
 			Status:    "denied",
 			Duration:  "0ms",
 		}
@@ -373,8 +1000,112 @@ func (b *AgentBridge) RespondApproval(execID string, approved bool) string {
 		return string(resp)
 	}
 
+	cmdToRemember := commandPrefix
+	if cmdToRemember == "" {
+		cmdToRemember = extractCommandPrefix(prompt)
+	}
+
+	if option == 2 && cmdToRemember != "" {
+		rule := ApprovalRule{
+			ID:        fmt.Sprintf("rule-%d", time.Now().UnixNano()),
+			Command:   cmdToRemember,
+			Scope:     "conversation",
+			ScopeID:   scopeID,
+			CreatedAt: time.Now().Format("2006-01-02 15:04"),
+		}
+		b.approvalRules = append(b.approvalRules, rule)
+		b.saveLocalStoreLocked()
+	} else if option == 3 && cmdToRemember != "" {
+		rule := ApprovalRule{
+			ID:        fmt.Sprintf("rule-%d", time.Now().UnixNano()),
+			Command:   cmdToRemember,
+			Scope:     "project",
+			ScopeID:   b.activeProject,
+			CreatedAt: time.Now().Format("2006-01-02 15:04"),
+		}
+		b.approvalRules = append(b.approvalRules, rule)
+		b.saveLocalStoreLocked()
+	} else if option == 4 && cmdToRemember != "" {
+		rule := ApprovalRule{
+			ID:        fmt.Sprintf("rule-%d", time.Now().UnixNano()),
+			Command:   cmdToRemember,
+			Scope:     "global",
+			ScopeID:   "",
+			CreatedAt: time.Now().Format("2006-01-02 15:04"),
+		}
+		b.approvalRules = append(b.approvalRules, rule)
+		b.saveLocalStoreLocked()
+	}
+	b.mu.Unlock()
+
 	// User approved: run with forceApprove=true
-	return b.RunPrompt(prompt, true)
+	return b.RunPrompt(prompt, true, scopeID)
+}
+
+// GetApprovalRules returns remembered approval rules as JSON
+func (b *AgentBridge) GetApprovalRules() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	data, _ := json.Marshal(b.approvalRules)
+	return string(data)
+}
+
+// AddApprovalRule stores a remembered approval rule
+func (b *AgentBridge) AddApprovalRule(ruleJSON string) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var rule ApprovalRule
+	if err := json.Unmarshal([]byte(ruleJSON), &rule); err != nil {
+		return `{"error": "invalid rule payload"}`
+	}
+	if rule.ID == "" {
+		rule.ID = fmt.Sprintf("rule-%d", time.Now().UnixNano())
+	}
+	if rule.CreatedAt == "" {
+		rule.CreatedAt = time.Now().Format("2006-01-02 15:04")
+	}
+	b.approvalRules = append(b.approvalRules, rule)
+	b.saveLocalStoreLocked()
+	data, _ := json.Marshal(b.approvalRules)
+	return string(data)
+}
+
+// RevokeApprovalRule removes a remembered approval rule by ID
+func (b *AgentBridge) RevokeApprovalRule(ruleID string) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	newRules := make([]ApprovalRule, 0)
+	for _, r := range b.approvalRules {
+		if r.ID != ruleID {
+			newRules = append(newRules, r)
+		}
+	}
+	b.approvalRules = newRules
+	b.saveLocalStoreLocked()
+	data, _ := json.Marshal(b.approvalRules)
+	return string(data)
+}
+
+// ClearApprovalRules removes all remembered approval rules
+func (b *AgentBridge) ClearApprovalRules() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.approvalRules = make([]ApprovalRule, 0)
+	b.saveLocalStoreLocked()
+	return `{"status": "ok"}`
+}
+
+// SetPinnedConversations updates the pinned conversations list
+func (b *AgentBridge) SetPinnedConversations(pinnedJSON string) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var pinned []string
+	if err := json.Unmarshal([]byte(pinnedJSON), &pinned); err == nil {
+		b.pinnedConvs = pinned
+		b.saveLocalStoreLocked()
+	}
+	data, _ := json.Marshal(b.pinnedConvs)
+	return string(data)
 }
 
 // TakeScreenshot captures displays and returns base64 PNGs directly
@@ -439,4 +1170,123 @@ func (b *AgentBridge) executeDirect(cmd string) (string, error) {
 		fullCmd = fmt.Sprintf("cd %s && %s", b.activeProject, cmd)
 	}
 	return osctrl.RunCommandString(fullCmd, 30*time.Second, nil)
+}
+
+// executeAiRequest sends prompt to the configured AI API URL
+func (b *AgentBridge) executeAiRequest(prompt string) (string, error) {
+	b.mu.Lock()
+	apiURL := b.aiApiUrl
+	apiKey := b.aiApiKey
+	model := b.aiModel
+	project := b.activeProject
+	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
+	b.mu.Unlock()
+
+	if model == "" {
+		model = "gemini-3.8-flash-high"
+	}
+
+	targetURL := apiURL
+	if !strings.Contains(targetURL, "/chat/completions") && !strings.Contains(targetURL, "/generateContent") {
+		targetURL = strings.TrimRight(targetURL, "/") + "/chat/completions"
+	}
+
+	type chatMessage struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	type chatPayload struct {
+		Model    string        `json:"model"`
+		Messages []chatMessage `json:"messages"`
+	}
+
+	sysPrompt := fmt.Sprintf("You are Shuffle AI agent assistant. Active workspace: %s.", project)
+	payloadObj := chatPayload{
+		Model: model,
+		Messages: []chatMessage{
+			{Role: "system", Content: sysPrompt},
+			{Role: "user", Content: prompt},
+		},
+	}
+
+	reqBytes, err := json.Marshal(payloadObj)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode AI request: %w", err)
+	}
+
+	if isDebug {
+		maskedKey := "none"
+		if len(apiKey) > 8 {
+			maskedKey = apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+		} else if apiKey != "" {
+			maskedKey = "***"
+		}
+		log.Printf("[DEBUG] Sending AI request to %s (Model: %s, Key: %s, Payload: %s)", targetURL, model, maskedKey, string(reqBytes))
+	}
+
+	client := &http.Client{Timeout: 90 * time.Second}
+	httpReq, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(reqBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed creating HTTP request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		if isDebug {
+			log.Printf("[DEBUG] AI request connection error: %v", err)
+		}
+		return "", fmt.Errorf("AI request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed reading AI response: %w", err)
+	}
+
+	if isDebug {
+		log.Printf("[DEBUG] AI response status: %d (Body bytes: %d, Content: %s)", resp.StatusCode, len(bodyBytes), string(bodyBytes))
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return string(bodyBytes), fmt.Errorf("AI endpoint returned HTTP %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var completionResp struct {
+		Choices []struct {
+			Message struct {
+				Role    string `json:"role"`
+				Content string `json:"content"`
+			} `json:"message"`
+			Text string `json:"text"`
+		} `json:"choices"`
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.Unmarshal(bodyBytes, &completionResp); err == nil {
+		if len(completionResp.Choices) > 0 {
+			if completionResp.Choices[0].Message.Content != "" {
+				return completionResp.Choices[0].Message.Content, nil
+			}
+			if completionResp.Choices[0].Text != "" {
+				return completionResp.Choices[0].Text, nil
+			}
+		}
+		if len(completionResp.Candidates) > 0 && len(completionResp.Candidates[0].Content.Parts) > 0 {
+			return completionResp.Candidates[0].Content.Parts[0].Text, nil
+		}
+	}
+
+	return string(bodyBytes), nil
 }

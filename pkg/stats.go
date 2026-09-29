@@ -15,6 +15,9 @@ import (
 // CollectSensorStats gathers host telemetry using osctrl and host primitives
 func CollectSensorStats(ctx context.Context, cfg *Config) shuffle.OrborusStats {
 	var stats shuffle.OrborusStats
+	if cfg == nil {
+		return stats
+	}
 
 	stats.SensorDetails.SensorMode = true
 	stats.SensorDetails.Hostname = cfg.Hostname

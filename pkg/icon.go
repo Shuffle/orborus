@@ -6,3 +6,9 @@ import _ "embed"
 //
 //go:embed shuffle_icon.png
 var ShuffleIconPNG []byte
+
+// AppIconPNG contains the 512x512 official Shuffle app icon for Dock and Cmd+Tab
+//
+//go:embed app_icon.png
+var AppIconPNG []byte
+

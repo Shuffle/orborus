@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -109,8 +110,13 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 		}
 		req.Header.Set("X-Orborus-Runmode", "Sensor Mode")
 
+		isDebug := cfg.Debug || strings.EqualFold(os.Getenv("DEBUG"), "true") || os.Getenv("DEBUG") == "1"
+		if isDebug {
+			log.Printf("[DEBUG] Sending queue poll request to %s (Env: %s, Org: %s, Hostname: %s)", fullURL, cfg.Environment, cfg.Org, cfg.Hostname)
+		}
+
 		resp, err := client.Do(req)
-		if err != nil {
+		if err != nil || resp == nil {
 			log.Printf("[WARNING] Queue poll request failed: %v", err)
 			if onStatus != nil {
 				onStatus(AgentStatus{
@@ -124,8 +130,15 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 			continue
 		}
 
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		var body []byte
+		if resp.Body != nil {
+			body, _ = io.ReadAll(resp.Body)
+			resp.Body.Close()
+		}
+
+		if isDebug {
+			log.Printf("[DEBUG] Queue poll response: HTTP %d (Body bytes: %d)", resp.StatusCode, len(body))
+		}
 
 		if resp.StatusCode == 409 {
 			log.Printf("[WARNING] Another agent or Orborus instance is already active for this environment. Retrying in 30s...")
@@ -160,6 +173,10 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 			log.Printf("[ERROR] Failed to unmarshal queue response: %v", err)
 			time.Sleep(time.Duration(currentSleep) * time.Second)
 			continue
+		}
+
+		if isDebug {
+			log.Printf("[DEBUG] Queue poll successful: %d action(s) retrieved", len(queueResp.Data))
 		}
 
 		if onStatus != nil {
@@ -211,7 +228,7 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 						confirmReq.Header.Set("Org", cfg.Org)
 					}
 					confirmResp, err := client.Do(confirmReq)
-					if err == nil {
+					if err == nil && confirmResp != nil && confirmResp.Body != nil {
 						confirmResp.Body.Close()
 					}
 				}

@@ -88,6 +88,89 @@ static id getOrCreateBridgeHandler() {
     return [[cls alloc] init];
 }
 
+static NSImage *globalAppIcon = nil;
+
+static inline void SetupAppMenu() {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if ([NSApp mainMenu] == nil || [[NSApp mainMenu] numberOfItems] == 0) {
+            NSMenu *menubar = [[NSMenu alloc] init];
+            NSMenuItem *appMenuItem = [[NSMenuItem alloc] init];
+            [menubar addItem:appMenuItem];
+            [NSApp setMainMenu:menubar];
+
+            NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"Shuffle Agent"];
+            [appMenuItem setTitle:@"Shuffle Agent"];
+
+            NSMenuItem *hideItem = [[NSMenuItem alloc] initWithTitle:@"Hide Shuffle Agent"
+                                                              action:@selector(hide:)
+                                                       keyEquivalent:@"h"];
+            [appMenu addItem:hideItem];
+
+            NSMenuItem *hideOthers = [[NSMenuItem alloc] initWithTitle:@"Hide Others"
+                                                                action:@selector(hideOtherApplications:)
+                                                         keyEquivalent:@"h"];
+            [hideOthers setKeyEquivalentModifierMask:(NSEventModifierFlagOption | NSEventModifierFlagCommand)];
+            [appMenu addItem:hideOthers];
+
+            NSMenuItem *showAll = [[NSMenuItem alloc] initWithTitle:@"Show All"
+                                                             action:@selector(unhideAllApplications:)
+                                                      keyEquivalent:@""];
+            [appMenu addItem:showAll];
+
+            [appMenu addItem:[NSMenuItem separatorItem]];
+
+            NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:@"Quit Shuffle Agent"
+                                                              action:@selector(terminate:)
+                                                       keyEquivalent:@"q"];
+            [appMenu addItem:quitItem];
+            [appMenuItem setSubmenu:appMenu];
+
+            // Edit Menu for Cut, Copy, Paste, Select All (Cmd+A), Undo, Redo
+            NSMenuItem *editMenuItem = [[NSMenuItem alloc] init];
+            [menubar addItem:editMenuItem];
+            NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+            [editMenuItem setTitle:@"Edit"];
+
+            [editMenu addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
+            NSMenuItem *redoItem = [editMenu addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"Z"];
+            [redoItem setKeyEquivalentModifierMask:(NSEventModifierFlagShift | NSEventModifierFlagCommand)];
+            [editMenu addItem:[NSMenuItem separatorItem]];
+            [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+            [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+            [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+            [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+            [editMenuItem setSubmenu:editMenu];
+
+            // Window Menu for Minimize, Zoom, Close
+            NSMenuItem *windowMenuItem = [[NSMenuItem alloc] init];
+            [menubar addItem:windowMenuItem];
+            NSMenu *windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+            [windowMenuItem setTitle:@"Window"];
+            [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+            [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
+            [windowMenu addItem:[NSMenuItem separatorItem]];
+            [windowMenu addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
+            [windowMenuItem setSubmenu:windowMenu];
+        }
+    });
+}
+
+static inline void ApplyAppIdentity(const void *iconData, int iconLen) {
+    [[NSProcessInfo processInfo] setProcessName:@"Shuffle Agent"];
+
+    if (iconData != NULL && iconLen > 0) {
+        NSData *data = [NSData dataWithBytes:iconData length:iconLen];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            globalAppIcon = [[NSImage alloc] initWithData:data];
+            if (globalAppIcon != nil) {
+                [NSApp setApplicationIconImage:globalAppIcon];
+                [[NSApp dockTile] display];
+            }
+        });
+    }
+    SetupAppMenu();
+}
+
 static NSWindow *agentWindow = nil;
 static WKWebView *agentWebView = nil;
 
@@ -96,6 +179,7 @@ static void ensureAgentWindowCreated(const char *htmlContent) {
 
     NSRect frame = NSMakeRect(200, 200, 950, 700);
     NSUInteger style = NSWindowStyleMaskTitled |
+                       NSWindowStyleMaskFullSizeContentView |
                        NSWindowStyleMaskClosable |
                        NSWindowStyleMaskMiniaturizable |
                        NSWindowStyleMaskResizable;
@@ -103,8 +187,15 @@ static void ensureAgentWindowCreated(const char *htmlContent) {
                                               styleMask:style
                                                 backing:NSBackingStoreBuffered
                                                   defer:NO];
-    [agentWindow setTitle:@"Shuffle Agent Runner"];
+    [agentWindow setTitle:@"Shuffle Agent"];
+    [agentWindow setTitleVisibility:NSWindowTitleHidden];
+    [agentWindow setTitlebarAppearsTransparent:YES];
+    [[agentWindow standardWindowButton:NSWindowCloseButton] setHidden:YES];
+    [[agentWindow standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
+    [[agentWindow standardWindowButton:NSWindowZoomButton] setHidden:YES];
+    [agentWindow setMovableByWindowBackground:YES];
     [agentWindow setReleasedWhenClosed:NO];
+    [agentWindow setMinSize:NSMakeSize(640, 480)];
     [agentWindow center];
 
     agentWindow.backgroundColor = [NSColor colorWithCalibratedRed:0.035 green:0.051 blue:0.086 alpha:1.0];
@@ -122,14 +213,26 @@ static void ensureAgentWindowCreated(const char *htmlContent) {
         "window.listProjects = function() { return window.bridgeCall('listProjects', ''); };"
         "window.selectProject = function(path) { return window.bridgeCall('selectProject', path); };"
         "window.setPermissionPolicy = function(policy) { return window.bridgeCall('setPermissionPolicy', policy); };"
-        "window.runPrompt = function(prompt, bypass) { return window.bridgeCall('runPrompt', JSON.stringify({prompt: prompt, bypass: bypass})); };"
+        "window.runPrompt = function(prompt, bypass, convId) { return window.bridgeCall('runPrompt', JSON.stringify({prompt: prompt, bypass: bypass, conversation_id: convId || ''})); };"
         "window.respondApproval = function(id, approved) { return window.bridgeCall('respondApproval', JSON.stringify({id: id, approved: approved})); };"
+        "window.respondApprovalWithOptions = function(id, option, commandPrefix, scope, scopeId) { return window.bridgeCall('respondApprovalWithOptions', JSON.stringify({id: id, option: option, command_prefix: commandPrefix, scope: scope, scope_id: scopeId})); };"
+        "window.getApprovalRules = function() { return window.bridgeCall('getApprovalRules', ''); };"
+        "window.addApprovalRule = function(rule) { return window.bridgeCall('addApprovalRule', JSON.stringify(rule)); };"
+        "window.revokeApprovalRule = function(id) { return window.bridgeCall('revokeApprovalRule', id); };"
+        "window.clearApprovalRules = function() { return window.bridgeCall('clearApprovalRules', ''); };"
+        "window.setPinnedConversations = function(pinned) { return window.bridgeCall('setPinnedConversations', JSON.stringify(pinned)); };"
         "window.takeScreenshot = function() { return window.bridgeCall('takeScreenshot', ''); };"
         "window.inspectUI = function() { return window.bridgeCall('inspectUI', ''); };"
         "window.requestOSPermission = function(perm) { return window.bridgeCall('requestOSPermission', perm); };"
         "window.updateAuth = function(authData) { return window.bridgeCall('updateAuth', JSON.stringify(authData)); };"
+        "window.setAiConfig = function(url, key, policy, model) { return window.bridgeCall('setAiConfig', JSON.stringify({url: url, key: key, permission_policy: policy || '', model: model || ''})); };"
         "window.startOAuthLogin = function(url) { return window.bridgeCall('startOAuthLogin', url || ''); };"
-        "window.setOAuthToken = function(token, org, env) { return window.bridgeCall('setOAuthToken', JSON.stringify({token: token, org: org, env: env})); };";
+        "window.setOAuthToken = function(token, org, env) { return window.bridgeCall('setOAuthToken', JSON.stringify({token: token, org: org, env: env})); };"
+        "window.windowAction = function(act) { return window.bridgeCall('windowAction', act); };"
+        "window.chooseDirectory = function() { return window.bridgeCall('chooseDirectory', ''); };"
+        "window.clearHistory = function() { return window.bridgeCall('clearHistory', ''); };"
+        "window.saveAllSettings = function(settings) { return window.bridgeCall('saveAllSettings', JSON.stringify(settings)); };"
+        "window.setProjectPermissions = function(project, perms) { return window.bridgeCall('setProjectPermissions', JSON.stringify({project: project, permissions: perms})); };";
 
     WKUserScript *userScript = [[WKUserScript alloc] initWithSource:bridgeScript
                                                       injectionTime:WKUserScriptInjectionTimeAtDocumentStart
@@ -169,6 +272,77 @@ static inline void InitAgentWindow(char *htmlContent) {
     });
 }
 
+static inline void WindowAction(const char *action) {
+    if (action == NULL) return;
+    NSString *act = [NSString stringWithUTF8String:action];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (agentWindow == nil) return;
+        if ([act isEqualToString:@"close"] || [act isEqualToString:@"exit"]) {
+            [agentWindow orderOut:nil];
+        } else if ([act isEqualToString:@"minimize"] || [act isEqualToString:@"lower"]) {
+            [agentWindow miniaturize:nil];
+        } else if ([act isEqualToString:@"maximize"] || [act isEqualToString:@"expand"]) {
+            [agentWindow zoom:nil];
+        }
+    });
+}
+
+static char* ChooseFolderDialog() {
+    __block char *result = NULL;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSOpenPanel *panel = [NSOpenPanel openPanel];
+        [panel setCanChooseFiles:NO];
+        [panel setCanChooseDirectories:YES];
+        [panel setAllowsMultipleSelection:NO];
+        [panel setPrompt:@"Select"];
+        [panel setMessage:@"Select Project Directory"];
+        if (agentWindow != nil) {
+            [panel setLevel:[agentWindow level] + 1];
+        } else {
+            [panel setLevel:NSFloatingWindowLevel];
+        }
+        [NSApp activateIgnoringOtherApps:YES];
+        if ([panel runModal] == NSModalResponseOK) {
+            NSURL *url = [[panel URLs] firstObject];
+            if (url != nil) {
+                const char *path = [[url path] UTF8String];
+                if (path != NULL) {
+                    result = strdup(path);
+                }
+            }
+        }
+    });
+    return result;
+}
+
+static char* ChooseFileDialog() {
+    __block char *result = NULL;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSOpenPanel *panel = [NSOpenPanel openPanel];
+        [panel setCanChooseFiles:YES];
+        [panel setCanChooseDirectories:NO];
+        [panel setAllowsMultipleSelection:NO];
+        [panel setPrompt:@"Select"];
+        [panel setMessage:@"Select File to Attach"];
+        if (agentWindow != nil) {
+            [panel setLevel:[agentWindow level] + 1];
+        } else {
+            [panel setLevel:NSFloatingWindowLevel];
+        }
+        [NSApp activateIgnoringOtherApps:YES];
+        if ([panel runModal] == NSModalResponseOK) {
+            NSURL *url = [[panel URLs] firstObject];
+            if (url != nil) {
+                const char *path = [[url path] UTF8String];
+                if (path != NULL) {
+                    result = strdup(path);
+                }
+            }
+        }
+    });
+    return result;
+}
+
 static inline void ShowAgentWindow(char *htmlContent) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (agentWindow == nil) {
@@ -180,13 +354,30 @@ static inline void ShowAgentWindow(char *htmlContent) {
         }
         if (agentWindow != nil) {
             [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+            if (globalAppIcon != nil) {
+                [NSApp setApplicationIconImage:globalAppIcon];
+                [[NSApp dockTile] display];
+            }
+            SetupAppMenu();
             [agentWindow setIsVisible:YES];
             [agentWindow makeKeyAndOrderFront:nil];
+            if (agentWebView != nil) {
+                [agentWindow makeFirstResponder:agentWebView];
+            }
             [agentWindow orderFrontRegardless];
             [NSApp activateIgnoringOtherApps:YES];
-            NSLog(@"[INFO] agentWindow presented, visible: %d", [agentWindow isVisible]);
         } else {
             NSLog(@"[ERROR] agentWindow could not be created");
+        }
+    });
+}
+
+static inline void EvaluateJSInAgentWindow(const char *jsCode) {
+    if (jsCode == NULL) return;
+    NSString *js = [NSString stringWithUTF8String:jsCode];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (agentWebView != nil) {
+            [agentWebView evaluateJavaScript:js completionHandler:nil];
         }
     });
 }
@@ -196,12 +387,14 @@ import "C"
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"os"
 	"runtime"
-	"time"
+	"strings"
+	"unsafe"
 
 	"fyne.io/systray"
-	"github.com/shuffle/osctrl"
 	"orborus/pkg"
 )
 
@@ -209,11 +402,29 @@ var globalBridge *pkg.AgentBridge
 
 //export HandleBridgeAction
 func HandleBridgeAction(cAction *C.char, cPayload *C.char) *C.char {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] Recovered from panic in HandleBridgeAction: %v", r)
+		}
+	}()
+
+	if cAction == nil {
+		return C.CString(`{"error": "nil action"}`)
+	}
 	action := C.GoString(cAction)
-	payload := C.GoString(cPayload)
+	payload := ""
+	if cPayload != nil {
+		payload = C.GoString(cPayload)
+	}
 
 	if globalBridge == nil {
 		return C.CString(`{"error": "bridge not initialized"}`)
+	}
+
+	isDebug := strings.EqualFold(os.Getenv("DEBUG"), "true") || os.Getenv("DEBUG") == "1" ||
+		(globalBridge != nil && globalBridge.GetConfig() != nil && globalBridge.GetConfig().Debug)
+	if isDebug {
+		log.Printf("[DEBUG] HandleBridgeAction: %s (payload: %s)", action, payload)
 	}
 
 	switch action {
@@ -231,23 +442,59 @@ func HandleBridgeAction(cAction *C.char, cPayload *C.char) *C.char {
 
 	case "runPrompt":
 		var req struct {
-			Prompt string `json:"prompt"`
-			Bypass bool   `json:"bypass"`
+			Prompt         string `json:"prompt"`
+			Bypass         bool   `json:"bypass"`
+			ConversationID string `json:"conversation_id"`
 		}
 		if err := json.Unmarshal([]byte(payload), &req); err != nil {
 			req.Prompt = payload
 		}
-		return C.CString(globalBridge.RunPrompt(req.Prompt, req.Bypass))
+		return C.CString(globalBridge.RunPrompt(req.Prompt, req.Bypass, req.ConversationID))
 
 	case "respondApproval":
 		var req struct {
-			ID       string `json:"id"`
-			Approved bool   `json:"approved"`
+			ID            string `json:"id"`
+			Approved      bool   `json:"approved"`
+			Option        int    `json:"option"`
+			CommandPrefix string `json:"command_prefix"`
+			Scope         string `json:"scope"`
+			ScopeID       string `json:"scope_id"`
 		}
 		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			if req.Option > 0 {
+				return C.CString(globalBridge.RespondApprovalWithOptions(req.ID, req.Option, req.CommandPrefix, req.Scope, req.ScopeID))
+			}
 			return C.CString(globalBridge.RespondApproval(req.ID, req.Approved))
 		}
 		return C.CString(`{"error": "invalid payload"}`)
+
+	case "respondApprovalWithOptions":
+		var req struct {
+			ID            string `json:"id"`
+			Option        int    `json:"option"`
+			CommandPrefix string `json:"command_prefix"`
+			Scope         string `json:"scope"`
+			ScopeID       string `json:"scope_id"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			return C.CString(globalBridge.RespondApprovalWithOptions(req.ID, req.Option, req.CommandPrefix, req.Scope, req.ScopeID))
+		}
+		return C.CString(`{"error": "invalid payload"}`)
+
+	case "getApprovalRules":
+		return C.CString(globalBridge.GetApprovalRules())
+
+	case "addApprovalRule":
+		return C.CString(globalBridge.AddApprovalRule(payload))
+
+	case "revokeApprovalRule":
+		return C.CString(globalBridge.RevokeApprovalRule(payload))
+
+	case "clearApprovalRules":
+		return C.CString(globalBridge.ClearApprovalRules())
+
+	case "setPinnedConversations":
+		return C.CString(globalBridge.SetPinnedConversations(payload))
 
 	case "takeScreenshot":
 		return C.CString(globalBridge.TakeScreenshot())
@@ -278,6 +525,61 @@ func HandleBridgeAction(cAction *C.char, cPayload *C.char) *C.char {
 		_ = json.Unmarshal([]byte(payload), &req)
 		return C.CString(globalBridge.SetOAuthToken(req.Token, req.Org, req.Env))
 
+	case "setAiConfig":
+		var req struct {
+			URL              string `json:"url"`
+			Key              string `json:"key"`
+			Model            string `json:"model"`
+			PermissionPolicy string `json:"permission_policy"`
+		}
+		_ = json.Unmarshal([]byte(payload), &req)
+		if req.PermissionPolicy != "" {
+			globalBridge.SetPermissionPolicy(req.PermissionPolicy)
+		}
+		return C.CString(globalBridge.SetAiConfig(req.URL, req.Key, req.Model))
+
+	case "windowAction":
+		cAct := C.CString(payload)
+		defer C.free(unsafe.Pointer(cAct))
+		C.WindowAction(cAct)
+		return C.CString(`{"status": "ok"}`)
+
+	case "chooseDirectory":
+		cPath := C.ChooseFolderDialog()
+		if cPath != nil {
+			path := C.GoString(cPath)
+			C.free(unsafe.Pointer(cPath))
+			resp, _ := json.Marshal(map[string]interface{}{"status": "ok", "path": path})
+			return C.CString(string(resp))
+		}
+		return C.CString(`{"status": "cancelled", "path": ""}`)
+
+	case "chooseFile":
+		cPath := C.ChooseFileDialog()
+		if cPath != nil {
+			path := C.GoString(cPath)
+			C.free(unsafe.Pointer(cPath))
+			resp, _ := json.Marshal(map[string]interface{}{"status": "ok", "path": path})
+			return C.CString(string(resp))
+		}
+		return C.CString(`{"status": "cancelled", "path": ""}`)
+
+	case "clearHistory":
+		return C.CString(globalBridge.ClearHistory())
+
+	case "saveAllSettings":
+		return C.CString(globalBridge.SaveAllSettings(payload))
+
+	case "setProjectPermissions":
+		var req struct {
+			Project     string                `json:"project"`
+			Permissions pkg.ProjectPermission `json:"permissions"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			return C.CString(globalBridge.SetProjectPermissions(req.Project, req.Permissions))
+		}
+		return C.CString(`{"error": "invalid payload"}`)
+
 	default:
 		log.Printf("[WARN] Unknown bridge action: %s", action)
 		return C.CString(`{"error": "unknown action"}`)
@@ -291,6 +593,10 @@ func init() {
 func main() {
 	appConfig := pkg.LoadConfig()
 	log.Printf("[INFO] Starting Shuffle Agent Runner (Darwin Native Starter)")
+	isDebugStartup := strings.EqualFold(os.Getenv("DEBUG"), "true") || os.Getenv("DEBUG") == "1" || appConfig.Debug
+	if isDebugStartup {
+		log.Printf("[DEBUG] Verbose debug logging enabled via DEBUG=true (Standalone: %v, BaseURL: %s, Environment: %s)", appConfig.IsStandalone, appConfig.BaseURL, appConfig.Environment)
+	}
 	if appConfig.IsStandalone {
 		log.Printf("[INFO] Running in FULL STANDALONE mode (no base_url). No background workers started.")
 	} else {
@@ -323,13 +629,30 @@ func onReady(cfg *pkg.Config) {
 	log.Println("[INFO] Systray event loop initialized on main thread")
 
 	globalBridge = pkg.NewAgentBridge(cfg)
+	globalBridge.SetOnAuthUpdated(func(stateJSON string) {
+		js := fmt.Sprintf("if (window.onAuthUpdated) { window.onAuthUpdated(%s); }", stateJSON)
+		cJs := C.CString(js)
+		defer C.free(unsafe.Pointer(cJs))
+		C.EvaluateJSInAgentWindow(cJs)
+	})
 
 	// Pre-warm the native agent window so opening it is instantaneous
 	htmlStr := C.CString(pkg.EmbeddedAgentHTML)
 	C.InitAgentWindow(htmlStr)
 
+	// Apply app identity (Process Name "Shuffle Agent" and 512x512 Shuffle Logo for Cmd+Tab and Dock)
+	if len(pkg.AppIconPNG) > 0 {
+		cIcon := C.CBytes(pkg.AppIconPNG)
+		defer C.free(cIcon)
+		C.ApplyAppIdentity(cIcon, C.int(len(pkg.AppIconPNG)))
+	} else if len(pkg.ShuffleIconPNG) > 0 {
+		cIcon := C.CBytes(pkg.ShuffleIconPNG)
+		defer C.free(cIcon)
+		C.ApplyAppIdentity(cIcon, C.int(len(pkg.ShuffleIconPNG)))
+	}
+
 	// Show only the Shuffle icon in the top menu bar
-	systray.SetTooltip("Shuffle Agent Runner")
+	systray.SetTooltip("Shuffle Agent")
 
 	if len(pkg.ShuffleIconPNG) > 0 {
 		systray.SetIcon(pkg.ShuffleIconPNG)
@@ -357,18 +680,11 @@ func onReady(cfg *pkg.Config) {
 
 	systray.AddSeparator()
 
-	// Direct OS Actions
-	mScreenshot := systray.AddMenuItem("Take Screenshot", "Capture display screenshot")
-	mInspectUI := systray.AddMenuItem("Inspect Focused UI", "Introspect focused UI accessibility elements")
-	mTelemetry := systray.AddMenuItem("Log Host Telemetry", "Gather host specs & compliance")
-
-	systray.AddSeparator()
-
 	mPerms := systray.AddMenuItem("Check / Request Permissions", "Prompt for Accessibility and Screen Recording")
 
 	systray.AddSeparator()
 
-	mQuit := systray.AddMenuItem("Quit Shuffle", "Exit the agent runner")
+	mQuit := systray.AddMenuItem("Quit Shuffle Agent", "Exit the agent runner")
 
 	// Handle Menu Events
 	go func() {
@@ -376,34 +692,13 @@ func onReady(cfg *pkg.Config) {
 			select {
 			case <-mOpenWindow.ClickedCh:
 				log.Println("[INFO] Top bar clicked: Open Agent Window")
+				if len(pkg.AppIconPNG) > 0 {
+					cIcon := C.CBytes(pkg.AppIconPNG)
+					C.ApplyAppIdentity(cIcon, C.int(len(pkg.AppIconPNG)))
+					C.free(cIcon)
+				}
 				winHtmlStr := C.CString(pkg.EmbeddedAgentHTML)
 				C.ShowAgentWindow(winHtmlStr)
-
-			case <-mScreenshot.ClickedCh:
-				log.Println("[INFO] Top bar clicked: Take Screenshot")
-				screens, err := osctrl.ScreenshotAllDisplaysMacos()
-				if err != nil {
-					log.Printf("[ERROR] Screenshot failed: %v", err)
-				} else {
-					log.Printf("[INFO] Screenshot captured successfully (%d displays)", len(screens))
-				}
-
-			case <-mInspectUI.ClickedCh:
-				log.Println("[INFO] Top bar clicked: Inspect Focused UI")
-				elements, err := osctrl.FetchFocusedElement(1, 4)
-				if err != nil {
-					log.Printf("[ERROR] Inspect UI failed: %v", err)
-				} else {
-					log.Printf("[INFO] Inspect UI returned %d elements", len(elements))
-				}
-
-			case <-mTelemetry.ClickedCh:
-				log.Println("[INFO] Top bar clicked: Log Host Telemetry")
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				stats := pkg.CollectSensorStats(ctx, cfg)
-				cancel()
-				log.Printf("[INFO] Host OS: %s, User: %s, Elevated: %v, Encrypted: %s",
-					stats.SensorDetails.OS, stats.SensorDetails.User, stats.SensorDetails.ElevatedAccess, stats.SensorDetails.HdEncrypted)
 
 			case <-mPerms.ClickedCh:
 				log.Println("[INFO] Top bar clicked: Request Permissions")

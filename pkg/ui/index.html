@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Orborus Agent Runner</title>
+<title>Shuffle Agent</title>
 <style>
   :root {
     --bg-app: #09090b;
@@ -26,6 +26,26 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  ::selection {
+    background: rgba(248, 95, 56, 0.35);
+    color: #ffffff;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-focus);
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background: var(--bg-app);
@@ -33,8 +53,34 @@
     height: 100vh;
     display: flex;
     overflow: hidden;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Prevent text selection on interactive chrome elements */
+  .sidebar,
+  .sidebar-nav-list,
+  .nav-item,
+  .traffic-lights,
+  .window-controls-row,
+  .window-controls-windows,
+  .status-card,
+  button {
     user-select: none;
     -webkit-user-select: none;
+  }
+
+  /* Explicitly allow selection in all content areas */
+  .main-workspace,
+  .center-container,
+  .execution-stream,
+  .stream-card,
+  .stream-card-body,
+  .approval-card,
+  .approval-cmd,
+  pre, code, input, textarea {
+    user-select: text !important;
+    -webkit-user-select: text !important;
   }
 
   /* ---------------- Left Sidebar ---------------- */
@@ -63,20 +109,75 @@
     align-items: center;
     justify-content: space-between;
     height: 24px;
+    -webkit-app-region: drag;
   }
   .traffic-lights {
     display: flex;
     gap: 7px;
     align-items: center;
+    -webkit-app-region: no-drag;
   }
   .dot {
     width: 12px;
     height: 12px;
     border-radius: 50%;
+    cursor: pointer;
+    border: 0.5px solid rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .dot:hover {
+    filter: brightness(0.85);
+  }
+  .dot:active {
+    transform: scale(0.92);
   }
   .dot-red { background: #ff5f56; }
   .dot-yellow { background: #ffbd2e; }
   .dot-green { background: #27c93f; }
+
+  .dot .dot-icon {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+    pointer-events: none;
+    display: block;
+  }
+  .traffic-lights:hover .dot-icon,
+  .dot:hover .dot-icon {
+    opacity: 1;
+  }
+
+  /* Windows / Linux title bar control buttons */
+  .window-controls-windows {
+    display: none;
+    align-items: center;
+    gap: 2px;
+    -webkit-app-region: no-drag;
+  }
+  .win-btn {
+    width: 26px;
+    height: 22px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .win-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .win-btn-close:hover {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
 
   .window-nav-icons {
     display: flex;
@@ -157,7 +258,7 @@
     color: var(--text-muted);
   }
 
-  /* Projects Section */
+  /* Projects Tree Section */
   .projects-section {
     display: flex;
     flex-direction: column;
@@ -179,51 +280,182 @@
   }
   .section-header-actions {
     display: flex;
+    align-items: center;
     gap: 4px;
   }
-  .projects-list {
+  .project-filter-box {
+    display: none;
+    padding: 0 10px 6px 10px;
+  }
+  .project-filter-box.visible {
+    display: block;
+  }
+  .project-filter-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    color: var(--text-primary);
+    outline: none;
+  }
+  .project-filter-input:focus {
+    border-color: #f85f38;
+  }
+  .project-tree {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    max-height: 220px;
+    flex: 1;
   }
-  .projects-list::-webkit-scrollbar {
+  .project-tree::-webkit-scrollbar {
     width: 4px;
   }
-  .projects-list::-webkit-scrollbar-thumb {
+  .project-tree::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 4px;
   }
-  .project-row {
+  .project-folder-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 12.5px;
+    font-weight: 500;
     color: var(--text-secondary);
     cursor: pointer;
+    user-select: none;
     transition: all 0.15s ease;
   }
-  .project-row:hover {
+  .project-folder-row:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
   }
-  .project-row.active {
-    color: var(--text-primary);
-    background: var(--bg-active);
-  }
-  .project-row-left {
+  .project-folder-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     overflow: hidden;
   }
-  .project-name-truncate {
+  .project-folder-chevron {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+    display: flex;
+    align-items: center;
+  }
+  .project-group.collapsed .project-folder-chevron {
+    transform: rotate(-90deg);
+  }
+  .project-folder-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .project-folder-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .project-folder-row:hover .project-folder-actions {
+    opacity: 1;
+  }
+  .project-conversations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-left: 14px;
+  }
+  .project-group.collapsed .project-conversations-list {
+    display: none;
+  }
+  .conversation-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .conversation-row:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .conversation-row.active {
+    color: #ffffff;
+    background: #242938;
+    font-weight: 500;
+  }
+  .conversation-row.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2.5px;
+    background: #38bdf8;
+    border-radius: 2px;
+  }
+  .conversation-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    flex: 1;
+  }
+  .conversation-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .conversation-row.active .conversation-dot {
+    background: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+  }
+  .conversation-title-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .conversation-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .btn-pin-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.15s ease;
+  }
+  .conversation-row:hover .btn-pin-toggle,
+  .conversation-row.pinned .btn-pin-toggle {
+    opacity: 1;
+  }
+  .conversation-row.pinned .btn-pin-toggle {
+    color: #f85f38;
+  }
+  .btn-pin-toggle:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   /* ---------------- Bottom Left Status Area ---------------- */
@@ -266,6 +498,10 @@
   .status-dot.connected {
     background: var(--green);
     box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+  }
+  .status-dot.standalone {
+    background: #f85f38;
+    box-shadow: 0 0 6px rgba(248, 95, 56, 0.4);
   }
   .status-dot.disconnected {
     background: var(--amber);
@@ -373,9 +609,15 @@
   /* Project Picker Row */
   .project-selector-row {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .project-selector-left {
+    position: relative;
     display: inline-flex;
     align-items: center;
-    align-self: flex-start;
   }
   .project-btn {
     display: inline-flex;
@@ -393,6 +635,25 @@
   }
   .project-btn:hover {
     color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .quick-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+  .quick-start-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
     background: var(--bg-hover);
   }
 
@@ -637,61 +898,282 @@
     margin-top: 10px;
   }
 
-  /* Approval Banner */
+  /* Approval Card (Rich Sandbox Approval) */
   .approval-card {
-    background: rgba(2, 132, 199, 0.08);
-    border: 1px solid rgba(2, 132, 199, 0.3);
+    background: #141722;
+    border: 1px solid #282f42;
     border-radius: 12px;
-    padding: 14px 16px;
+    padding: 16px 18px;
     display: none;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    margin-top: 8px;
   }
   .approval-card.visible {
     display: flex;
   }
-  .approval-header {
+  .approval-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #f8fafc;
+  }
+  .approval-card-top svg {
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .approval-warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fbbf24;
+    font-size: 12.5px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .approval-warning-banner svg {
+    flex-shrink: 0;
+  }
+  .approval-code-box {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    background: #090c14;
+    border: 1px solid #232938;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #f1f5f9;
+    word-break: break-all;
+  }
+  .approval-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .approval-option-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #cbd5e1;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .approval-option-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+  }
+  .approval-option-item.selected {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-weight: 500;
+  }
+  .approval-option-num {
+    color: #64748b;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    width: 14px;
+    text-align: right;
+  }
+  .approval-option-item.selected .approval-option-num {
+    color: #38bdf8;
+    font-weight: 700;
+  }
+  .approval-footer-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 13px;
-    font-weight: 600;
-    color: #38bdf8;
+    padding-top: 4px;
   }
-  .approval-cmd {
-    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  .btn-approval-skip {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
     font-size: 13px;
-    background: var(--bg-code);
-    border: 1px solid var(--border);
-    padding: 8px 12px;
+    cursor: pointer;
+    padding: 6px 12px;
     border-radius: 6px;
-    color: #fde047;
-    word-break: break-all;
+    transition: color 0.15s ease;
   }
-  .approval-actions {
+  .btn-approval-skip:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .btn-approval-submit {
     display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 16px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn-approval-submit:hover {
+    background: #0369a1;
+  }
+
+  /* Activity Breakdown Steps */
+  .user-prompt-card {
+    background: #181d28;
+    border: 1px solid #283142;
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #f1f5f9;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    margin-bottom: 14px;
+  }
+  .activity-steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .activity-step-row {
+    background: #11151f;
+    border: 1px solid #212736;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+  }
+  .activity-step-row:hover {
+    border-color: #313a4f;
+  }
+  .activity-step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: #94a3b8;
+    background: #11151f;
+    transition: color 0.15s ease;
+  }
+  .activity-step-header:hover {
+    color: #f8fafc;
+  }
+  .activity-step-left {
+    display: flex;
+    align-items: center;
     gap: 8px;
-    margin-top: 4px;
+    overflow: hidden;
+    flex: 1;
   }
-  .btn-approve {
-    background: var(--green);
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
+  .activity-step-left svg {
+    flex-shrink: 0;
   }
-  .btn-deny {
-    background: var(--red);
-    color: white;
+  .activity-step-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .activity-step-chevron {
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  .activity-step-row.expanded .activity-step-chevron {
+    transform: rotate(90deg);
+  }
+  .activity-step-content {
+    display: none;
+    padding: 10px 14px;
+    background: #090c14;
+    border-top: 1px solid #1c2230;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #cbd5e1;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 320px;
+  }
+  .activity-step-row.expanded .activity-step-content {
+    display: block;
+  }
+  .activity-waiting-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
     font-size: 12px;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 6px;
-    border: none;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    border-top: 1px solid rgba(56, 189, 248, 0.15);
+  }
+
+  /* Remembered Rules Table */
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .rules-table th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .rules-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  .rule-scope-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .rule-scope-badge.global {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+  .rule-scope-badge.project {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+  .rule-scope-badge.conversation {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .btn-rule-revoke {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--red);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
     cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-rule-revoke:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--red);
   }
 
   .status-pill {
@@ -837,7 +1319,7 @@
     cursor: pointer;
   }
   .btn-modal-submit {
-    background: var(--accent-blue);
+    background: #f85f38;
     border: none;
     color: white;
     padding: 7px 16px;
@@ -847,7 +1329,425 @@
     cursor: pointer;
   }
   .btn-modal-submit:hover {
-    background: var(--accent-blue-hover);
+    background: #ea580c;
+  }
+
+  /* Quick Start Empty State */
+  .quick-start-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    transition: opacity 0.2s ease;
+  }
+  .center-container.has-history .quick-start-container {
+    display: none;
+  }
+  .quick-start-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 2px;
+  }
+  .quick-start-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .quick-start-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+  .quick-start-card:hover {
+    border-color: #f85f38;
+    background: rgba(248, 95, 56, 0.04);
+  }
+  .quick-start-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .quick-start-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+
+  /* Quick Start Modal */
+  .quick-start-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .step-card {
+    background: var(--bg-code);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+  }
+  .step-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(248, 95, 56, 0.15);
+    color: #f85f38;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .step-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .step-status {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .step-status.active {
+    color: var(--green);
+  }
+  .step-status.warning {
+    color: var(--amber);
+  }
+  .step-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .btn-step-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-step-action:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-card);
+  }
+  .step-prompts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .prompt-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+  }
+  .prompt-chip:hover {
+    color: var(--text-primary);
+    border-color: #f85f38;
+    background: rgba(248, 95, 56, 0.06);
+  }
+
+  .sidebar {
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.2s ease, opacity 0.15s ease;
+  }
+  .sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-right: none !important;
+    overflow: hidden !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .uncollapse-sidebar-btn {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 20;
+    transition: all 0.15s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .uncollapse-sidebar-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+  .uncollapse-sidebar-btn.visible {
+    display: inline-flex;
+  }
+
+  /* Popovers / Dropdowns */
+  .toolbar-left {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .model-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 210px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 50;
+  }
+  .model-dropdown-menu.visible {
+    display: flex;
+  }
+  .footer-dropdown-wrapper {
+    position: relative;
+  }
+  .footer-popover-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 220px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 50;
+  }
+  .footer-popover-menu.visible {
+    display: flex;
+  }
+  .popover-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-radius: 5px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: all 0.12s ease;
+  }
+  .popover-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .popover-item.active {
+    color: #f85f38;
+    font-weight: 500;
+  }
+
+  /* Voice dictation pulse */
+  @keyframes micPulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  .icon-btn.recording {
+    color: #ef4444 !important;
+    animation: micPulse 1.4s infinite;
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-radius: 6px;
+  }
+
+  /* History Modal & Entry Styles */
+  .history-modal-content {
+    max-width: 680px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-top: 4px;
+  }
+  .history-entry-card {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.15s ease;
+  }
+  .history-entry-card:hover {
+    border-color: var(--border-hover);
+  }
+  .history-entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .history-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  .history-badge.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+  .history-badge.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+  .history-badge.denied {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+  }
+  .history-prompt-text {
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: #fde047;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .history-output-preview {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: "SF Mono", Menlo, monospace;
+    max-height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .history-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-history-action {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .btn-history-action:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+  .btn-history-action.btn-run-again {
+    background: rgba(248, 95, 56, 0.15);
+    border-color: rgba(248, 95, 56, 0.4);
+    color: #f85f38;
+  }
+  .btn-history-action.btn-run-again:hover {
+    background: #f85f38;
+    color: #ffffff;
+  }
+
+  /* Result Card Collapsing & Copy */
+  .status-pill {
+    cursor: pointer;
+    user-select: none;
+  }
+  .status-pill svg {
+    transition: transform 0.2s ease;
+  }
+  .status-pill.collapsed svg {
+    transform: rotate(-90deg);
+  }
+  .exec-card.collapsed .exec-body {
+    display: none;
+  }
+  .spinning {
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Toast Notification */
+  .app-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 200;
+  }
+  .app-toast.visible {
+    display: flex;
   }
 </style>
 </head>
@@ -858,13 +1758,38 @@
     <div class="sidebar-top">
       <!-- Traffic Lights & Nav -->
       <div class="window-controls-row">
-        <div class="traffic-lights">
-          <div class="dot dot-red"></div>
-          <div class="dot dot-yellow"></div>
-          <div class="dot dot-green"></div>
+        <div id="mac-controls" class="traffic-lights">
+          <div class="dot dot-red" title="Close" onclick="windowControl('close')">
+            <svg class="dot-icon" width="6" height="6" viewBox="0 0 6 6" fill="none" stroke="#4c0000" stroke-width="1.2" stroke-linecap="round">
+              <line x1="1" y1="1" x2="5" y2="5"></line>
+              <line x1="5" y1="1" x2="1" y2="5"></line>
+            </svg>
+          </div>
+          <div class="dot dot-yellow" title="Minimize" onclick="windowControl('minimize')">
+            <svg class="dot-icon" width="6" height="6" viewBox="0 0 6 6" fill="none" stroke="#5c4300" stroke-width="1.2" stroke-linecap="round">
+              <line x1="0.8" y1="3" x2="5.2" y2="3"></line>
+            </svg>
+          </div>
+          <div class="dot dot-green" title="Zoom" onclick="windowControl('maximize')">
+            <svg class="dot-icon" width="6" height="6" viewBox="0 0 6 6" fill="#004d1a" stroke="none">
+              <polygon points="0,0 2.5,0 0,2.5" />
+              <polygon points="6,6 3.5,6 6,3.5" />
+            </svg>
+          </div>
+        </div>
+        <div id="win-controls" class="window-controls-windows">
+          <button class="win-btn" title="Minimize" onclick="windowControl('minimize')">
+            <svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+          </button>
+          <button class="win-btn" title="Maximize" onclick="windowControl('maximize')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+          </button>
+          <button class="win-btn win-btn-close" title="Close" onclick="windowControl('close')">
+            <svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+          </button>
         </div>
         <div class="window-nav-icons">
-          <button class="nav-icon-btn" title="Toggle Sidebar">
+          <button class="nav-icon-btn" title="Toggle Sidebar" onclick="toggleSidebar()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
               <line x1="9" y1="3" x2="9" y2="21"/>
@@ -874,7 +1799,7 @@
       </div>
 
       <!-- New Conversation Button -->
-      <button class="btn-new-chat" onclick="startNewSession()">
+      <button class="btn-new-chat" title="New Conversation (Cmd+N)" onclick="startNewSession()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
@@ -884,7 +1809,15 @@
 
       <!-- Sidebar Navigation Rows -->
       <div class="sidebar-nav-list">
-        <div class="nav-item">
+        <div class="nav-item" title="Quick Start Guide" onclick="openQuickStartModal()">
+          <div class="nav-item-left">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span>Quick Start</span>
+          </div>
+        </div>
+        <div class="nav-item" title="Conversation History (Cmd+Y)" onclick="toggleHistoryModal()">
           <div class="nav-item-left">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
@@ -894,13 +1827,13 @@
           </div>
           <span class="shortcut-badge">Cmd Y</span>
         </div>
-        <div class="nav-item">
+        <div class="nav-item" title="Scheduled Tasks" onclick="openScheduledTasksModal()">
           <div class="nav-item-left">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
+              <circle cx="12" cy="13" r="8"/>
+              <path d="M12 9v4l2 2"/>
+              <path d="M5 3L2 6"/>
+              <path d="M22 6l-3-3"/>
             </svg>
             <span>Scheduled Tasks</span>
           </div>
@@ -912,13 +1845,18 @@
         <div class="section-header">
           <span>Projects</span>
           <div class="section-header-actions">
-            <button class="nav-icon-btn" title="Scan Repositories" onclick="scanRepositories()">
+            <button class="nav-icon-btn" title="Filter Projects" onclick="toggleProjectsFilter()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+            </button>
+            <button id="btn-scan-repos" class="nav-icon-btn" title="Scan Repositories" onclick="scanRepositories()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"/>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
             </button>
-            <button class="nav-icon-btn" title="Add Project" onclick="chooseCustomDirectory()">
+            <button class="nav-icon-btn" title="Add Project Folder" onclick="chooseCustomDirectory()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/>
                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -927,81 +1865,420 @@
           </div>
         </div>
 
-        <div id="sidebar-projects-list" class="projects-list">
-          <div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">Scanning repositories...</div>
+        <div id="project-filter-box" class="project-filter-box">
+          <input id="sidebar-project-filter" class="project-filter-input" placeholder="Filter projects and chats..." oninput="filterProjectTree(this.value)">
+        </div>
+
+        <div id="sidebar-project-tree" class="project-tree">
+          <div id="sidebar-scan-loading" style="font-size:12px; color:var(--text-muted); padding:6px 10px;">Loading projects...</div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Left Status & Auth Area (User Requested) -->
-    <div class="sidebar-bottom">
-      <div id="auth-status-card" class="status-card">
-        <div class="status-card-header">
-          <div class="status-title-group">
-            <div id="status-indicator-dot" class="status-dot disconnected"></div>
-            <span id="status-indicator-label" class="status-label">Shuffle OAuth2 Required</span>
-          </div>
-        </div>
-
-        <div id="status-subtext" class="status-subtext">
-          Requires Shuffle OAuth2 login to run tasks. Or provide OrgId, Auth, or Environment to bypass.
-        </div>
-
-        <div id="status-details-box" class="status-details">
-          <div>Org: <span id="lbl-org" style="color:var(--text-primary)">-</span></div>
-          <div>Env: <span id="lbl-env" style="color:var(--text-primary)">-</span></div>
-        </div>
-
-        <button id="btn-auth-action" class="status-btn btn-login" onclick="handleAuthAction()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
+    <!-- Bottom Left Status & Settings Area -->
+    <div class="sidebar-bottom" style="padding:10px 12px; border-top:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:4px; background:var(--bg-sidebar);">
+      <button id="btn-sidebar-remembered" class="nav-item" style="padding:6px 10px; width:100%; border:none; background:transparent; border-radius:6px; cursor:pointer;" onclick="openRememberedApprovalsModal()" title="View and revoke remembered command approvals">
+        <div class="nav-item-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
-          <span id="lbl-btn-auth">Log in with Shuffle</span>
-        </button>
-      </div>
+          <span>Approvals</span>
+        </div>
+        <span id="remembered-rules-count" class="shortcut-badge" style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3);">0</span>
+      </button>
 
-      <button class="sidebar-settings-btn" onclick="openLoginModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-        <span>Authentication &amp; Credentials</span>
+      <button id="btn-sidebar-settings" class="nav-item" style="padding:6px 10px; width:100%; border:none; background:transparent; border-radius:6px; cursor:pointer;" onclick="openSettingsModal()" title="Settings">
+        <div class="nav-item-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </div>
+        <div id="status-indicator-dot" class="status-dot connected" style="width:7px; height:7px;"></div>
       </button>
     </div>
   </aside>
 
+  <!-- Settings Modal for AI Provider & Security -->
+  <div id="settings-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'settings-modal')">
+    <div class="modal-content">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">AI Provider &amp; Security Settings</div>
+          <div class="modal-desc">Configure your LLM endpoint, credentials, and execution policy.</div>
+        </div>
+        <button class="nav-icon-btn" title="Close" onclick="closeSettingsModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-ai-url">AI_API_URL</label>
+        <input id="input-ai-url" class="form-input" type="text" placeholder="https://api.openai.com/v1 or http://localhost:11434/v1">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-ai-key">AI_API_KEY</label>
+        <input id="input-ai-key" class="form-input" type="password" placeholder="API key or local token">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="select-ai-model">AI Model</label>
+        <select id="select-ai-model" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
+          <option value="gemini-3.8-flash-high">Gemini 3.8 Flash High (Default)</option>
+          <option value="gemini-3.8-flash">Gemini 3.8 Flash (Fast)</option>
+          <option value="gemini-3.8-pro">Gemini 3.8 Pro (Reasoning)</option>
+          <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic)</option>
+          <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
+          <option value="gpt-4o">GPT-4o (OpenAI)</option>
+          <option value="ollama">Ollama (Local LLM)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="select-permission-policy">Execution Security Mode</label>
+        <select id="select-permission-policy" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
+          <option value="ask_all">Ask for permission on all commands (Recommended)</option>
+          <option value="safe_auto">Auto-approve safe commands</option>
+          <option value="full_auto">Full auto (No approval prompts)</option>
+        </select>
+      </div>
+
+      <div style="background:var(--bg-code); border:1px solid var(--border-subtle); border-radius:8px; padding:10px 12px; font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:600; color:var(--text-secondary);">Active Environment:</div>
+        <div>AI_API_URL: <span id="env-display-url" style="color:var(--text-primary)">not set</span></div>
+        <div>AI_API_KEY: <span id="env-display-key" style="color:var(--text-primary)">not set</span></div>
+        <div>AI_MODEL: <span id="env-display-model" style="color:var(--text-primary)">gemini-3.8-flash-high</span></div>
+        <div>SECURITY: <span id="env-display-policy" style="color:var(--text-primary)">ask_all</span></div>
+        <div>STANDALONE: <span id="env-display-standalone" style="color:#f85f38">true</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeSettingsModal()">Cancel</button>
+        <button class="btn-modal-submit" onclick="saveSettings()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Directory Modal -->
+  <div id="custom-dir-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'custom-dir-modal')">
+    <div class="modal-content">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Open Project Directory</div>
+          <div class="modal-desc">Enter a directory path or browse locally to set the active agent workspace.</div>
+        </div>
+        <button class="nav-icon-btn" title="Close" onclick="closeCustomDirModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="input-custom-dir-path">Directory Path</label>
+        <div style="display:flex; gap:8px;">
+          <input id="input-custom-dir-path" class="form-input" style="flex:1;" type="text" placeholder="/Users/username/git/my-repo" onkeydown="if(event.key==='Enter') submitCustomDir()">
+          <button id="btn-browse-folder" class="btn-modal-cancel" style="white-space:nowrap; padding:0 12px; display:inline-flex; align-items:center; gap:6px;" onclick="browseNativeDirectory()" title="Browse Local Filesystem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Browse</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeCustomDirModal()">Cancel</button>
+        <button class="btn-modal-submit" onclick="submitCustomDir()">Open Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Start Modal -->
+  <div id="quick-start-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'quick-start-modal')">
+    <div class="modal-content" style="max-width:540px;">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Quick Start Guide</div>
+          <div class="modal-desc">Follow these quick steps to get up and running with Shuffle Agent.</div>
+        </div>
+        <button class="nav-icon-btn" title="Close" onclick="closeQuickStartModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="quick-start-steps">
+        <!-- Step 1 -->
+        <div class="step-card">
+          <div class="step-badge">1</div>
+          <div class="step-body">
+            <div class="step-title-row">
+              <span class="step-title">Select Project Workspace</span>
+              <span id="quick-step-dir-status" class="step-status">Active</span>
+            </div>
+            <div class="step-text">Choose the folder or repository on your computer that the agent will read and execute commands in.</div>
+            <div style="margin-top:8px;">
+              <button class="btn-step-action" onclick="closeQuickStartModal(); openCustomDirModal();">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Select Workspace Directory</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+          <div class="step-badge">2</div>
+          <div class="step-body">
+            <div class="step-title-row">
+              <span class="step-title">Configure AI Provider</span>
+              <span id="quick-step-ai-status" class="step-status">Configured</span>
+            </div>
+            <div class="step-text">Connect to OpenAI, a local Ollama instance (e.g. http://localhost:11434/v1), or log in via Shuffle Cloud.</div>
+            <div style="margin-top:8px;">
+              <button class="btn-step-action" onclick="closeQuickStartModal(); openSettingsModal();">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>Configure AI Settings</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card">
+          <div class="step-badge">3</div>
+          <div class="step-body">
+            <div class="step-title-row">
+              <span class="step-title">Run a Starter Prompt</span>
+            </div>
+            <div class="step-text">Click any sample prompt below to insert it into the prompt box and begin:</div>
+            <div class="step-prompts-grid">
+              <div class="prompt-chip" onclick="applyQuickPromptFromModal('Summarize this project architecture, main entrypoints, and key dependencies.')">
+                Project Overview
+              </div>
+              <div class="prompt-chip" onclick="applyQuickPromptFromModal('Scan this repository for hardcoded credentials, API keys, or security vulnerabilities.')">
+                Security Audit
+              </div>
+              <div class="prompt-chip" onclick="applyQuickPromptFromModal('Explain how to build, run, and test this project locally.')">
+                Build &amp; Test
+              </div>
+              <div class="prompt-chip" onclick="applyQuickPromptFromModal('Find all open TODO comments, fixmes, and technical debt in the code.')">
+                Technical Debt
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeQuickStartModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Context Modal -->
+  <div id="file-context-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'file-context-modal')">
+    <div class="modal-content">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Add File Context</div>
+          <div class="modal-desc">Reference a file in your project or enter a path to mention.</div>
+        </div>
+        <button class="nav-icon-btn" title="Close" onclick="closeFileContextModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="input-file-context-path">File Path or Name</label>
+        <input id="input-file-context-path" class="form-input" type="text" placeholder="e.g. main.go, pkg/bridge.go, README.md">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeFileContextModal()">Cancel</button>
+        <button class="btn-modal-submit" onclick="submitFileContext()">Add Context</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversation History Modal -->
+  <div id="history-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'history-modal')">
+    <div class="modal-content history-modal-content">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Conversation History</div>
+          <div id="history-modal-desc" class="modal-desc">Past prompt executions and outputs.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn-history-action" style="color:var(--red);" onclick="clearAllHistory()">Clear All</button>
+          <button class="nav-icon-btn" title="Close" onclick="closeHistoryModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <input id="history-search-input" class="dropdown-search" type="text" placeholder="Filter history..." oninput="filterHistory(this.value)">
+      <div id="history-modal-list" class="history-list"></div>
+  <!-- Remembered Approvals Modal -->
+  <div id="remembered-approvals-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'remembered-approvals-modal')">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Remembered Approvals</div>
+          <div class="modal-desc">Commands approved to execute automatically without prompting.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn-history-action" style="color:var(--red);" onclick="clearAllApprovalRules()">Revoke All</button>
+          <button class="nav-icon-btn" title="Close" onclick="closeRememberedApprovalsModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <input id="input-new-rule-cmd" class="form-input" style="flex:1;" type="text" placeholder="Command prefix (e.g. git status, go test, npm run)">
+        <select id="select-new-rule-scope" class="form-input" style="width:140px; cursor:pointer;">
+          <option value="global">Global</option>
+          <option value="project">Active Project</option>
+          <option value="conversation">Conversation</option>
+        </select>
+        <button class="btn-modal-submit" style="white-space:nowrap; padding:0 14px;" onclick="addManualApprovalRule()">Add Rule</button>
+      </div>
+
+      <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+        <table class="rules-table">
+          <thead>
+            <tr>
+              <th>Command Prefix</th>
+              <th>Scope</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="remembered-rules-tbody">
+            <tr>
+              <td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No remembered approval rules yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeRememberedApprovalsModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scheduled Tasks Modal -->
+  <div id="scheduled-tasks-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'scheduled-tasks-modal')">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="modal-title">Scheduled Tasks</div>
+          <div class="modal-desc">Recurring cron jobs, polling triggers, and background agent schedules.</div>
+        </div>
+        <button class="nav-icon-btn" title="Close" onclick="closeScheduledTasksModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="scheduled-tasks-list" style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; padding:4px 0;">
+        <div style="background:var(--bg-code); border:1px solid var(--border-subtle); border-radius:8px; padding:12px; font-size:12.5px; color:var(--text-muted); text-align:center;">
+          No active background schedules. Use prompt schedules to run recurring audits.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeScheduledTasksModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= Main Workspace Area ================= -->
   <main class="main-workspace">
+    <!-- Topbar matching screenshot -->
+    <div class="topbar-nav-row" style="display:flex; align-items:center; justify-content:space-between; padding:8px 20px; border-bottom:1px solid var(--border-subtle); background:var(--bg-main); width:100%;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="btn-uncollapse-sidebar" class="uncollapse-sidebar-btn" title="Expand Sidebar" onclick="toggleSidebar()" style="margin:0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </button>
+        <div id="topbar-breadcrumb" style="font-size:13px; font-weight:500; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+          <span id="topbar-project-name" style="color:var(--text-primary); font-weight:600;">Orborus Agent Runner</span>
+          <span style="color:var(--text-muted);">/</span>
+          <span id="topbar-conv-title" style="color:var(--text-secondary);">UI Bug and Feature Request</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-approval-submit" style="padding:5px 12px; font-size:12px; background:#0284c7;" onclick="restartAgent()" title="Restart Agent / Session">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          <span>Restart to Update</span>
+        </button>
+      </div>
+    </div>
+
     <div id="main-container" class="center-container">
 
       <!-- Project Picker Dropdown (Above Input Box) -->
       <div class="project-selector-row">
-        <button id="project-dropdown-btn" class="project-btn" onclick="toggleProjectDropdown()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span id="active-project-name">Orborus Agent Runner</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-
-        <div id="project-dropdown-menu" class="dropdown-menu">
-          <div class="dropdown-header">
-            <span>Local Repositories</span>
-            <span id="repo-count" style="font-size:10px; color:var(--text-muted);">0 found</span>
-          </div>
-          <input id="project-search" class="dropdown-search" type="text" placeholder="Filter projects..." oninput="filterProjects(this.value)">
-          <div id="project-items" class="project-items-list">
-            <div style="font-size:12px; color:var(--text-muted); padding:8px;">Scanning local filesystem...</div>
-          </div>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-custom-btn" onclick="chooseCustomDirectory()">
-            + Select custom directory...
+        <div class="project-selector-left">
+          <button id="project-dropdown-btn" class="project-btn" onclick="toggleProjectDropdown(event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span id="active-project-name">Orborus Agent Runner</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
           </button>
+
+          <div id="project-dropdown-menu" class="dropdown-menu">
+            <div class="dropdown-header">
+              <span>Local Repositories</span>
+              <span id="repo-count" style="font-size:10px; color:var(--text-muted);">0 found</span>
+            </div>
+            <input id="project-search" class="dropdown-search" type="text" placeholder="Filter projects..." oninput="filterProjects(this.value)">
+            <div id="project-items" class="project-items-list">
+              <div style="font-size:12px; color:var(--text-muted); padding:8px;">Scanning local filesystem...</div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-custom-btn" onclick="chooseCustomDirectory()">
+              + Select custom directory...
+            </button>
+          </div>
         </div>
+
+        <button class="quick-start-btn" title="Quick Start Guide &amp; Sample Prompts" onclick="openQuickStartModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>Quick Start</span>
+        </button>
       </div>
 
       <!-- Centered Input Card Matching Screenshot -->
@@ -1010,31 +2287,15 @@
         
         <div class="card-toolbar">
           <div class="toolbar-left">
-            <button class="icon-btn" title="Add File / Context" onclick="chooseCustomDirectory()">
+            <button class="icon-btn" title="Add File / Context" onclick="addFileContext()">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/>
                 <line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
             </button>
-            
-            <div class="model-pill" title="Model Selector">
-              <span>Gemini 3.8 Flash High</span>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </div>
           </div>
 
           <div class="toolbar-right">
-            <button class="icon-btn" title="Dictate">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            </button>
-
             <button id="btn-send" class="btn-send" title="Run Execution (Enter)" onclick="submitPrompt()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -1047,108 +2308,128 @@
 
       <!-- Card Footer Row -->
       <div class="card-footer-row">
-        <button class="footer-dropdown-btn" title="Environment" onclick="openLoginModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="2" y1="20" x2="22" y2="20"/>
-          </svg>
-          <span id="env-label">Local</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
+        <div class="footer-dropdown-wrapper">
+          <button id="btn-env-dropdown" class="footer-dropdown-btn" title="Environment" onclick="toggleEnvDropdown(event)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="2" y1="20" x2="22" y2="20"/>
+            </svg>
+            <span id="env-label">Local</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div id="env-dropdown-menu" class="footer-popover-menu"></div>
+        </div>
 
-        <button class="footer-dropdown-btn" title="Agent Role">
-          <span>Main Agent</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
+        <div class="footer-dropdown-wrapper">
+          <button id="btn-role-dropdown" class="footer-dropdown-btn" title="Agent Role" onclick="toggleRoleDropdown(event)">
+            <span id="role-label">Main Agent</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div id="role-dropdown-menu" class="footer-popover-menu"></div>
+        </div>
       </div>
 
-      <!-- Execution Results Stream -->
+      <!-- Quick Start Prompts (visible before executions) -->
+      <div id="quick-start-chips" class="quick-start-container">
+        <div class="quick-start-header">
+          <span>Quick Start Prompts</span>
+        </div>
+        <div class="quick-start-grid">
+          <button class="quick-start-card" onclick="applyQuickPrompt('Summarize this project architecture, main entrypoints, and key dependencies.')">
+            <span class="quick-start-title">Project Overview</span>
+            <span class="quick-start-desc">Summarize architecture and dependencies</span>
+          </button>
+          <button class="quick-start-card" onclick="applyQuickPrompt('Scan this repository for hardcoded credentials, API keys, or security vulnerabilities.')">
+            <span class="quick-start-title">Security Audit</span>
+            <span class="quick-start-desc">Scan for secrets and security issues</span>
+          </button>
+          <button class="quick-start-card" onclick="applyQuickPrompt('Explain how to build, run, and test this project locally.')">
+            <span class="quick-start-title">Build &amp; Run</span>
+            <span class="quick-start-desc">Explain how to test and run locally</span>
+          </button>
+          <button class="quick-start-card" onclick="applyQuickPrompt('Find all open TODO comments, fixmes, and technical debt in the code.')">
+            <span class="quick-start-title">Technical Debt</span>
+            <span class="quick-start-desc">Find open TODOs and fixmes</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Execution Results & Agent Activity Breakdown Stream -->
       <div id="execution-stream" class="execution-stream">
+        <!-- Active User Prompt Card (matching screenshot top) -->
+        <div id="active-user-prompt-card" class="user-prompt-card" style="display:none;"></div>
+
+        <!-- Sequential Activity Steps Breakdown -->
+        <div id="activity-steps-container" class="activity-steps-container"></div>
+
+        <!-- Rich Sandbox Approval Card (matching screenshot) -->
         <div id="approval-card" class="approval-card">
-          <div class="approval-header">
-            <span>Action Requires Permission</span>
-            <span style="font-size:11px; color:var(--text-muted);">Requested in active project</span>
+          <div class="approval-card-top">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span id="approval-title-text">Allow viewing commit?</span>
           </div>
-          <div id="approval-cmd" class="approval-cmd"></div>
-          <div class="approval-actions">
-            <button class="btn-approve" onclick="respondApproval(true)">Approve &amp; Run</button>
-            <button class="btn-deny" onclick="respondApproval(false)">Deny</button>
+
+          <div class="approval-warning-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span id="approval-warning-text">Confirm the command is safe to run outside of the sandbox with full network and disk access.</span>
+          </div>
+
+          <div id="approval-cmd" class="approval-code-box"></div>
+
+          <div class="approval-options-list">
+            <div id="opt-1" class="approval-option-item selected" onclick="selectApprovalOption(1)">
+              <span class="approval-option-num">1</span>
+              <span>Yes, allow this time</span>
+            </div>
+            <div id="opt-2" class="approval-option-item" onclick="selectApprovalOption(2)">
+              <span class="approval-option-num">2</span>
+              <span id="lbl-opt-2">Yes, and always allow in this conversation</span>
+            </div>
+            <div id="opt-3" class="approval-option-item" onclick="selectApprovalOption(3)">
+              <span class="approval-option-num">3</span>
+              <span id="lbl-opt-3">Yes, and always allow in this project</span>
+            </div>
+            <div id="opt-4" class="approval-option-item" onclick="selectApprovalOption(4)">
+              <span class="approval-option-num">4</span>
+              <span id="lbl-opt-4">Yes, and always allow</span>
+            </div>
+            <div id="opt-5" class="approval-option-item" onclick="selectApprovalOption(5)">
+              <span class="approval-option-num">5</span>
+              <span>No (tell the agent what to do instead)</span>
+            </div>
+          </div>
+
+          <div class="approval-footer-actions">
+            <button class="btn-approval-skip" onclick="skipApproval()">Skip</button>
+            <button class="btn-approval-submit" onclick="submitApproval()">
+              <span>Submit</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 10 4 15 9 20"/>
+                <path d="M20 4v7a4 4 0 0 1-4 4H4"/>
+              </svg>
+            </button>
           </div>
         </div>
+
+        <div id="execution-cards-container" class="execution-cards-container" style="display:flex; flex-direction:column; gap:16px; margin-top:14px;"></div>
       </div>
 
     </div>
   </main>
 
-  <!-- ================= Login / Credentials Modal ================= -->
-  <div id="login-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 480px;">
-      <div class="modal-header">
-        <h3 class="modal-title">Shuffle Authentication</h3>
-        <p class="modal-desc">Log in with your Shuffle account via OAuth2, or provide OrgId, Auth, or Environment to bypass.</p>
-      </div>
-
-      <!-- OAuth2 Section -->
-      <div style="background:var(--bg-code); border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:12px; font-weight:600; color:#38bdf8;">Shuffle OAuth2 Login</span>
-          <span style="font-size:11px; color:var(--text-muted);">Recommended</span>
-        </div>
-        <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
-          Authenticate directly with your Shuffle account in browser to authorize this local agent runner.
-        </p>
-        <button class="status-btn btn-login" style="padding:8px 14px;" onclick="loginWithOAuth()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
-          </svg>
-          <span>Open Shuffle OAuth2 Login</span>
-        </button>
-
-        <div style="display:flex; gap:6px; margin-top:2px;">
-          <input id="input-oauth-token" class="form-input" style="flex:1; font-size:11px;" type="text" placeholder="Paste OAuth2 Token / Session key (optional)">
-          <button class="btn-modal-cancel" style="padding:6px 10px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div style="display:flex; align-items:center; gap:8px; margin:2px 0;">
-        <div style="flex:1; height:1px; background:var(--border);"></div>
-        <span style="font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:0.5px;">OR BYPASS WITH CREDENTIALS</span>
-        <div style="flex:1; height:1px; background:var(--border);"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Shuffle Base URL</label>
-        <input id="input-base-url" class="form-input" type="text" placeholder="https://shuffler.io">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Organization ID (OrgId)</label>
-        <input id="input-org-id" class="form-input" type="text" placeholder="e.g. 1a2b3c4d-5e6f-7g8h">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Auth API Key</label>
-        <input id="input-auth-key" class="form-input" type="password" placeholder="API key or execution token">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Environment Name</label>
-        <input id="input-env-name" class="form-input" type="text" placeholder="e.g. onprem, cloud, local">
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn-modal-cancel" onclick="closeLoginModal()">Close</button>
-        <button class="btn-modal-submit" onclick="submitAuth()">Save &amp; Bypass</button>
-      </div>
-    </div>
-  </div>
+  <!-- Global App Toast Notification -->
+  <div id="app-toast" class="app-toast"></div>
 
 <script>
 let currentApprovalId = null;
@@ -1156,6 +2437,27 @@ let activeProjectPath = ".";
 let allProjects = [];
 let isLoggedIn = false;
 let isBypassed = false;
+let currentAiUrl = "";
+let currentAiKey = "";
+let currentPermissionPolicy = "ask_all";
+
+function windowControl(action) {
+  if (window.windowAction) {
+    window.windowAction(action);
+  } else {
+    console.log("[WINDOW] Action:", action);
+  }
+}
+
+// Global Cmd+A / Ctrl+A handler for textareas, inputs, and text content
+document.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) {
+    const active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.select();
+    }
+  }
+});
 
 async function init() {
   if (!window.getInitialState) return;
@@ -1163,6 +2465,23 @@ async function init() {
   try {
     const raw = await window.getInitialState();
     const state = JSON.parse(raw);
+
+    const isMac = !state.os || state.os === "darwin";
+    const macControls = document.getElementById("mac-controls");
+    const winControls = document.getElementById("win-controls");
+    if (macControls && winControls) {
+      if (isMac) {
+        macControls.style.display = "flex";
+        winControls.style.display = "none";
+      } else {
+        macControls.style.display = "none";
+        winControls.style.display = "flex";
+      }
+    }
+
+    if (state.ai_api_url) currentAiUrl = state.ai_api_url;
+    if (state.ai_api_key) currentAiKey = state.ai_api_key;
+    if (state.permission_policy) currentPermissionPolicy = state.permission_policy;
 
     updateAuthState(state);
 
@@ -1184,6 +2503,9 @@ async function init() {
 function updateAuthState(state) {
   isLoggedIn = !!state.is_logged_in;
   isBypassed = !!state.is_bypassed;
+  if (state.ai_api_url !== undefined) currentAiUrl = state.ai_api_url;
+  if (state.ai_api_key !== undefined) currentAiKey = state.ai_api_key;
+  if (state.permission_policy !== undefined) currentPermissionPolicy = state.permission_policy;
 
   const dot = document.getElementById("status-indicator-dot");
   const label = document.getElementById("status-indicator-label");
@@ -1193,164 +2515,251 @@ function updateAuthState(state) {
   const btnLabel = document.getElementById("lbl-btn-auth");
   const envLabel = document.getElementById("env-label");
 
-  document.getElementById("input-base-url").value = state.base_url || "";
-  document.getElementById("input-org-id").value = state.org_id || "";
-  document.getElementById("input-auth-key").value = state.auth || "";
-  document.getElementById("input-env-name").value = state.environment || "";
+  const boxAiUrl = document.getElementById("box-ai-url");
+  const lblAiUrl = document.getElementById("lbl-ai-url");
+  const boxAiKey = document.getElementById("box-ai-key");
+  const lblAiKey = document.getElementById("lbl-ai-key");
 
-  if (isLoggedIn) {
+  if (currentAiKey && currentAiUrl) {
+    dot.className = "status-dot connected";
+    label.innerText = "Custom AI Configured";
+    subtext.innerText = "Custom LLM endpoint active.";
+    details.classList.add("visible");
+    if (boxAiUrl && lblAiUrl) {
+      boxAiUrl.style.display = "block";
+      lblAiUrl.innerText = currentAiUrl;
+    }
+    if (boxAiKey && lblAiKey) {
+      boxAiKey.style.display = "block";
+      lblAiKey.innerText = currentAiKey.length > 8 ? currentAiKey.substring(0, 4) + "..." + currentAiKey.substring(currentAiKey.length - 4) : "configured";
+    }
+    document.getElementById("lbl-org").innerText = state.org_id || "standalone";
+    document.getElementById("lbl-env").innerText = state.environment || "standalone";
+    btnAuth.className = "status-btn btn-login";
+    btnLabel.innerText = "Log in with Shuffle (Optional)";
+    btnAuth.onclick = () => loginWithOAuth();
+    envLabel.innerText = "Custom AI";
+  } else if (isLoggedIn) {
     dot.className = "status-dot connected";
     if (isBypassed) {
-      label.innerText = "Authenticated (Bypassed)";
-      subtext.innerText = "Bypassed via OrgId, Auth, or Environment.";
+      label.innerText = "Ready (Standalone)";
+      subtext.innerText = "Local execution active. Configure AI Provider in Settings.";
     } else {
       label.innerText = "Connected via OAuth2";
-      subtext.innerText = "Ready to run executions.";
+      subtext.innerText = "Authenticated with Shuffle.";
     }
     details.classList.add("visible");
+    if (boxAiUrl) boxAiUrl.style.display = "none";
+    if (boxAiKey) boxAiKey.style.display = "none";
     document.getElementById("lbl-org").innerText = state.org_id || "configured";
     document.getElementById("lbl-env").innerText = state.environment || "configured";
     btnAuth.className = "status-btn btn-manage";
-    btnLabel.innerText = "Manage";
+    btnLabel.innerText = isBypassed ? "Log in with Shuffle (Optional)" : "Connected to Shuffle";
+    btnAuth.onclick = () => loginWithOAuth();
     envLabel.innerText = state.environment || "Connected";
   } else {
-    dot.className = "status-dot disconnected";
-    label.innerText = "Shuffle OAuth2 Required";
-    subtext.innerText = "Requires Shuffle OAuth2 login to run tasks. Or provide OrgId, Auth, or Environment to bypass.";
+    dot.className = "status-dot standalone";
+    label.innerText = "Standalone Mode";
+    subtext.innerText = "Shuffle login is optional. Configure AI_API_KEY & AI_API_URL in Settings to test locally.";
     details.classList.remove("visible");
+    if (boxAiUrl) boxAiUrl.style.display = "none";
+    if (boxAiKey) boxAiKey.style.display = "none";
     btnAuth.className = "status-btn btn-login";
-    btnLabel.innerText = "Log in with Shuffle";
-    envLabel.innerText = state.is_standalone ? "Local (Offline)" : "Disconnected";
+    btnLabel.innerText = "Log in with Shuffle (Optional)";
+    btnAuth.onclick = () => loginWithOAuth();
+    envLabel.innerText = state.is_standalone ? "Standalone (Local)" : "Disconnected";
   }
+
+  updateEnvDisplayInModal();
 }
 
-function handleAuthAction() {
-  openLoginModal();
+function openSettingsModal() {
+  const urlInput = document.getElementById("input-ai-url");
+  const keyInput = document.getElementById("input-ai-key");
+  const permSelect = document.getElementById("select-permission-policy");
+  const modelSelect = document.getElementById("select-ai-model");
+  if (urlInput) urlInput.value = currentAiUrl || "";
+  if (keyInput) keyInput.value = currentAiKey || "";
+  if (permSelect) permSelect.value = currentPermissionPolicy || "ask_all";
+  if (modelSelect) modelSelect.value = activeAiModel || "gemini-3.8-flash-high";
+  updateEnvDisplayInModal();
+  const modal = document.getElementById("settings-modal");
+  if (modal) modal.classList.add("visible");
 }
+
+function closeSettingsModal() {
+  const modal = document.getElementById("settings-modal");
+  if (modal) modal.classList.remove("visible");
+}
+
+function updateEnvDisplayInModal() {
+  const urlEl = document.getElementById("env-display-url");
+  const keyEl = document.getElementById("env-display-key");
+  const modelEl = document.getElementById("env-display-model");
+  const permSelect = document.getElementById("select-permission-policy");
+  const modelSelect = document.getElementById("select-ai-model");
+  const policyEl = document.getElementById("env-display-policy");
+  const policy = (permSelect && permSelect.value) ? permSelect.value : (currentPermissionPolicy || "ask_all");
+  const model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash-high");
+
+  if (urlEl) urlEl.innerText = currentAiUrl || "not set";
+  if (keyEl) keyEl.innerText = currentAiKey ? (currentAiKey.length > 8 ? currentAiKey.substring(0, 4) + "..." + currentAiKey.substring(currentAiKey.length - 4) : "configured") : "not set";
+  if (modelEl) modelEl.innerText = model;
+  if (policyEl) policyEl.innerText = policy;
+}
+
+async function saveSettings() {
+  const urlInput = document.getElementById("input-ai-url");
+  const keyInput = document.getElementById("input-ai-key");
+  const permSelect = document.getElementById("select-permission-policy");
+  const modelSelect = document.getElementById("select-ai-model");
+  const url = urlInput ? urlInput.value.trim() : "";
+  const key = keyInput ? keyInput.value.trim() : "";
+  const policy = permSelect ? permSelect.value : (currentPermissionPolicy || "ask_all");
+  const model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash-high");
+
+  currentAiUrl = url;
+  currentAiKey = key;
+  currentPermissionPolicy = policy;
+  activeAiModel = model;
+  localStorage.setItem("orborus_ai_model", model);
+  updateEnvDisplayInModal();
+
+  if (window.setPermissionPolicy) {
+    try {
+      await window.setPermissionPolicy(policy);
+    } catch (err) {
+      console.error("Failed to save permission policy:", err);
+    }
+  }
+
+  if (window.setAiConfig) {
+    try {
+      const resp = await window.setAiConfig(url, key, policy, model);
+      const res = JSON.parse(resp);
+      updateAuthState(res);
+    } catch (err) {
+      console.error("Failed to save AI config:", err);
+    }
+  }
+
+  showToast("Configuration saved successfully");
+  closeSettingsModal();
+}
+
+let isOAuthPending = false;
+window.onAuthUpdated = function(state) {
+  console.log("[OAUTH] Dynamic auth updated:", state);
+  isOAuthPending = false;
+  updateAuthState(state);
+};
 
 async function loginWithOAuth() {
-  const baseUrl = document.getElementById("input-base-url").value.trim() || "https://shuffler.io";
-  if (window.startOAuthLogin) {
-    await window.startOAuthLogin(baseUrl);
-  } else {
-    window.open(baseUrl + "/login", "_blank");
-  }
-}
+  if (isOAuthPending) return;
+  isOAuthPending = true;
 
-async function submitOAuthToken() {
-  const token = document.getElementById("input-oauth-token").value.trim();
-  const org = document.getElementById("input-org-id").value.trim();
-  const env = document.getElementById("input-env-name").value.trim();
-  if (!token) {
-    alert("Please enter a token or session key.");
-    return;
-  }
-
-  if (window.setOAuthToken) {
-    const raw = await window.setOAuthToken(token, org, env);
-    const res = JSON.parse(raw);
-    closeLoginModal();
-    updateAuthState({
-      is_logged_in: true,
-      is_bypassed: false,
-      org_id: res.org_id,
-      environment: res.environment
-    });
-  }
-}
-
-function openLoginModal() {
-  document.getElementById("login-modal").classList.add("visible");
-}
-
-function closeLoginModal() {
-  document.getElementById("login-modal").classList.remove("visible");
-}
-
-async function submitAuth() {
-  const baseUrl = document.getElementById("input-base-url").value.trim();
-  const orgId = document.getElementById("input-org-id").value.trim();
-  const auth = document.getElementById("input-auth-key").value.trim();
-  const env = document.getElementById("input-env-name").value.trim();
+  const btnLabel = document.getElementById("lbl-btn-auth");
+  if (btnLabel) btnLabel.innerText = "Opening Browser...";
 
   try {
-    const raw = await window.updateAuth({
-      base_url: baseUrl,
-      org_id: orgId,
-      auth: auth,
-      environment: env
-    });
-    const res = JSON.parse(raw);
-    closeLoginModal();
-    updateAuthState({
-      is_logged_in: res.is_logged_in,
-      is_bypassed: res.is_bypassed,
-      base_url: res.base_url,
-      org_id: res.org_id,
-      auth: auth,
-      environment: res.environment
-    });
+    if (window.startOAuthLogin) {
+      await window.startOAuthLogin("https://shuffle.security");
+      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    } else {
+      window.open("https://shuffle.security/oauth2/authorize", "_blank");
+      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    }
   } catch (err) {
-    alert("Failed to update credentials: " + err);
+    console.error("Failed to start OAuth login:", err);
+    if (btnLabel) btnLabel.innerText = "Log in with Shuffle";
+    isOAuthPending = false;
   }
 }
 
 async function scanRepositories() {
-  if (!window.listProjects) return;
+  const btn = document.getElementById("btn-scan-repos");
+  if (btn) btn.classList.add("spinning");
 
   try {
-    const raw = await window.listProjects();
-    const projects = JSON.parse(raw);
-    renderProjects(projects);
+    if (window.listProjects) {
+      const raw = await window.listProjects();
+      const projects = JSON.parse(raw);
+      renderProjects(projects);
+    } else {
+      renderProjects([]);
+    }
   } catch (err) {
     console.error("Scan error:", err);
+    renderProjects([]);
+  } finally {
+    if (btn) btn.classList.remove("spinning");
+    const scanLoading = document.getElementById("sidebar-scan-loading");
+    if (scanLoading) scanLoading.remove();
   }
 }
 
 function renderProjects(projects) {
-  if (!projects || projects.length === 0) return;
-  allProjects = projects;
+  const scanLoading = document.getElementById("sidebar-scan-loading");
+  if (scanLoading) scanLoading.remove();
 
-  document.getElementById("repo-count").innerText = projects.length + " found";
+  const repoCount = document.getElementById("repo-count");
+  if (repoCount) {
+    repoCount.innerText = (projects && projects.length ? projects.length : 0) + " found";
+  }
 
   // Sidebar list
   const sidebarContainer = document.getElementById("sidebar-projects-list");
-  sidebarContainer.innerHTML = "";
+  if (sidebarContainer) sidebarContainer.innerHTML = "";
 
   // Dropdown list
   const dropdownContainer = document.getElementById("project-items");
-  dropdownContainer.innerHTML = "";
+  if (dropdownContainer) dropdownContainer.innerHTML = "";
+
+  if (!projects || projects.length === 0) {
+    if (sidebarContainer) {
+      sidebarContainer.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">No repositories found.</div>`;
+    }
+    if (dropdownContainer) {
+      dropdownContainer.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:8px;">No repositories found.</div>`;
+    }
+    return;
+  }
+  allProjects = projects;
 
   projects.forEach(p => {
     const name = p.Name || p.Path.split("/").pop();
     const isCur = p.Path === activeProjectPath;
 
     // Sidebar row
-    const sideRow = document.createElement("div");
-    sideRow.className = "project-row" + (isCur ? " active" : "");
-    sideRow.innerHTML = `
-      <div class="project-row-left">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span class="project-name-truncate">${escapeHtml(name)}</span>
-      </div>
-    `;
-    sideRow.onclick = () => selectProject(p.Path, name);
-    sidebarContainer.appendChild(sideRow);
+    if (sidebarContainer) {
+      const sideRow = document.createElement("div");
+      sideRow.className = "project-row" + (isCur ? " active" : "");
+      sideRow.innerHTML = `
+        <div class="project-row-left">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span class="project-name-truncate">${escapeHtml(name)}</span>
+        </div>
+      `;
+      sideRow.onclick = () => selectProject(p.Path, name);
+      sidebarContainer.appendChild(sideRow);
+    }
 
     // Dropdown row
-    const dropItem = document.createElement("div");
-    dropItem.className = "dropdown-item" + (isCur ? " active" : "");
-    dropItem.innerHTML = `
-      <span class="dropdown-item-name">${escapeHtml(name)}</span>
-      <span class="dropdown-item-path">${escapeHtml(p.Path)}</span>
-    `;
-    dropItem.onclick = () => {
-      selectProject(p.Path, name);
-      toggleProjectDropdown(false);
-    };
-    dropdownContainer.appendChild(dropItem);
+    if (dropdownContainer) {
+      const dropItem = document.createElement("div");
+      dropItem.className = "dropdown-item" + (isCur ? " active" : "");
+      dropItem.innerHTML = `
+        <span class="dropdown-item-name">${escapeHtml(name)}</span>
+        <span class="dropdown-item-path">${escapeHtml(p.Path)}</span>
+      `;
+      dropItem.onclick = () => {
+        selectProject(p.Path, name);
+        toggleProjectDropdown(null, false);
+      };
+      dropdownContainer.appendChild(dropItem);
+    }
   });
 }
 
@@ -1368,23 +2777,43 @@ function filterProjects(query) {
   renderProjects(filtered);
 }
 
-function toggleProjectDropdown(forceState) {
+function toggleProjectDropdown(event, forceState) {
+  if (event) event.stopPropagation();
   const menu = document.getElementById("project-dropdown-menu");
-  if (typeof forceState === "boolean") {
-    menu.classList.toggle("visible", forceState);
-  } else {
-    menu.classList.toggle("visible");
-  }
+  if (!menu) return;
+  const isCurrentlyOpen = menu.classList.contains("visible");
+  const target = typeof forceState === "boolean" ? forceState : !isCurrentlyOpen;
+  closeAllDropdowns(["project-dropdown-menu"]);
+  menu.classList.toggle("visible", target);
   if (menu.classList.contains("visible")) {
-    document.getElementById("project-search").focus();
+    const search = document.getElementById("project-search");
+    if (search) {
+      search.value = "";
+      filterProjects("");
+      search.focus();
+    }
   }
 }
 
 async function selectProject(path, displayName) {
+  if (!path) return;
   if (window.selectProject) {
-    await window.selectProject(path);
+    try {
+      await window.selectProject(path);
+    } catch (err) {
+      console.warn("window.selectProject error:", err);
+    }
   }
-  setActiveProject(path, displayName);
+  let name = displayName;
+  if (!name) {
+    const parts = path.split("/").filter(Boolean);
+    name = parts.length > 0 ? parts[parts.length - 1] : "Project";
+  }
+  const existing = allProjects.find(p => p.Path === path);
+  if (!existing) {
+    allProjects.unshift({ Name: name, Path: path });
+  }
+  setActiveProject(path, name);
   renderProjects(allProjects);
 }
 
@@ -1398,19 +2827,457 @@ function setActiveProject(path, displayName) {
   document.getElementById("active-project-name").innerText = name;
 }
 
-async function chooseCustomDirectory() {
-  const custom = prompt("Enter project directory path:", activeProjectPath);
-  if (custom && custom.trim()) {
-    await selectProject(custom.trim());
-    toggleProjectDropdown(false);
+function toggleSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const uncollapseBtn = document.getElementById("btn-uncollapse-sidebar");
+  if (!sidebar) return;
+  const isCollapsed = sidebar.classList.toggle("collapsed");
+  if (uncollapseBtn) {
+    uncollapseBtn.classList.toggle("visible", isCollapsed);
   }
 }
 
+function openCustomDirModal() {
+  toggleProjectDropdown(null, false);
+  const input = document.getElementById("input-custom-dir-path");
+  if (input) {
+    input.value = (activeProjectPath && activeProjectPath !== ".") ? activeProjectPath : "";
+  }
+  const modal = document.getElementById("custom-dir-modal");
+  if (modal) {
+    modal.classList.add("visible");
+    setTimeout(() => {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 50);
+  }
+}
+
+function chooseCustomDirectory() {
+  openCustomDirModal();
+}
+
+function closeCustomDirModal() {
+  const modal = document.getElementById("custom-dir-modal");
+  if (modal) modal.classList.remove("visible");
+}
+
+async function browseNativeDirectory() {
+  try {
+    if (window.chooseDirectory) {
+      const raw = await window.chooseDirectory();
+      let selectedPath = "";
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.status === "ok" && parsed.path) {
+            selectedPath = parsed.path;
+          }
+        } catch (e) {
+          selectedPath = raw;
+        }
+      } else if (raw && raw.path) {
+        selectedPath = raw.path;
+      }
+      if (selectedPath && selectedPath.trim()) {
+        const input = document.getElementById("input-custom-dir-path");
+        if (input) input.value = selectedPath.trim();
+        await submitCustomDir();
+        return;
+      }
+    } else {
+      showToast("Native directory browser not supported in web mode");
+    }
+  } catch (err) {
+    console.error("Browse directory error:", err);
+  }
+}
+
+async function submitCustomDir() {
+  const input = document.getElementById("input-custom-dir-path");
+  const path = input ? input.value.trim() : "";
+  if (path) {
+    await selectProject(path);
+    showToast("Project opened: " + path.split("/").filter(Boolean).pop());
+    closeCustomDirModal();
+  }
+}
+
+function openQuickStartModal() {
+  const dirStatus = document.getElementById("quick-step-dir-status");
+  if (dirStatus) {
+    if (activeProjectPath && activeProjectPath !== ".") {
+      const folderName = activeProjectPath.split("/").filter(Boolean).pop() || activeProjectPath;
+      dirStatus.innerText = folderName;
+      dirStatus.className = "step-status active";
+    } else {
+      dirStatus.innerText = "Not selected";
+      dirStatus.className = "step-status warning";
+    }
+  }
+
+  const aiStatus = document.getElementById("quick-step-ai-status");
+  if (aiStatus) {
+    if (isLoggedIn || currentAiKey || isBypassed) {
+      aiStatus.innerText = isLoggedIn ? "Shuffle Cloud" : (currentAiKey ? "Configured" : "Standalone");
+      aiStatus.className = "step-status active";
+    } else {
+      aiStatus.innerText = "Needs Key / URL";
+      aiStatus.className = "step-status warning";
+    }
+  }
+
+  const modal = document.getElementById("quick-start-modal");
+  if (modal) modal.classList.add("visible");
+}
+
+function closeQuickStartModal() {
+  const modal = document.getElementById("quick-start-modal");
+  if (modal) modal.classList.remove("visible");
+}
+
+function applyQuickPrompt(text) {
+  const input = document.getElementById("prompt-input");
+  if (input) {
+    input.value = text;
+    handleInput(input);
+    input.focus();
+  }
+}
+
+function applyQuickPromptFromModal(text) {
+  applyQuickPrompt(text);
+  closeQuickStartModal();
+}
+
+async function addFileContext() {
+  try {
+    if (window.chooseFile) {
+      const raw = await window.chooseFile();
+      let selectedFile = "";
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.status === "ok" && parsed.path) {
+            selectedFile = parsed.path;
+          }
+        } catch (e) {
+          selectedFile = raw;
+        }
+      } else if (raw && raw.path) {
+        selectedFile = raw.path;
+      }
+      if (selectedFile && selectedFile.trim()) {
+        insertFileContext(selectedFile.trim());
+        showToast("File added to prompt");
+        return;
+      }
+    }
+  } catch (err) {
+    console.log("chooseFile fallback to modal:", err);
+  }
+  const modal = document.getElementById("file-context-modal");
+  if (modal) modal.classList.add("visible");
+}
+
+function closeFileContextModal() {
+  const modal = document.getElementById("file-context-modal");
+  if (modal) modal.classList.remove("visible");
+}
+
+function submitFileContext() {
+  const input = document.getElementById("input-file-context-path");
+  const path = input ? input.value.trim() : "";
+  if (path) {
+    insertFileContext(path);
+    showToast("File context added");
+  }
+  closeFileContextModal();
+}
+
+function insertFileContext(filePath) {
+  const textarea = document.getElementById("prompt-input");
+  if (!textarea) return;
+  let refPath = filePath;
+  if (activeProjectPath && activeProjectPath !== "." && filePath.startsWith(activeProjectPath)) {
+    refPath = filePath.slice(activeProjectPath.length).replace(/^\/+/, "");
+  }
+  const mention = `@${refPath} `;
+  const start = textarea.selectionStart || textarea.value.length;
+  const end = textarea.selectionEnd || textarea.value.length;
+  const current = textarea.value;
+  textarea.value = current.substring(0, start) + mention + current.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + mention.length;
+  textarea.focus();
+  handleInput(textarea);
+}
+
+// ----------------- Model State -----------------
+const AVAILABLE_MODELS = [
+  { id: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash High", note: "Default" },
+  { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", note: "Fast" },
+  { id: "gemini-3.8-pro", name: "Gemini 3.8 Pro", note: "Reasoning" },
+  { id: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", note: "Anthropic" },
+  { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", note: "Anthropic" },
+  { id: "gpt-4o", name: "GPT-4o", note: "OpenAI" },
+  { id: "ollama", name: "Ollama", note: "Local LLM" },
+];
+let activeAiModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash-high";
+
+function selectModel(modelId) {
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const sel = document.getElementById("select-ai-model");
+  if (sel) sel.value = modelId;
+}
+
+// Voice support is disabled per requirements
+function toggleDictation() {
+  showToast("Voice support is disabled.");
+}
+
+// ----------------- Environment Dropdown -----------------
+const ENVIRONMENTS = [
+  { id: "local", name: "Local", note: "Standalone" },
+  { id: "cloud", name: "Shuffle Cloud", note: "shuffle.security" },
+  { id: "custom", name: "Custom Remote...", note: "Settings" }
+];
+let activeEnvironment = "local";
+
+function toggleEnvDropdown(event) {
+  if (event) event.stopPropagation();
+  closeAllDropdowns(["env-dropdown-menu"]);
+  const menu = document.getElementById("env-dropdown-menu");
+  if (!menu) return;
+  menu.classList.toggle("visible");
+  if (menu.classList.contains("visible")) {
+    renderEnvDropdownItems();
+  }
+}
+
+function renderEnvDropdownItems() {
+  const menu = document.getElementById("env-dropdown-menu");
+  if (!menu) return;
+  menu.innerHTML = "";
+  ENVIRONMENTS.forEach(env => {
+    const btn = document.createElement("button");
+    btn.className = "popover-item" + (env.id === activeEnvironment ? " active" : "");
+    btn.innerHTML = `
+      <span>${escapeHtml(env.name)}</span>
+      <span style="font-size:10px; color:var(--text-muted);">${escapeHtml(env.note)}</span>
+    `;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      selectEnvironment(env);
+    };
+    menu.appendChild(btn);
+  });
+}
+
+function selectEnvironment(env) {
+  const menu = document.getElementById("env-dropdown-menu");
+  if (menu) menu.classList.remove("visible");
+  if (env.id === "custom") {
+    openSettingsModal();
+    return;
+  }
+  activeEnvironment = env.id;
+  const envLabel = document.getElementById("env-label");
+  if (envLabel) envLabel.innerText = env.name;
+  showToast("Environment set to: " + env.name);
+}
+
+// ----------------- Agent Role Dropdown -----------------
+const AGENT_ROLES = [
+  { id: "main", name: "Main Agent", placeholder: "Ask anything, @ to mention, / for actions" },
+  { id: "swe", name: "Software Engineer", placeholder: "Code refactoring, tests, bug fixing..." },
+  { id: "sec", name: "Security Analyst", placeholder: "Vulnerability analysis, logs, triage..." },
+  { id: "sysadmin", name: "System Administrator", placeholder: "Docker containers, servers, automation..." }
+];
+let activeRole = "main";
+
+function toggleRoleDropdown(event) {
+  if (event) event.stopPropagation();
+  closeAllDropdowns(["role-dropdown-menu"]);
+  const menu = document.getElementById("role-dropdown-menu");
+  if (!menu) return;
+  menu.classList.toggle("visible");
+  if (menu.classList.contains("visible")) {
+    renderRoleDropdownItems();
+  }
+}
+
+function renderRoleDropdownItems() {
+  const menu = document.getElementById("role-dropdown-menu");
+  if (!menu) return;
+  menu.innerHTML = "";
+  AGENT_ROLES.forEach(r => {
+    const btn = document.createElement("button");
+    btn.className = "popover-item" + (r.id === activeRole ? " active" : "");
+    btn.innerHTML = `
+      <span>${escapeHtml(r.name)}</span>
+    `;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      selectRole(r);
+    };
+    menu.appendChild(btn);
+  });
+}
+
+function selectRole(role) {
+  activeRole = role.id;
+  const roleLabel = document.getElementById("role-label");
+  if (roleLabel) roleLabel.innerText = role.name;
+  const promptInput = document.getElementById("prompt-input");
+  if (promptInput) promptInput.placeholder = role.placeholder;
+  const menu = document.getElementById("role-dropdown-menu");
+  if (menu) menu.classList.remove("visible");
+  showToast("Agent role: " + role.name);
+}
+
+// ----------------- Conversation History -----------------
+let executionHistory = [];
+
+function toggleHistoryModal() {
+  const modal = document.getElementById("history-modal");
+  if (!modal) return;
+  if (modal.classList.contains("visible")) {
+    closeHistoryModal();
+  } else {
+    openHistoryModal();
+  }
+}
+
+function openHistoryModal() {
+  const modal = document.getElementById("history-modal");
+  if (!modal) return;
+  modal.classList.add("visible");
+  renderHistoryList(executionHistory);
+  const searchInput = document.getElementById("history-search-input");
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.focus();
+  }
+}
+
+function closeHistoryModal() {
+  const modal = document.getElementById("history-modal");
+  if (modal) modal.classList.remove("visible");
+}
+
+function renderHistoryList(items) {
+  const list = document.getElementById("history-modal-list");
+  const desc = document.getElementById("history-modal-desc");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!items || items.length === 0) {
+    list.innerHTML = `
+      <div style="text-align:center; padding:32px 16px; color:var(--text-muted); font-size:13px;">
+        No conversations recorded in this session yet.
+      </div>
+    `;
+    if (desc) desc.innerText = "0 recorded executions";
+    return;
+  }
+
+  if (desc) desc.innerText = `${items.length} recorded execution${items.length === 1 ? "" : "s"}`;
+
+  items.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = "history-entry-card";
+    const statusClass = item.status === "error" ? "error" : (item.status === "denied" ? "denied" : "success");
+    const statusText = item.status || "success";
+
+    card.innerHTML = `
+      <div class="history-entry-header">
+        <span class="history-badge ${statusClass}">${escapeHtml(statusText)}</span>
+        <span>${escapeHtml(item.timestamp || "")} ${item.duration ? "(" + escapeHtml(item.duration) + ")" : ""}</span>
+      </div>
+      <div class="history-prompt-text">$ ${escapeHtml(item.prompt)}</div>
+      <div class="history-output-preview">${escapeHtml(item.output || item.error || "No output")}</div>
+      <div class="history-actions">
+        <button class="btn-history-action" onclick="useHistoryPrompt(${index})">Use Prompt</button>
+        <button class="btn-history-action btn-run-again" onclick="runHistoryPrompt(${index})">Run Again</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function filterHistory(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    renderHistoryList(executionHistory);
+    return;
+  }
+  const filtered = executionHistory.filter(item => {
+    return (item.prompt || "").toLowerCase().includes(q) || (item.output || "").toLowerCase().includes(q);
+  });
+  renderHistoryList(filtered);
+}
+
+function useHistoryPrompt(index) {
+  const item = executionHistory[index];
+  if (!item) return;
+  const textarea = document.getElementById("prompt-input");
+  if (textarea) {
+    textarea.value = item.prompt;
+    handleInput(textarea);
+    textarea.focus();
+  }
+  closeHistoryModal();
+  showToast("Loaded prompt into editor");
+}
+
+function runHistoryPrompt(index) {
+  const item = executionHistory[index];
+  if (!item) return;
+  closeHistoryModal();
+  const textarea = document.getElementById("prompt-input");
+  if (textarea) {
+    textarea.value = item.prompt;
+    handleInput(textarea);
+  }
+  submitPrompt();
+}
+
+async function clearAllHistory() {
+  executionHistory = [];
+  renderHistoryList([]);
+  const container = document.getElementById("execution-cards-container");
+  if (container) container.innerHTML = "";
+  if (window.clearHistory) {
+    try {
+      await window.clearHistory();
+    } catch (e) {
+      console.warn("clearHistory error:", e);
+    }
+  }
+  showToast("Conversation history cleared");
+}
+
+// ----------------- Session & Execution -----------------
 function startNewSession() {
-  document.getElementById("execution-stream").innerHTML = "";
+  const container = document.getElementById("execution-cards-container");
+  if (container) container.innerHTML = "";
+  const approvalCard = document.getElementById("approval-card");
+  if (approvalCard) approvalCard.classList.remove("visible");
+  currentApprovalId = null;
+
   document.getElementById("main-container").classList.remove("has-history");
-  document.getElementById("prompt-input").value = "";
-  document.getElementById("prompt-input").focus();
+  const input = document.getElementById("prompt-input");
+  if (input) {
+    input.value = "";
+    input.style.height = "auto";
+    input.focus();
+  }
+  const btn = document.getElementById("btn-send");
+  if (btn) btn.classList.remove("active");
+  showToast("Started new conversation session");
 }
 
 function handleInput(el) {
@@ -1437,8 +3304,8 @@ async function submitPrompt() {
   const prompt = textarea.value.trim();
   if (!prompt) return;
 
-  if (!isLoggedIn) {
-    openLoginModal();
+  if (!isLoggedIn && !currentAiKey && !isBypassed) {
+    openSettingsModal();
     return;
   }
 
@@ -1448,7 +3315,7 @@ async function submitPrompt() {
 
   document.getElementById("main-container").classList.add("has-history");
 
-  const stream = document.getElementById("execution-stream");
+  const container = document.getElementById("execution-cards-container");
 
   const workingDiv = document.createElement("div");
   workingDiv.innerHTML = `
@@ -1457,17 +3324,35 @@ async function submitPrompt() {
       <div class="spinner"></div>
     </div>
   `;
-  stream.prepend(workingDiv);
+  container.prepend(workingDiv);
 
   const startTime = Date.now();
+  if (window.isDebug) {
+    console.log("[DEBUG] Dispatching prompt execution:", {
+      prompt: prompt,
+      project: activeProjectPath,
+      model: activeAiModel,
+      ai_url: currentAiUrl,
+      policy: currentPermissionPolicy
+    });
+  }
 
   try {
     const raw = await window.runPrompt(prompt, false);
     workingDiv.remove();
     const res = JSON.parse(raw);
+    if (window.isDebug) {
+      console.log("[DEBUG] Execution response received:", res);
+    }
 
     if (res.needs_login) {
-      openLoginModal();
+      loginWithOAuth();
+      renderErrorResult(prompt, res.error);
+      return;
+    }
+
+    if (res.needs_ai_config) {
+      openSettingsModal();
       renderErrorResult(prompt, res.error);
       return;
     }
@@ -1476,7 +3361,6 @@ async function submitPrompt() {
       currentApprovalId = res.id;
       document.getElementById("approval-cmd").innerText = res.prompt;
       document.getElementById("approval-card").classList.add("visible");
-      stream.prepend(document.getElementById("approval-card"));
       return;
     }
 
@@ -1484,12 +3368,48 @@ async function submitPrompt() {
     renderExecutionResult(res, elapsed);
   } catch (err) {
     workingDiv.remove();
+    if (window.isDebug) {
+      console.error("[DEBUG] Execution failed:", err);
+    }
     renderErrorResult(prompt, err.toString());
   }
 }
 
+function toggleResultCard(pillEl) {
+  pillEl.classList.toggle("collapsed");
+  const wrapper = pillEl.parentElement;
+  if (!wrapper) return;
+  const card = wrapper.querySelector(".exec-card");
+  if (card) {
+    card.classList.toggle("collapsed");
+  }
+}
+
+async function copyCardOutput(btnEl) {
+  const card = btnEl.closest(".exec-card");
+  if (!card) return;
+  const body = card.querySelector(".exec-body");
+  if (!body) return;
+  try {
+    await navigator.clipboard.writeText(body.innerText);
+    showToast("Copied output to clipboard");
+  } catch (err) {
+    console.error("Copy failed:", err);
+  }
+}
+
 function renderExecutionResult(item, elapsedSec) {
-  const stream = document.getElementById("execution-stream");
+  const container = document.getElementById("execution-cards-container");
+  if (!container) return;
+
+  const entry = {
+    prompt: item.prompt,
+    output: item.output || item.error || "Completed with no output.",
+    timestamp: item.timestamp || new Date().toLocaleTimeString(),
+    duration: item.duration || `${elapsedSec}s`,
+    status: item.error ? "error" : "success"
+  };
+  executionHistory.unshift(entry);
 
   const wrapper = document.createElement("div");
   wrapper.style.display = "flex";
@@ -1498,6 +3418,8 @@ function renderExecutionResult(item, elapsedSec) {
 
   const status = document.createElement("div");
   status.className = "status-pill";
+  status.title = "Click to toggle output";
+  status.onclick = () => toggleResultCard(status);
   status.innerHTML = `
     <span>Worked for ${elapsedSec}s (${item.duration || "0ms"})</span>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1505,23 +3427,59 @@ function renderExecutionResult(item, elapsedSec) {
     </svg>
   `;
 
+  let debugBar = "";
+  if (item.debug_info || window.isDebug) {
+    const info = item.debug_info || {};
+    debugBar = `
+      <div style="padding:4px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:12px; align-items:center;">
+        <span style="color:#f85f38; font-weight:600;">DEBUG</span>
+        <span>Target: ${escapeHtml(info.target || "local")}</span>
+        <span>Model: ${escapeHtml(info.model || activeAiModel || "none")}</span>
+        <span>Mode: ${escapeHtml(info.mode || "direct")}</span>
+      </div>
+    `;
+  }
+
   const card = document.createElement("div");
   card.className = "exec-card";
   card.innerHTML = `
     <div class="exec-header">
       <span class="exec-prompt">$ ${escapeHtml(item.prompt)}</span>
-      <span>${item.timestamp || ""}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span>${escapeHtml(item.timestamp || "")}</span>
+        <button class="nav-icon-btn" title="Copy Output" onclick="copyCardOutput(this)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
     </div>
+    ${debugBar}
     <div class="exec-body">${escapeHtml(item.output || item.error || "Completed with no output.")}</div>
   `;
 
   wrapper.appendChild(status);
   wrapper.appendChild(card);
-  stream.prepend(wrapper);
+  container.prepend(wrapper);
 }
 
 function renderErrorResult(prompt, err) {
-  const stream = document.getElementById("execution-stream");
+  const container = document.getElementById("execution-cards-container");
+  if (!container) return;
+
+  if (window.isDebug) {
+    console.error("[DEBUG] Prompt error:", { prompt, err });
+  }
+
+  const entry = {
+    prompt: prompt,
+    error: err,
+    timestamp: new Date().toLocaleTimeString(),
+    status: "error"
+  };
+  executionHistory.unshift(entry);
+
   const card = document.createElement("div");
   card.className = "exec-card";
   card.innerHTML = `
@@ -1530,7 +3488,7 @@ function renderErrorResult(prompt, err) {
     </div>
     <div class="exec-body" style="color:var(--red);">${escapeHtml(err)}</div>
   `;
-  stream.prepend(card);
+  container.prepend(card);
 }
 
 async function respondApproval(approved) {
@@ -1548,14 +3506,99 @@ function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-document.addEventListener("click", (e) => {
-  const selector = document.querySelector(".project-selector-row");
-  if (selector && !selector.contains(e.target)) {
-    toggleProjectDropdown(false);
+let toastTimeout = null;
+function showToast(message) {
+  const toast = document.getElementById("app-toast");
+  if (!toast) return;
+  toast.innerText = message;
+  toast.classList.add("visible");
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove("visible");
+  }, 2800);
+}
+
+function handleOverlayClick(event, modalId) {
+  if (event.target && (event.target.id === modalId || event.target.classList.contains("modal-overlay"))) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove("visible");
+  }
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("visible"));
+}
+
+function closeAllDropdowns(exceptIds = []) {
+  const dropdowns = [
+    "project-dropdown-menu",
+    "env-dropdown-menu",
+    "role-dropdown-menu"
+  ];
+  dropdowns.forEach(id => {
+    if (!exceptIds.includes(id)) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove("visible");
+    }
+  });
+}
+
+function handleClickOutside(e) {
+  const projMenu = document.getElementById("project-dropdown-menu");
+  const projBtn = document.getElementById("project-dropdown-btn");
+  if (projMenu && projMenu.classList.contains("visible")) {
+    if (!projMenu.contains(e.target) && !projBtn.contains(e.target)) {
+      projMenu.classList.remove("visible");
+    }
+  }
+
+  const envMenu = document.getElementById("env-dropdown-menu");
+  const envBtn = document.getElementById("btn-env-dropdown");
+  if (envMenu && envMenu.classList.contains("visible")) {
+    if (!envMenu.contains(e.target) && !envBtn.contains(e.target)) {
+      envMenu.classList.remove("visible");
+    }
+  }
+
+  const roleMenu = document.getElementById("role-dropdown-menu");
+  const roleBtn = document.getElementById("btn-role-dropdown");
+  if (roleMenu && roleMenu.classList.contains("visible")) {
+    if (!roleMenu.contains(e.target) && !roleBtn.contains(e.target)) {
+      roleMenu.classList.remove("visible");
+    }
+  }
+}
+
+window.addEventListener("pointerdown", handleClickOutside, true);
+window.addEventListener("click", handleClickOutside, true);
+
+// Global keyboard shortcuts (Cmd+Y for history, Cmd+N for new chat, Esc to close modals/popovers)
+window.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "Y")) {
+    e.preventDefault();
+    toggleHistoryModal();
+    return;
+  }
+  if ((e.metaKey || e.ctrlKey) && (e.key === "n" || e.key === "N")) {
+    e.preventDefault();
+    startNewSession();
+    return;
+  }
+  if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+    closeAllModals();
+    closeAllDropdowns();
+  }
+}, true);
+
+window.addEventListener("DOMContentLoaded", () => {
+  init();
+  const savedModel = localStorage.getItem("orborus_ai_model");
+  if (savedModel) {
+    activeAiModel = savedModel;
+    const sel = document.getElementById("select-ai-model");
+    if (sel) sel.value = savedModel;
   }
 });
-
-window.addEventListener("DOMContentLoaded", init);
 </script>
 </body>
 </html>
