@@ -45,6 +45,7 @@ type LocalAgentStore struct {
 	AiModel                 string                       `json:"ai_model,omitempty"`
 	ApprovalRules           []ApprovalRule               `json:"approval_rules,omitempty"`
 	PinnedConversations     []string                     `json:"pinned_conversations,omitempty"`
+	InjectedSkills          []SkillDefinition            `json:"injected_skills,omitempty"`
 }
 
 // GetLocalStorePath returns the path to ~/.shuffle/agent.json

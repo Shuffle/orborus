@@ -131,7 +131,7 @@ func NewAgentBridge(cfg *Config) *AgentBridge {
 		aiModel = saved.AiModel
 	}
 	if aiModel == "" {
-		aiModel = "gemini-3.8-flash-high"
+		aiModel = "gemini-3.8-flash"
 	}
 	_ = os.Setenv("AI_MODEL", aiModel)
 
@@ -161,6 +161,10 @@ func NewAgentBridge(cfg *Config) *AgentBridge {
 	pinned := saved.PinnedConversations
 	if pinned == nil {
 		pinned = make([]string, 0)
+	}
+
+	if len(saved.InjectedSkills) > 0 {
+		GetRuleLoaderManager().SetInjectedSkills(saved.InjectedSkills)
 	}
 
 	b := &AgentBridge{
@@ -209,6 +213,7 @@ func (b *AgentBridge) saveLocalStoreLocked() {
 		IsLoggedIn:              b.oauthLoggedIn,
 		ApprovalRules:           b.approvalRules,
 		PinnedConversations:     b.pinnedConvs,
+		InjectedSkills:          GetRuleLoaderManager().GetInjectedSkills(),
 	}
 	if err := SaveLocalStore(store); err != nil {
 		log.Printf("[WARN] Failed to persist local agent store: %v", err)
@@ -294,6 +299,8 @@ func (b *AgentBridge) GetInitialState() string {
 	isBypassed := b.isAuthBypassed()
 	isLoggedIn := isBypassed || b.oauthLoggedIn
 
+	projCtx := GetRuleLoaderManager().LoadProjectContext(b.activeProject)
+
 	state := map[string]interface{}{
 		"hostname":                  b.cfg.Hostname,
 		"machine_id":                b.cfg.MachineID,
@@ -322,6 +329,11 @@ func (b *AgentBridge) GetInitialState() string {
 		"ai_model":                  b.aiModel,
 		"approval_rules":            b.approvalRules,
 		"pinned_conversations":      b.pinnedConvs,
+		"project_rules":             projCtx.Rules,
+		"project_skills":            projCtx.Skills,
+		"injected_skills":           GetRuleLoaderManager().GetInjectedSkills(),
+		"active_rules_count":        len(projCtx.Rules),
+		"active_skills_count":       len(projCtx.Skills),
 		"debug":                     (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1",
 	}
 
@@ -625,6 +637,8 @@ func (b *AgentBridge) getInitialStateLocked() string {
 	isBypassed := b.isAuthBypassed()
 	isLoggedIn := isBypassed || b.oauthLoggedIn
 
+	projCtx := GetRuleLoaderManager().LoadProjectContext(b.activeProject)
+
 	state := map[string]interface{}{
 		"hostname":                  b.cfg.Hostname,
 		"machine_id":                b.cfg.MachineID,
@@ -653,6 +667,11 @@ func (b *AgentBridge) getInitialStateLocked() string {
 		"ai_model":                  b.aiModel,
 		"approval_rules":            b.approvalRules,
 		"pinned_conversations":      b.pinnedConvs,
+		"project_rules":             projCtx.Rules,
+		"project_skills":            projCtx.Skills,
+		"injected_skills":           GetRuleLoaderManager().GetInjectedSkills(),
+		"active_rules_count":        len(projCtx.Rules),
+		"active_skills_count":       len(projCtx.Skills),
 		"debug":                     (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1",
 	}
 
@@ -809,7 +828,7 @@ func (b *AgentBridge) getEffectiveAiUrlLocked() string {
 	key := b.getEffectiveAiKeyLocked()
 	model := strings.ToLower(b.aiModel)
 	if model == "" {
-		model = "gemini-3.8-flash-high"
+		model = "gemini-3.8-flash"
 	}
 
 	// If API key is present or local Ollama is selected, infer the provider endpoint
@@ -896,19 +915,33 @@ func isLikelyShellCommand(cmd string) bool {
 
 // RunPrompt executes an agent action directly in-memory using osctrl or via LLM endpoint
 func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...string) string {
-	start := time.Now()
-	execID := fmt.Sprintf("exec-%d", time.Now().UnixNano())
-
 	cID := ""
 	if len(convID) > 0 {
 		cID = convID[0]
 	}
+	return b.RunPromptWithOpts(prompt, forceApprove, cID, "", "")
+}
+
+// RunPromptWithOpts executes an agent action with custom model and reasoning options
+func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, reqModel, reqReasoning string) string {
+	start := time.Now()
+	execID := fmt.Sprintf("exec-%d", time.Now().UnixNano())
 
 	b.mu.Lock()
 	effectiveUrl := b.getEffectiveAiUrlLocked()
 	effectiveKey := b.getEffectiveAiKeyLocked()
 	hasAiEndpoint := effectiveUrl != "" && (effectiveKey != "" || strings.Contains(effectiveUrl, "localhost") || strings.Contains(effectiveUrl, "127.0.0.1"))
-	activeModel := b.aiModel
+	activeModel := reqModel
+	if activeModel == "" {
+		activeModel = b.aiModel
+	}
+	if activeModel == "" {
+		activeModel = "gemini-3.8-flash"
+	}
+	activeReasoning := reqReasoning
+	if activeReasoning == "" {
+		activeReasoning = "medium"
+	}
 	activeUrl := effectiveUrl
 	project := b.activeProject
 	isShellCmd := isLikelyShellCommand(prompt)
@@ -923,8 +956,8 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 			maskedKey = "***"
 		}
 		log.Printf("[DEBUG] RunPrompt received: prompt=%q, convID=%q, forceApprove=%v, activeProject=%q", prompt, cID, forceApprove, project)
-		log.Printf("[DEBUG] RunPrompt [Stage 1: Credentials]: effectiveUrl=%q, key=%s, hasAiEndpoint=%v, activeModel=%q (sources checked: settings, env AI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, SHUFFLE_AUTHORIZATION, SHUFFLE_BACKEND)",
-			effectiveUrl, maskedKey, hasAiEndpoint, activeModel)
+		log.Printf("[DEBUG] RunPrompt [Stage 1: Credentials]: effectiveUrl=%q, key=%s, hasAiEndpoint=%v, activeModel=%q, activeReasoning=%q",
+			effectiveUrl, maskedKey, hasAiEndpoint, activeModel, activeReasoning)
 		log.Printf("[DEBUG] RunPrompt [Stage 2: Classification]: prompt=%q, isShellCmd=%v", prompt, isShellCmd)
 	}
 
@@ -934,7 +967,7 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 	shouldRunAi := !isExplicitShell
 
 	if isDebug {
-		log.Printf("[DEBUG] RunPrompt [Routing Decision]: shouldRunAi=%v, isExplicitShell=%v, activeModel=%q", shouldRunAi, isExplicitShell, activeModel)
+		log.Printf("[DEBUG] RunPrompt [Routing Decision]: shouldRunAi=%v, isExplicitShell=%v, activeModel=%q, activeReasoning=%q", shouldRunAi, isExplicitShell, activeModel, activeReasoning)
 	}
 
 	b.mu.Lock()
@@ -1008,17 +1041,18 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 	var debugInfo map[string]interface{}
 
 	if shouldRunAi {
-		log.Printf("[INFO] RunPrompt routing decision: dispatching prompt %q to shuffle.HandleAiAgentExecutionStart (model=%s, url=%s, execID=%s)", prompt, activeModel, activeUrl, execID)
-		output, err = b.executeAiRequest(prompt, execID)
+		log.Printf("[INFO] RunPrompt routing decision: dispatching prompt %q to shuffle.HandleAiAgentExecutionStart (model=%s, reasoning=%s, url=%s, execID=%s)", prompt, activeModel, activeReasoning, activeUrl, execID)
+		output, err = b.executeAiRequest(prompt, execID, activeModel, activeReasoning)
 		debugInfo = map[string]interface{}{
-			"mode":     "shuffle_agent_start",
-			"target":   activeUrl,
-			"model":    activeModel,
-			"project":  project,
-			"has_url":  activeUrl != "",
-			"has_key":  effectiveKey != "",
-			"is_auth":  b.oauthLoggedIn,
-			"engine":   "shuffle.HandleAiAgentExecutionStart",
+			"mode":      "shuffle_agent_start",
+			"target":    activeUrl,
+			"model":     activeModel,
+			"reasoning": activeReasoning,
+			"project":   project,
+			"has_url":   activeUrl != "",
+			"has_key":   effectiveKey != "",
+			"is_auth":   b.oauthLoggedIn,
+			"engine":    "shuffle.HandleAiAgentExecutionStart",
 		}
 	} else {
 		log.Printf("[INFO] RunPrompt routing decision: explicit shell command %q dispatched to osctrl direct execution in %s", prompt, project)
@@ -1242,32 +1276,23 @@ func (b *AgentBridge) SetPinnedConversations(pinnedJSON string) string {
 
 // TakeScreenshot captures displays and returns base64 PNGs directly
 func (b *AgentBridge) TakeScreenshot() string {
-	if runtime.GOOS == "darwin" {
-		screens, err := osctrl.ScreenshotAllDisplaysMacos()
-		if err != nil {
-			return fmt.Sprintf(`{"error": "%s"}`, err.Error())
-		}
-
-		type ScreenDTO struct {
-			Index       int    `json:"index"`
-			ImageBase64 string `json:"image_base64"`
-		}
-		result := make([]ScreenDTO, len(screens))
-		for i, scr := range screens {
-			result[i] = ScreenDTO{
-				Index:       i,
-				ImageBase64: fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(scr.Image)),
-			}
-		}
-		data, _ := json.Marshal(result)
-		return string(data)
-	}
-
 	screens, err := osctrl.Screenshot()
 	if err != nil {
 		return fmt.Sprintf(`{"error": "%s"}`, err.Error())
 	}
-	data, _ := json.Marshal(screens)
+
+	type ScreenDTO struct {
+		Index       int    `json:"index"`
+		ImageBase64 string `json:"image_base64"`
+	}
+	result := make([]ScreenDTO, len(screens))
+	for i, scr := range screens {
+		result[i] = ScreenDTO{
+			Index:       i,
+			ImageBase64: fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(scr.Image)),
+		}
+	}
+	data, _ := json.Marshal(result)
 	return string(data)
 }
 
@@ -1308,11 +1333,21 @@ func (b *AgentBridge) executeDirect(cmd string) (string, error) {
 }
 
 // executeAiRequest sends prompt to shuffle-shared/ai.go HandleAiAgentExecutionStart and RunAiQuery
-func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
+func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoning ...string) (string, error) {
 	b.mu.Lock()
 	apiURL := b.getEffectiveAiUrlLocked()
 	apiKey := b.getEffectiveAiKeyLocked()
 	model := b.aiModel
+	if len(reqModelAndReasoning) > 0 && reqModelAndReasoning[0] != "" {
+		model = reqModelAndReasoning[0]
+	}
+	if model == "" {
+		model = "gemini-3.8-flash"
+	}
+	reasoning := "medium"
+	if len(reqModelAndReasoning) > 1 && reqModelAndReasoning[1] != "" {
+		reasoning = reqModelAndReasoning[1]
+	}
 	project := b.activeProject
 	orgID := ""
 	if b.cfg != nil {
@@ -1320,10 +1355,6 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 	}
 	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 	b.mu.Unlock()
-
-	if model == "" {
-		model = "gemini-3.8-flash-high"
-	}
 
 	// Export credentials and settings into environment for shuffle-shared/ai.go
 	if apiKey != "" {
@@ -1336,6 +1367,9 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 		os.Setenv("AI_MODEL", model)
 		os.Setenv("SHUFFLE_AI_MODEL", model)
 	}
+	os.Setenv("AI_REASONING_EFFORT", reasoning)
+	os.Setenv("AI_AGENT_REASONING_EFFORT", reasoning)
+	os.Setenv("SHUFFLE_REASONING_EFFORT", reasoning)
 	if b.cfg != nil && b.cfg.IsStandalone {
 		os.Setenv("STANDALONE", "true")
 	}
@@ -1347,6 +1381,41 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 		maskedKey = "***"
 	}
 
+	// Load and optimize workspace rules (GEMINI.md, AGENTS.md, etc.) and skills
+	projCtx := GetRuleLoaderManager().LoadProjectContext(project)
+	rulesSummary := projCtx.FormatRulesSummary()
+	skillsSummary := projCtx.FormatSkillsSummary()
+
+	effectiveInput := prompt
+	if rulesSummary != "" || skillsSummary != "" {
+		effectiveInput = fmt.Sprintf("%s\n\n[WORKSPACE RULES & SKILLS CONTEXT]\nWorkspace: %s\n%s%s", prompt, project, rulesSummary, skillsSummary)
+		log.Printf("[INFO][%s] Injected workspace rules (%d) and skills (%d) into agent execution",
+			execID, len(projCtx.Rules), len(projCtx.Skills))
+	}
+
+	startParams := []shuffle.WorkflowAppActionParameter{
+		{
+			Name:  "input",
+			Value: effectiveInput,
+		},
+		{
+			Name:  "reasoning",
+			Value: reasoning,
+		},
+	}
+	if rulesSummary != "" {
+		startParams = append(startParams, shuffle.WorkflowAppActionParameter{
+			Name:  "rules",
+			Value: rulesSummary,
+		})
+	}
+	if skillsSummary != "" {
+		startParams = append(startParams, shuffle.WorkflowAppActionParameter{
+			Name:  "skills",
+			Value: skillsSummary,
+		})
+	}
+
 	workflowID := fmt.Sprintf("wf-%d", time.Now().UnixNano())
 	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
 
@@ -1356,12 +1425,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 		AppName:        "Shuffle Agent",
 		AppID:          "Shuffle Agent",
 		SourceWorkflow: workflowID,
-		Parameters: []shuffle.WorkflowAppActionParameter{
-			{
-				Name:  "input",
-				Value: prompt,
-			},
-		},
+		Parameters:     startParams,
 	}
 
 	exec := shuffle.WorkflowExecution{
@@ -1380,7 +1444,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 		ExecutionId:       execID,
 		ExecutionOrg:      orgID,
 		StartedAt:         time.Now().Unix(),
-		ExecutionArgument: prompt,
+		ExecutionArgument: effectiveInput,
 	}
 
 	log.Printf("[INFO][%s] AI Agent: Invoking shuffle.HandleAiAgentExecutionStart (workflow=%s, node=%s, caller=orborus, model=%s, url=%s, key=%s)",
@@ -1403,7 +1467,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 		log.Printf("[DEBUG][%s] shuffle.HandleAiAgentExecutionStart finished without stored result. Delegating to direct shuffle.RunAiQuery", execID)
 	}
 
-	sysPrompt := fmt.Sprintf("You are Shuffle AI agent assistant. Active workspace: %s.", project)
+	sysPrompt := BuildInjectedSystemPrompt(project)
 	callInfo := shuffle.AiCallInfo{
 		Caller:      "orborus",
 		OrgID:       orgID,
@@ -1458,11 +1522,13 @@ func (b *AgentBridge) HandleAction(action string, payload string) string {
 			Prompt         string `json:"prompt"`
 			Bypass         bool   `json:"bypass"`
 			ConversationID string `json:"conversation_id"`
+			Model          string `json:"model"`
+			Reasoning      string `json:"reasoning"`
 		}
 		if err := json.Unmarshal([]byte(payload), &req); err != nil {
 			req.Prompt = payload
 		}
-		return b.RunPrompt(req.Prompt, req.Bypass, req.ConversationID)
+		return b.RunPromptWithOpts(req.Prompt, req.Bypass, req.ConversationID, req.Model, req.Reasoning)
 
 	case "respondApproval":
 		var req struct {
@@ -1583,9 +1649,189 @@ func (b *AgentBridge) HandleAction(action string, payload string) string {
 		}
 		return `{"error": "invalid payload"}`
 
+	case "getProjectContext":
+		return b.GetProjectContext(payload)
+
+	case "injectControlSkill":
+		return b.InjectControlSkill(payload)
+
+	case "injectSkillFile":
+		var req struct {
+			Path string `json:"path"`
+		}
+		_ = json.Unmarshal([]byte(payload), &req)
+		return b.InjectSkillFile(req.Path)
+
+	case "injectSkill":
+		return b.InjectSkill(payload)
+
+	case "removeInjectedSkill":
+		var req struct {
+			Name string `json:"name"`
+		}
+		_ = json.Unmarshal([]byte(payload), &req)
+		if req.Name == "" {
+			req.Name = payload
+		}
+		return b.RemoveInjectedSkill(req.Name)
+
+	case "listInjectedSkills":
+		return b.ListInjectedSkills()
+
+	case "listSkills":
+		return b.ListSkills(payload)
+
+	case "clearInjectedSkills":
+		return b.ClearInjectedSkills()
+
 	default:
 		log.Printf("[WARN] Unknown bridge action: %s", action)
 		return `{"error": "unknown action"}`
 	}
+}
+
+// GetProjectContext returns discovered rules and skills for the given or active project
+func (b *AgentBridge) GetProjectContext(projectPath string) string {
+	b.mu.Lock()
+	if projectPath == "" {
+		projectPath = b.activeProject
+	}
+	b.mu.Unlock()
+
+	ctx := GetRuleLoaderManager().LoadProjectContext(projectPath)
+	data, _ := json.Marshal(ctx)
+	return string(data)
+}
+
+// InjectSkillFile reads a SKILL.md file, parses frontmatter and markdown body, and registers it
+func (b *AgentBridge) InjectSkillFile(filePath string) string {
+	if strings.TrimSpace(filePath) == "" {
+		chosen, err := webview.ChooseFile("Select Skill File (SKILL.md)", "Open")
+		if err != nil || strings.TrimSpace(chosen) == "" {
+			return `{"status": "cancelled", "path": ""}`
+		}
+		filePath = chosen
+	}
+
+	skill, err := LoadSkillFromFile(filePath)
+	if err != nil {
+		log.Printf("[WARN] Failed to load skill file %s: %v", filePath, err)
+		resp, _ := json.Marshal(map[string]interface{}{
+			"status": "error",
+			"error":  fmt.Sprintf("Failed to load skill file: %v", err),
+		})
+		return string(resp)
+	}
+
+	GetRuleLoaderManager().InjectSkill(*skill)
+	b.mu.Lock()
+	b.saveLocalStoreLocked()
+	b.mu.Unlock()
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":          "ok",
+		"skill":           skill,
+		"injected_skills": GetRuleLoaderManager().GetInjectedSkills(),
+	})
+	return string(resp)
+}
+
+// InjectSkill registers a runtime skill (capability or control) and persists it
+func (b *AgentBridge) InjectSkill(payload string) string {
+	var skill SkillDefinition
+	if err := json.Unmarshal([]byte(payload), &skill); err != nil {
+		return `{"status": "error", "error": "invalid json payload"}`
+	}
+	skill.Name = strings.TrimSpace(skill.Name)
+	if skill.Name == "" {
+		return `{"status": "error", "error": "skill name is required"}`
+	}
+	GetRuleLoaderManager().InjectSkill(skill)
+
+	b.mu.Lock()
+	b.saveLocalStoreLocked()
+	b.mu.Unlock()
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":          "ok",
+		"skill":           skill,
+		"injected_skills": GetRuleLoaderManager().GetInjectedSkills(),
+	})
+	return string(resp)
+}
+
+// InjectControlSkill registers a dynamic skill into runtime for agent control
+func (b *AgentBridge) InjectControlSkill(payload string) string {
+	var skill SkillDefinition
+	if err := json.Unmarshal([]byte(payload), &skill); err != nil {
+		return `{"status": "error", "error": "invalid json payload"}`
+	}
+	if skill.Name == "" {
+		return `{"status": "error", "error": "skill name is required"}`
+	}
+	GetRuleLoaderManager().InjectControlSkill(skill)
+
+	b.mu.Lock()
+	b.saveLocalStoreLocked()
+	b.mu.Unlock()
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":          "ok",
+		"skill":           skill,
+		"injected_skills": GetRuleLoaderManager().GetInjectedSkills(),
+	})
+	return string(resp)
+}
+
+// RemoveInjectedSkill removes an injected skill by name and updates local store
+func (b *AgentBridge) RemoveInjectedSkill(name string) string {
+	name = strings.TrimSpace(name)
+	removed := GetRuleLoaderManager().RemoveInjectedSkill(name)
+
+	b.mu.Lock()
+	b.saveLocalStoreLocked()
+	b.mu.Unlock()
+
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":          "ok",
+		"removed":         removed,
+		"injected_skills": GetRuleLoaderManager().GetInjectedSkills(),
+	})
+	return string(resp)
+}
+
+// ListInjectedSkills returns all currently injected skills
+func (b *AgentBridge) ListInjectedSkills() string {
+	resp, _ := json.Marshal(map[string]interface{}{
+		"status":          "ok",
+		"injected_skills": GetRuleLoaderManager().GetInjectedSkills(),
+	})
+	return string(resp)
+}
+
+// ListSkills returns all available project, global, and injected skills
+func (b *AgentBridge) ListSkills(projectPath string) string {
+	b.mu.Lock()
+	if projectPath == "" {
+		projectPath = b.activeProject
+	}
+	b.mu.Unlock()
+
+	skills := DiscoverSkills(projectPath)
+	injected := GetRuleLoaderManager().GetInjectedSkills()
+	for _, inj := range injected {
+		skills = append(skills, inj)
+	}
+	data, _ := json.Marshal(skills)
+	return string(data)
+}
+
+// ClearInjectedSkills wipes dynamically injected skills
+func (b *AgentBridge) ClearInjectedSkills() string {
+	GetRuleLoaderManager().ClearInjectedSkills()
+	b.mu.Lock()
+	b.saveLocalStoreLocked()
+	b.mu.Unlock()
+	return `{"status": "ok", "injected_skills": []}`
 }
 

@@ -925,6 +925,67 @@
     padding: 0 4px;
     color: var(--text-muted);
     font-size: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .footer-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .footer-control-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .footer-control-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    transition: all 0.15s ease;
+  }
+  .footer-control-badge:hover, .footer-control-badge:focus-within {
+    border-color: rgba(248, 95, 56, 0.5);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+  }
+  .footer-select {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    font-family: inherit;
+  }
+  .footer-select option {
+    background: #111827;
+    color: #e5e7eb;
+  }
+  .footer-custom-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(248, 95, 56, 0.5);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11.5px;
+    color: var(--text-primary);
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    outline: none;
+    width: 170px;
+    transition: all 0.15s ease;
+  }
+  .footer-custom-input:focus {
+    border-color: var(--shuffle-orange);
+    box-shadow: 0 0 0 2px rgba(248, 95, 56, 0.2);
   }
   .footer-dropdown-btn {
     display: inline-flex;
@@ -1705,6 +1766,137 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
+  .btn-skills-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-skills-action:hover {
+    border-color: #f85f38;
+    color: #f85f38;
+  }
+  .settings-subgroup-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .skills-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .skill-card {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: border-color 0.15s ease;
+  }
+  .skill-card:hover {
+    border-color: rgba(248, 95, 56, 0.4);
+  }
+  .skill-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .skill-card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .skill-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+  }
+  .skill-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .skill-badge.injected {
+    background: rgba(248, 95, 56, 0.18);
+    color: #f85f38;
+    border: 1px solid rgba(248, 95, 56, 0.35);
+  }
+  .skill-badge.control {
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+  }
+  .skill-badge.project {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+  }
+  .skill-badge.global {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+  .skill-card-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .skill-card-path {
+    font-size: 10.5px;
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    color: var(--text-muted);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .skill-card-instructions {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 11px;
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
+    background: var(--bg-code);
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .btn-skill-revoke {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .btn-skill-revoke:hover {
+    color: #f87171;
+    border-color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+  }
   .sidebar-footer-nav {
     display: flex;
     align-items: center;
@@ -2215,21 +2407,57 @@
         </div>
       </div>
 
-      <!-- Card Footer Row -->
+      <!-- Card Footer Row with Individual Model & Reasoning Controls -->
       <div class="card-footer-row">
-        <button id="btn-footer-model" class="footer-dropdown-btn" title="Configure AI Model in Settings" onclick="openSettingsModal('models')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          <span id="footer-model-label">Gemini 3.8 Flash High</span>
-        </button>
+        <div class="footer-controls-group">
+          <!-- Model Control -->
+          <div class="footer-control-item" id="footer-model-wrapper">
+            <div class="footer-control-badge" title="AI Model selection">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              <select id="select-footer-model" class="footer-select" onchange="handleFooterModelChange(this.value)">
+                <option value="gemini-3.8-flash">Gemini-3.8-Flash</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <input id="input-custom-model" class="footer-custom-input" type="text" placeholder="Type model (e.g. gpt-4o, claude-3-7-sonnet)" style="display:none;" oninput="handleCustomModelInput(this.value)" />
+          </div>
 
-        <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
-          <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
-          <span id="footer-env-label">Shuffle Standalone</span>
-        </button>
+          <!-- Reasoning Control -->
+          <div class="footer-control-item" id="footer-reasoning-wrapper">
+            <div class="footer-control-badge" title="Reasoning effort level">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 3v18"/>
+                <path d="M3 12h18"/>
+                <path d="M12 8a4 4 0 0 1 4 4"/>
+              </svg>
+              <select id="select-footer-reasoning" class="footer-select" onchange="handleFooterReasoningChange(this.value)">
+                <option value="medium">Reasoning: Medium</option>
+                <option value="high">Reasoning: High</option>
+                <option value="low">Reasoning: Low</option>
+                <option value="minimal">Reasoning: Off</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-controls-group">
+          <!-- Connection / Auth Status & Settings -->
+          <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
+            <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
+            <span id="footer-env-label">Shuffle Standalone</span>
+          </button>
+          <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Execution Results & Agent Activity Breakdown Stream -->
@@ -2337,6 +2565,12 @@
               <line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
             <span>AI &amp; Models</span>
+          </button>
+          <button id="settings-tab-btn-skills" class="settings-nav-item" onclick="switchSettingsTab('skills')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>Skills</span>
           </button>
         </div>
 
@@ -2595,8 +2829,8 @@
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="select-ai-model">AI Model</label>
               <select id="select-ai-model" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
-                <option value="gemini-3.8-flash-high">Gemini 3.8 Flash High (Default)</option>
-                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Fast)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Default)</option>
+                <option value="gemini-3.8-flash-high">Gemini 3.8 Flash High (High Reasoning)</option>
                 <option value="gemini-3.8-pro">Gemini 3.8 Pro (Reasoning)</option>
                 <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic)</option>
                 <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
@@ -2609,7 +2843,70 @@
               <div style="font-weight:600; color:var(--text-secondary);">Active Environment:</div>
               <div>AI_API_URL: <span id="env-display-url" style="color:var(--text-primary)">not set</span></div>
               <div>AI_API_KEY: <span id="env-display-key" style="color:var(--text-primary)">not set</span></div>
-              <div>AI_MODEL: <span id="env-display-model" style="color:var(--text-primary)">gemini-3.8-flash-high</span></div>
+              <div>AI_MODEL: <span id="env-display-model" style="color:var(--text-primary)">gemini-3.8-flash</span></div>
+            </div>
+          </div>
+
+          <!-- VIEW: SKILLS -->
+          <div id="settings-panel-skills" class="settings-panel">
+            <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Agent Skills &amp; Capabilities</span>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-skills-action" onclick="browseAndInjectSkillFile()" title="Browse and inject a local SKILL.md file">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <span>Inject Skill File</span>
+                </button>
+                <button type="button" class="btn-skills-action" onclick="toggleCustomSkillForm()" title="Create custom skill definition">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  <span>New Custom Skill</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Inline Form for Creating / Pasting Skill -->
+            <div id="custom-skill-form-box" style="display:none; background:var(--bg-code); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:8px;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-primary); margin-bottom:10px;">Define New Skill</div>
+              <div class="form-group" style="margin-bottom:10px;">
+                <label class="form-label" for="input-skill-name">Skill Name *</label>
+                <input id="input-skill-name" class="form-input" type="text" placeholder="e.g. kubernetes-debugger, git-workflow">
+              </div>
+              <div class="form-group" style="margin-bottom:10px;">
+                <label class="form-label" for="input-skill-description">Description</label>
+                <input id="input-skill-description" class="form-input" type="text" placeholder="e.g. Inspects and manages Kubernetes pods and deployments">
+              </div>
+              <div class="form-group" style="margin-bottom:10px;">
+                <label class="form-label" for="input-skill-instructions">Instructions (Markdown / Steps / Rules)</label>
+                <textarea id="input-skill-instructions" class="form-input" style="font-family:ui-monospace,Menlo,Monaco,monospace; font-size:11.5px; min-height:90px; resize:vertical;" placeholder="Describe step-by-step procedures, commands to run, verification steps, and rules for the agent..."></textarea>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-secondary); cursor:pointer;">
+                  <input type="checkbox" id="check-skill-control">
+                  <span>Enforce as Control Procedure (High Priority)</span>
+                </label>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn-modal-cancel" style="padding:4px 10px; font-size:11.5px;" onclick="toggleCustomSkillForm(false)">Cancel</button>
+                  <button type="button" class="btn-modal-submit" style="padding:4px 12px; font-size:11.5px;" onclick="submitCustomSkillForm()">Save &amp; Inject</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Injected Skills Section -->
+            <div class="settings-subgroup-title">Injected Capabilities &amp; Control Skills</div>
+            <div id="injected-skills-container" class="skills-list-container">
+              <div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:8px 0;">No injected skills yet. Click "Inject Skill File" or "New Custom Skill" above.</div>
+            </div>
+
+            <!-- Workspace & Built-in Skills Section -->
+            <div class="settings-subgroup-title" style="margin-top:16px;">Workspace &amp; Built-in Skills</div>
+            <div id="discovered-skills-container" class="skills-list-container">
+              <div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:8px 0;">No workspace skills detected.</div>
             </div>
           </div>
 
@@ -2900,6 +3197,13 @@ async function init() {
       updateApprovalRulesCount();
     }
 
+    if (state.injected_skills && Array.isArray(state.injected_skills)) {
+      currentInjectedSkills = state.injected_skills;
+    }
+    if (state.project_skills && Array.isArray(state.project_skills)) {
+      currentDiscoveredSkills = state.project_skills;
+    }
+
     updateAuthState(state);
 
     if (state.active_project) {
@@ -2962,10 +3266,19 @@ function updateAuthState(state) {
   const authStatusText = document.getElementById("settings-auth-status-text");
   const footerDot = document.getElementById("footer-status-dot");
   const footerEnv = document.getElementById("footer-env-label");
-  const footerModel = document.getElementById("footer-model-label");
-
-  if (footerModel) {
-    footerModel.innerText = getFriendlyModelName(activeAiModel);
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  if (footerModelSelect) {
+    if (activeAiModel === "gemini-3.8-flash") {
+      footerModelSelect.value = "gemini-3.8-flash";
+      if (customInput) customInput.style.display = "none";
+    } else {
+      footerModelSelect.value = "custom";
+      if (customInput) {
+        customInput.style.display = "inline-block";
+        customInput.value = activeAiModel;
+      }
+    }
   }
 
   if (currentAiKey && currentAiUrl) {
@@ -3094,15 +3407,15 @@ async function submitAuth() {
 
 function getFriendlyModelName(modelId) {
   const map = {
+    "gemini-3.8-flash": "Gemini-3.8-Flash",
     "gemini-3.8-flash-high": "Gemini 3.8 Flash High",
-    "gemini-3.8-flash": "Gemini 3.8 Flash",
     "gemini-3.8-pro": "Gemini 3.8 Pro",
     "claude-3-7-sonnet": "Claude 3.7 Sonnet",
     "claude-3-5-sonnet": "Claude 3.5 Sonnet",
     "gpt-4o": "GPT-4o",
     "ollama": "Ollama"
   };
-  return map[modelId] || modelId || "Gemini 3.8 Flash High";
+  return map[modelId] || modelId || "Gemini-3.8-Flash";
 }
 
 function openSettingsModal(initialTab, focusField) {
@@ -3122,7 +3435,7 @@ function openSettingsModal(initialTab, focusField) {
 
     if (urlInput) urlInput.value = currentAiUrl || "";
     if (keyInput) keyInput.value = currentAiKey || "";
-    if (modelSelect) modelSelect.value = activeAiModel || "gemini-3.8-flash-high";
+    if (modelSelect) modelSelect.value = activeAiModel || "gemini-3.8-flash";
     if (globalPreset) globalPreset.value = currentPermissionPolicy || "ask_all";
     if (globalFileAccess) globalFileAccess.value = currentFileAccessPolicy || "ask";
     if (globalTerminal) globalTerminal.value = currentTerminalExecutionPolicy || "sandbox";
@@ -3426,7 +3739,7 @@ function updateEnvDisplayInModal() {
   const modelEl = document.getElementById("env-display-model");
   const urlInput = document.getElementById("input-ai-url");
   const modelSelect = document.getElementById("select-ai-model");
-  const model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash-high");
+  const model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
 
   let defaultUrl = "";
   if (model.startsWith("gemini")) {
@@ -3465,7 +3778,7 @@ async function saveSettings() {
 
   const url = urlInput ? urlInput.value.trim() : "";
   const key = keyInput ? keyInput.value.trim() : "";
-  const model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash-high");
+  const model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
   const preset = globalPreset ? globalPreset.value : (currentPermissionPolicy || "ask_all");
   const fileAccess = globalFileAccess ? globalFileAccess.value : (currentFileAccessPolicy || "ask");
   const terminal = globalTerminal ? globalTerminal.value : (currentTerminalExecutionPolicy || "sandbox");
@@ -3481,9 +3794,19 @@ async function saveSettings() {
   localStorage.setItem("orborus_ai_model", model);
   updateEnvDisplayInModal();
 
-  const footerModel = document.getElementById("footer-model-label");
-  if (footerModel) {
-    footerModel.innerText = getFriendlyModelName(model);
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  if (footerModelSelect) {
+    if (model === "gemini-3.8-flash") {
+      footerModelSelect.value = "gemini-3.8-flash";
+      if (customInput) customInput.style.display = "none";
+    } else {
+      footerModelSelect.value = "custom";
+      if (customInput) {
+        customInput.style.display = "inline-block";
+        customInput.value = model;
+      }
+    }
   }
 
   const settingsPayload = {
@@ -4081,23 +4404,136 @@ function insertFileContext(filePath) {
   handleInput(textarea);
 }
 
-// ----------------- Model State -----------------
+// ----------------- Model & Reasoning State -----------------
 const AVAILABLE_MODELS = [
-  { id: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash High", note: "Default" },
-  { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", note: "Fast" },
+  { id: "gemini-3.8-flash", name: "Gemini-3.8-Flash", note: "Default" },
+  { id: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash High", note: "High Reasoning" },
   { id: "gemini-3.8-pro", name: "Gemini 3.8 Pro", note: "Reasoning" },
   { id: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", note: "Anthropic" },
   { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", note: "Anthropic" },
   { id: "gpt-4o", name: "GPT-4o", note: "OpenAI" },
   { id: "ollama", name: "Ollama", note: "Local LLM" },
 ];
-let activeAiModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash-high";
+let activeAiModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+let activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
 
 function selectModel(modelId) {
   activeAiModel = modelId;
   localStorage.setItem("orborus_ai_model", modelId);
   const sel = document.getElementById("select-ai-model");
   if (sel) sel.value = modelId;
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  if (footerModelSelect) {
+    if (modelId === "gemini-3.8-flash") {
+      footerModelSelect.value = "gemini-3.8-flash";
+      if (customInput) customInput.style.display = "none";
+    } else {
+      footerModelSelect.value = "custom";
+      if (customInput) {
+        customInput.style.display = "inline-block";
+        customInput.value = modelId;
+      }
+    }
+  }
+}
+
+function initFooterControls() {
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  const footerReasoningSelect = document.getElementById("select-footer-reasoning");
+
+  // Reasoning setup
+  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
+  if (footerReasoningSelect) {
+    footerReasoningSelect.value = activeReasoningEffort;
+  }
+
+  // Model setup
+  const savedModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+  activeAiModel = savedModel;
+
+  if (!savedModel || savedModel === "gemini-3.8-flash") {
+    activeAiModel = "gemini-3.8-flash";
+    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
+    if (footerModelSelect) footerModelSelect.value = "gemini-3.8-flash";
+    if (customInput) customInput.style.display = "none";
+  } else {
+    if (footerModelSelect) footerModelSelect.value = "custom";
+    if (customInput) {
+      customInput.style.display = "inline-block";
+      customInput.value = savedModel;
+    }
+  }
+}
+
+function handleFooterModelChange(val) {
+  const customInput = document.getElementById("input-custom-model");
+  if (val === "custom") {
+    if (customInput) {
+      customInput.style.display = "inline-block";
+      const savedCustom = localStorage.getItem("orborus_custom_model") || "";
+      if (savedCustom) {
+        customInput.value = savedCustom;
+        activeAiModel = savedCustom;
+      } else if (activeAiModel && activeAiModel !== "gemini-3.8-flash") {
+        customInput.value = activeAiModel;
+      } else {
+        customInput.value = "";
+      }
+      customInput.focus();
+      if (customInput.value.trim()) {
+        syncModelSettings(customInput.value.trim());
+      }
+    }
+  } else {
+    if (customInput) {
+      customInput.style.display = "none";
+    }
+    activeAiModel = "gemini-3.8-flash";
+    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
+    syncModelSettings("gemini-3.8-flash");
+  }
+}
+
+function handleCustomModelInput(val) {
+  const trimmed = val.trim();
+  if (trimmed) {
+    activeAiModel = trimmed;
+    localStorage.setItem("orborus_ai_model", trimmed);
+    localStorage.setItem("orborus_custom_model", trimmed);
+    syncModelSettings(trimmed);
+  }
+}
+
+function handleFooterReasoningChange(val) {
+  activeReasoningEffort = val || "medium";
+  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  if (window.isDebug) {
+    console.log("[DEBUG] Reasoning effort changed to:", activeReasoningEffort);
+  }
+}
+
+function syncModelSettings(model) {
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) {
+    let found = false;
+    for (let i = 0; i < modelSelect.options.length; i++) {
+      if (modelSelect.options[i].value === model) {
+        modelSelect.value = model;
+        found = true;
+        break;
+      }
+    }
+    if (!found && model) {
+      const opt = document.createElement("option");
+      opt.value = model;
+      opt.innerText = `${model} (Custom)`;
+      modelSelect.appendChild(opt);
+      modelSelect.value = model;
+    }
+  }
+  updateEnvDisplayInModal();
 }
 
 // ----------------- Conversation History -----------------
@@ -4318,6 +4754,7 @@ async function submitPrompt() {
       prompt: prompt,
       project: activeProjectPath,
       model: activeAiModel,
+      reasoning: activeReasoningEffort,
       ai_url: currentAiUrl,
       policy: currentPermissionPolicy
     });
@@ -4328,7 +4765,13 @@ async function submitPrompt() {
     if (typeof window.runPrompt === "function") {
       raw = await window.runPrompt(prompt, false, activeConversationId || "");
     } else if (typeof window.bridgeCall === "function") {
-      raw = await window.bridgeCall("runPrompt", JSON.stringify({prompt: prompt, bypass: false, conversation_id: activeConversationId || ""}));
+      raw = await window.bridgeCall("runPrompt", JSON.stringify({
+        prompt: prompt,
+        bypass: false,
+        conversation_id: activeConversationId || "",
+        model: activeAiModel || "gemini-3.8-flash",
+        reasoning: activeReasoningEffort || "medium"
+      }));
     } else {
       await new Promise(r => setTimeout(r, 400));
       raw = JSON.stringify({
@@ -4521,61 +4964,109 @@ function renderExecutionResult(item, elapsedSec) {
     </svg>
   `;
 
-  // System Diagnostics Grid: Shows what is and isn't working
-  let diagnosticGrid = "";
-  if (isError) {
-    const workspaceName = (info.project || activeProjectPath || "Local Workspace").split("/").pop() || "Local";
-    const modelName = info.model || activeAiModel || "gemini-3.8-flash-high";
-
-    diagnosticGrid = `
-      <div style="margin-top:10px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
-        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-          <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">AI Engine</div>
-          <div style="font-weight:600; font-size:11.5px; color:#10b981; display:flex; align-items:center; justify-content:space-between;">
-            <span>Shuffle Agent</span>
-            <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-          </div>
-        </div>
-        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-          <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Workspace</div>
-          <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(info.project || activeProjectPath)}">${escapeHtml(workspaceName)}</span>
-            <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-          </div>
-        </div>
-        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-          <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Target Model</div>
-          <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(modelName)}">${escapeHtml(modelName)}</span>
-            <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-          </div>
-        </div>
-        <div style="background:rgba(255,255,255,0.03); border:1px solid ${isAiConfigError ? 'rgba(239,68,68,0.3)' : 'var(--border-subtle)'}; border-radius:6px; padding:7px 10px;">
-          <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">API Key &amp; Auth</div>
-          <div style="font-weight:600; font-size:11.5px; color:${isAiConfigError ? '#f87171' : '#10b981'}; display:flex; align-items:center; justify-content:space-between;">
-            <span>${isAiConfigError ? 'Missing' : 'Configured'}</span>
-            <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${isAiConfigError ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}; color:${isAiConfigError ? '#f87171' : '#10b981'};">${isAiConfigError ? 'Failed' : 'Passed'}</span>
-          </div>
-        </div>
-      </div>
-    `;
+function buildDiagnosticsAndCallout(isError, errText, info, modelName, workspaceName) {
+  if (!isError) {
+    return { diagnosticGrid: "", actionCallout: "" };
   }
 
-  let debugBar = "";
-  if (item.debug_info || window.isDebug) {
-    debugBar = `
-      <div style="padding:5px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <span style="color:${isError ? '#f87171' : '#f85f38'}; font-weight:600;">${isError ? 'ERROR' : 'DEBUG'}</span>
-        <span>Target: ${escapeHtml(info.target || "local")}</span>
-        <span>Model: ${escapeHtml(info.model || activeAiModel || "none")}</span>
-        <span>Engine: ${escapeHtml(info.engine || info.mode || "shuffle.HandleAiAgentExecutionStart")}</span>
-      </div>
-    `;
+  const isAiConfigError = (info && info.needs_ai_config) ||
+    (info && (info.error_type === "missing_credentials" || info.error_type === "missing_ai_config")) ||
+    errText.includes("no llm apikey") ||
+    errText.includes("apikey") ||
+    errText.includes("no organization-specific key") ||
+    errText.includes("custom ai app authentication") ||
+    errText.includes("ai provider not configured") ||
+    errText.includes("ai configuration");
+
+  const isNetworkError = (info && info.error_type === "network_unreachable") ||
+    errText.includes("connection refused") ||
+    errText.includes("dial tcp") ||
+    errText.includes("no such host");
+
+  const isRateLimitError = (info && info.error_type === "rate_limited") ||
+    errText.includes("rate limit") ||
+    errText.includes("quota") ||
+    errText.includes("429") ||
+    errText.includes("resource_exhausted") ||
+    errText.includes("too many requests");
+
+  const isCommandNotFound = (info && info.error_type === "command_not_found") ||
+    errText.includes("command not found") ||
+    errText.includes("exit status 127");
+
+  // Determine diagnostic badges
+  let engineBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: "Shuffle Agent" };
+  let workspaceBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981" };
+  let modelBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: modelName };
+  let authBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: "Configured" };
+
+  if (isRateLimitError) {
+    modelBadge = { label: "429 Quota", bg: "rgba(234,179,8,0.15)", color: "#eab308", text: modelName };
+    authBadge = { label: "Exhausted", bg: "rgba(234,179,8,0.15)", color: "#eab308", text: "Rate Limited" };
+  } else if (isAiConfigError) {
+    authBadge = { label: "Failed", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Missing" };
+  } else if (isNetworkError) {
+    authBadge = { label: "Unreachable", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Network Error" };
+  } else if (isCommandNotFound) {
+    engineBadge = { label: "Failed", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Path Error" };
   }
+
+  const diagnosticGrid = `
+    <div style="margin-top:10px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
+        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">AI Engine</div>
+        <div style="font-weight:600; font-size:11.5px; color:${engineBadge.color}; display:flex; align-items:center; justify-content:space-between;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;">${escapeHtml(engineBadge.text)}</span>
+          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${engineBadge.bg}; color:${engineBadge.color};">${engineBadge.label}</span>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
+        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Workspace</div>
+        <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(activeProjectPath)}">${escapeHtml(workspaceName)}</span>
+          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${workspaceBadge.bg}; color:${workspaceBadge.color};">${workspaceBadge.label}</span>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03); border:1px solid ${isRateLimitError ? 'rgba(234,179,8,0.3)' : 'var(--border-subtle)'}; border-radius:6px; padding:7px 10px;">
+        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Target Model</div>
+        <div style="font-weight:600; font-size:11.5px; color:${modelBadge.color}; display:flex; align-items:center; justify-content:space-between;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(modelName)}">${escapeHtml(modelName)}</span>
+          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${modelBadge.bg}; color:${modelBadge.color};">${modelBadge.label}</span>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03); border:1px solid ${isAiConfigError ? 'rgba(239,68,68,0.3)' : (isRateLimitError ? 'rgba(234,179,8,0.3)' : 'var(--border-subtle)')}; border-radius:6px; padding:7px 10px;">
+        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">API Key &amp; Auth</div>
+        <div style="font-weight:600; font-size:11.5px; color:${authBadge.color}; display:flex; align-items:center; justify-content:space-between;">
+          <span>${escapeHtml(authBadge.text)}</span>
+          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${authBadge.bg}; color:${authBadge.color};">${authBadge.label}</span>
+        </div>
+      </div>
+    </div>
+  `;
 
   let actionCallout = "";
-  if (isAiConfigError) {
-    const modelName = info.model || activeAiModel || "gemini-3.8-flash-high";
+  if (isRateLimitError) {
+    actionCallout = `
+      <div style="margin-top:12px; padding:12px 14px; background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.25); border-radius:8px; color:var(--text-primary);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <div style="font-size:12.5px; font-weight:600; color:#eab308;">Action Required: AI Rate Limit or Quota Exceeded (HTTP 429)</div>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(234,179,8,0.2); color:#eab308; font-weight:600;">How to Fix</span>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
+          The AI provider returned a rate limit or quota exceeded error (HTTP 429 / RESOURCE_EXHAUSTED) for model <strong style="color:var(--text-primary); font-family:ui-monospace,monospace;">${escapeHtml(modelName)}</strong>.
+          <ul style="margin:6px 0 0 16px; padding:0; color:var(--text-secondary); font-size:11.5px; line-height:1.5;">
+            <li>Option 1: Click <strong>Switch Model</strong> to choose another model (e.g. Gemini 3.8 Flash, GPT-4o, Claude).</li>
+            <li>Option 2: Click <strong>Update API Key</strong> to provide an alternative API key with active quota.</li>
+            <li>Option 3: Wait a few seconds for per-minute rate limits to reset and retry your prompt.</li>
+          </ul>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'model')">Switch Model</button>
+          <button type="button" class="btn-modal-cancel" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Update API Key</button>
+        </div>
+      </div>
+    `;
+  } else if (isAiConfigError) {
     actionCallout = `
       <div style="margin-top:12px; padding:12px 14px; background:rgba(248,95,56,0.08); border:1px solid rgba(248,95,56,0.25); border-radius:8px; color:var(--text-primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -4591,7 +5082,7 @@ function renderExecutionResult(item, elapsedSec) {
           </ul>
         </div>
         <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models')">Configure AI &amp; Models</button>
+          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Configure AI &amp; Models</button>
           <button type="button" class="btn-modal-cancel" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('auth')">Shuffle Login</button>
         </div>
       </div>
@@ -4607,22 +5098,7 @@ function renderExecutionResult(item, elapsedSec) {
           Could not connect to the AI endpoint or backend URL. Verify network connectivity and your endpoint URL in Settings.
         </div>
         <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models')">Verify AI URL &amp; Settings</button>
-        </div>
-      </div>
-    `;
-  } else if (isRateLimitError) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.25); border-radius:8px; color:var(--text-primary);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <div style="font-size:12.5px; font-weight:600; color:#eab308;">Action Required: AI Rate Limit or Quota Exceeded</div>
-          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(234,179,8,0.2); color:#eab308; font-weight:600;">How to Fix</span>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-          The AI provider returned a rate limit or quota exceeded error (HTTP 429). Wait a moment or switch to another model.
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models')">Switch Model</button>
+          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'url')">Verify AI URL &amp; Settings</button>
         </div>
       </div>
     `;
@@ -4634,8 +5110,28 @@ function renderExecutionResult(item, elapsedSec) {
           The executable does not exist on your system PATH. If you intended this as an AI question or instruction, configure an AI model to process natural language.
         </div>
         <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models')">Configure AI &amp; Models</button>
+          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Configure AI &amp; Models</button>
         </div>
+      </div>
+    `;
+  }
+
+  return { diagnosticGrid, actionCallout };
+}
+
+  const workspaceName = (info.project || activeProjectPath || "Local Workspace").split("/").pop() || "Local";
+  const modelName = info.model || activeAiModel || "gemini-3.8-flash";
+  const { diagnosticGrid, actionCallout } = buildDiagnosticsAndCallout(isError, errText, info, modelName, workspaceName);
+
+  let debugBar = "";
+  if (item.debug_info || window.isDebug) {
+    debugBar = `
+      <div style="padding:5px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <span style="color:${isError ? '#f87171' : '#f85f38'}; font-weight:600;">${isError ? 'ERROR' : 'DEBUG'}</span>
+        <span>Target: ${escapeHtml(info.target || "local")}</span>
+        <span>Model: ${escapeHtml(info.model || activeAiModel || "gemini-3.8-flash")}</span>
+        ${info.reasoning ? `<span>Reasoning: ${escapeHtml(info.reasoning)}</span>` : ""}
+        <span>Engine: ${escapeHtml(info.engine || info.mode || "shuffle.HandleAiAgentExecutionStart")}</span>
       </div>
     `;
   }
@@ -4678,14 +5174,6 @@ function renderErrorResult(prompt, err, meta) {
   }
 
   const errText = (err || "").toLowerCase();
-  const isAiConfig = (meta && meta.needs_ai_config) ||
-    errText.includes("no llm apikey") ||
-    errText.includes("apikey") ||
-    errText.includes("no organization-specific key") ||
-    errText.includes("custom ai app authentication") ||
-    errText.includes("ai provider not configured") ||
-    errText.includes("ai configuration");
-
   const entry = {
     prompt: prompt,
     error: err,
@@ -4711,64 +5199,9 @@ function renderErrorResult(prompt, err, meta) {
   `;
 
   const workspaceName = (activeProjectPath || "Local Workspace").split("/").pop() || "Local";
-  const modelName = activeAiModel || "gemini-3.8-flash-high";
-
-  const diagnosticGrid = `
-    <div style="margin-top:10px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">AI Engine</div>
-        <div style="font-weight:600; font-size:11.5px; color:#10b981; display:flex; align-items:center; justify-content:space-between;">
-          <span>Shuffle Agent</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Workspace</div>
-        <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(activeProjectPath)}">${escapeHtml(workspaceName)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Target Model</div>
-        <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(modelName)}">${escapeHtml(modelName)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:rgba(16,185,129,0.15); color:#10b981;">Passed</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid ${isAiConfig ? 'rgba(239,68,68,0.3)' : 'var(--border-subtle)'}; border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">API Key &amp; Auth</div>
-        <div style="font-weight:600; font-size:11.5px; color:${isAiConfig ? '#f87171' : '#10b981'}; display:flex; align-items:center; justify-content:space-between;">
-          <span>${isAiConfig ? 'Missing' : 'Configured'}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${isAiConfig ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}; color:${isAiConfig ? '#f87171' : '#10b981'};">${isAiConfig ? 'Failed' : 'Passed'}</span>
-        </div>
-      </div>
-    </div>
-  `;
-
-  let actionCallout = "";
-  if (isAiConfig) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(248,95,56,0.08); border:1px solid rgba(248,95,56,0.25); border-radius:8px; color:var(--text-primary);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <div style="font-size:12.5px; font-weight:600; color:#f85f38;">Action Required: AI Model Credentials Missing</div>
-          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(248,95,56,0.2); color:#f85f38; font-weight:600;">How to Fix</span>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-          The Shuffle Agent engine started successfully, but no LLM API key or Shuffle organization key was found to communicate with model <strong style="color:var(--text-primary); font-family:ui-monospace,monospace;">${escapeHtml(modelName)}</strong>.
-          <ul style="margin:6px 0 0 16px; padding:0; color:var(--text-secondary); font-size:11.5px; line-height:1.5;">
-            <li>Option 1: Click <strong>Configure AI &amp; Models</strong> below to paste your API key (Gemini, OpenAI, Anthropic, or Ollama).</li>
-            <li>Option 2: Click <strong>Shuffle Login</strong> to authenticate with your Shuffle workspace.</li>
-            <li>Option 3: Or set <code style="font-family:ui-monospace,monospace; background:rgba(255,255,255,0.06); padding:1px 4px; border-radius:3px;">AI_API_KEY</code> in your environment before running.</li>
-          </ul>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models')">Configure AI &amp; Models</button>
-          <button type="button" class="btn-modal-cancel" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('auth')">Shuffle Login</button>
-        </div>
-      </div>
-    `;
-  }
+  const modelName = activeAiModel || "gemini-3.8-flash";
+  const info = meta || {};
+  const { diagnosticGrid, actionCallout } = buildDiagnosticsAndCallout(true, errText, info, modelName, workspaceName);
 
   const card = document.createElement("div");
   card.className = "exec-card exec-card-error";
@@ -5267,6 +5700,7 @@ window.addEventListener("keydown", function(e) {
 window.addEventListener("DOMContentLoaded", () => {
   setupWindowDragging();
   init();
+  initFooterControls();
   const savedModel = localStorage.getItem("orborus_ai_model");
   if (savedModel) {
     activeAiModel = savedModel;
