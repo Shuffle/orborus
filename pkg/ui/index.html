@@ -3534,6 +3534,26 @@ function setChatMode(enabled) {
   }
 }
 
+function extractRunningTasksFromDecisions(decisions) {
+  if (!Array.isArray(decisions) || decisions.length === 0) return [];
+  const tasks = [];
+  decisions.forEach(d => {
+    if (!d) return;
+    const rd = d.run_details || {};
+    const st = String(rd.status || d.status || "").toUpperCase();
+    const runs = String(d.runs || "").toLowerCase();
+    if (st === "RUNNING" || st === "WAITING" || runs === "background") {
+      const taskName = d.action || d.tool || rd.action_name || (d.fields && d.fields[0] ? d.fields[0].value : "") || "Background Task";
+      tasks.push({
+        id: rd.id || ("task-" + (d.i || Math.random())),
+        name: taskName,
+        status: st || "RUNNING"
+      });
+    }
+  });
+  return tasks;
+}
+
 function renderRunningTasks() {
   const panel = document.getElementById("running-tasks-panel");
   const countLabel = document.getElementById("running-tasks-count-label");
@@ -6216,18 +6236,13 @@ async function submitPrompt() {
     promptCard.style.display = "none";
   }
 
-  const shortTaskName = prompt.split("\n")[0].substring(0, 52);
-  activeRunningTasks = [{
-    id: "task-" + Date.now(),
-    name: shortTaskName
-  }];
+  // Only tasks reported by the agent as actively running background tasks should appear.
+  activeRunningTasks = [];
   renderRunningTasks();
 
   const summaryBanner = document.getElementById("activity-summary-banner");
-  const summaryText = document.getElementById("activity-summary-text");
-  if (summaryBanner && summaryText) {
-    summaryBanner.style.display = "flex";
-    summaryText.innerText = `Running task: ${shortTaskName}`;
+  if (summaryBanner) {
+    summaryBanner.style.display = "none";
   }
 
   // 1. Create immediate optimistic turn in running state
@@ -6420,6 +6435,21 @@ async function submitPrompt() {
     optimisticTurn.debug_info = res.debug_info || {};
     if (res.steps && Array.isArray(res.steps) && res.steps.length > 0) {
       optimisticTurn.steps = res.steps;
+    }
+
+    const rawDecisions = res.decisions || (res.workflow_execution && res.workflow_execution.decisions) || [];
+    activeRunningTasks = extractRunningTasksFromDecisions(rawDecisions);
+    renderRunningTasks();
+
+    const summaryBanner = document.getElementById("activity-summary-banner");
+    const summaryText = document.getElementById("activity-summary-text");
+    if (summaryBanner && summaryText) {
+      if (activeRunningTasks.length > 0) {
+        summaryBanner.style.display = "flex";
+        summaryText.innerText = `Running task: ${activeRunningTasks[0].name}`;
+      } else {
+        summaryBanner.style.display = "none";
+      }
     }
 
     // If backend returned updated full conversation, adopt it
@@ -6914,6 +6944,20 @@ function renderActiveConversation() {
   if (summaryBanner && (!stepsContainer || stepsContainer.children.length === 0)) {
     summaryBanner.style.display = "none";
   }
+
+  // Extract running tasks strictly from decisions of in-flight turns
+  let runningTasksFound = [];
+  (conv.turns || []).forEach(turn => {
+    if (turn.status === "running") {
+      const turnDecisions = turn.decisions || (turn.workflow_execution && turn.workflow_execution.decisions) || [];
+      const extracted = extractRunningTasksFromDecisions(turnDecisions);
+      if (extracted.length > 0) {
+        runningTasksFound.push(...extracted);
+      }
+    }
+  });
+  activeRunningTasks = runningTasksFound;
+  renderRunningTasks();
 
   // Check if any step in any turn has a pending approval
   let hasPendingApproval = false;

@@ -32,6 +32,8 @@ type ExecutionEntry struct {
 	FixHelp        string                 `json:"fix_help,omitempty"`
 	DebugInfo         map[string]interface{}     `json:"debug_info,omitempty"`
 	Turns             []ConversationTurn         `json:"turns,omitempty"`
+	Steps             []ConversationStep         `json:"steps,omitempty"`
+	Decisions         []shuffle.AgentDecision    `json:"decisions,omitempty"`
 	Conversation      *Conversation              `json:"conversation,omitempty"`
 	WorkflowExecution *shuffle.WorkflowExecution `json:"workflow_execution,omitempty"`
 }
@@ -1015,27 +1017,19 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 	b.mu.Unlock()
 
-	if isDebug {
-		maskedKey := "none"
-		if len(effectiveKey) > 8 {
-			maskedKey = effectiveKey[:4] + "..." + effectiveKey[len(effectiveKey)-4:]
-		} else if effectiveKey != "" {
-			maskedKey = "***"
-		}
-		log.Printf("[DEBUG] RunPrompt received: prompt=%q, convID=%q, forceApprove=%v, activeProject=%q", prompt, cID, forceApprove, project)
-		log.Printf("[DEBUG] RunPrompt [Stage 1: Credentials]: effectiveUrl=%q, key=%s, hasAiEndpoint=%v, activeModel=%q, activeReasoning=%q",
-			effectiveUrl, maskedKey, hasAiEndpoint, activeModel, activeReasoning)
-		log.Printf("[DEBUG] RunPrompt [Stage 2: Classification]: prompt=%q, isShellCmd=%v", prompt, isShellCmd)
+	maskedKey := "none"
+	if len(effectiveKey) > 8 {
+		maskedKey = effectiveKey[:4] + "..." + effectiveKey[len(effectiveKey)-4:]
+	} else if effectiveKey != "" {
+		maskedKey = "***"
 	}
 
 	// Prompts sent to the agent always start the AI Agent unless explicitly formatted as a shell command ($ or >)
 	trimmedPrompt := strings.TrimSpace(prompt)
 	isExplicitShell := strings.HasPrefix(trimmedPrompt, "$ ") || strings.HasPrefix(trimmedPrompt, "> ")
 	shouldRunAi := !isExplicitShell
-
-	if isDebug {
-		log.Printf("[DEBUG] RunPrompt [Routing Decision]: shouldRunAi=%v, isExplicitShell=%v, activeModel=%q, activeReasoning=%q", shouldRunAi, isExplicitShell, activeModel, activeReasoning)
-	}
+	log.Printf("[INFO][%s] AgentBridge RunPrompt: prompt=%q, convID=%q, model=%q, reasoning=%q, project=%q, url=%q, key=%s, hasAiEndpoint=%v, isShellCmd=%v, shouldRunAi=%v",
+		execID, prompt, cID, activeModel, activeReasoning, project, activeUrl, maskedKey, hasAiEndpoint, isShellCmd, shouldRunAi)
 
 	b.mu.Lock()
 	needsApproval := false
@@ -1178,15 +1172,69 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 		if output == "" {
 			output = errStr
 		}
-
-		if isDebug {
-			log.Printf("[DEBUG] RunPrompt completed with error: %v (type=%s)", err, errorType)
-		}
-	} else if isDebug {
-		log.Printf("[DEBUG] RunPrompt completed successfully (output bytes: %d)", len(output))
 	}
 
 	duration := time.Since(start).Round(time.Millisecond).String()
+
+	var extractedDecisions []shuffle.AgentDecision
+	var extractedSteps []ConversationStep
+	if workflowExec != nil {
+		for _, actionRes := range workflowExec.Results {
+			if actionRes.Result == "" {
+				continue
+			}
+			var agentOut shuffle.AgentOutput
+			if jsonErr := json.Unmarshal([]byte(actionRes.Result), &agentOut); jsonErr == nil && len(agentOut.Decisions) > 0 {
+				extractedDecisions = append(extractedDecisions, agentOut.Decisions...)
+			} else {
+				var directDecs []shuffle.AgentDecision
+				if jsonErr2 := json.Unmarshal([]byte(actionRes.Result), &directDecs); jsonErr2 == nil && len(directDecs) > 0 {
+					extractedDecisions = append(extractedDecisions, directDecs...)
+				}
+			}
+		}
+
+		for _, dec := range extractedDecisions {
+			stepName := dec.Action
+			if stepName == "" {
+				stepName = dec.Tool
+			}
+			if stepName == "" {
+				stepName = "Agent Step"
+			}
+			stepType := "thought"
+			if dec.Tool != "" && dec.Tool != "thought" {
+				stepType = "cmd"
+			}
+			stepDur := ""
+			if dec.RunDetails.CompletedAt > 0 && dec.RunDetails.StartedAt > 0 {
+				diff := dec.RunDetails.CompletedAt - dec.RunDetails.StartedAt
+				if diff > 1000 {
+					stepDur = fmt.Sprintf("%.1fs", float64(diff)/1000.0)
+				} else {
+					stepDur = fmt.Sprintf("%dms", diff)
+				}
+			}
+			detailText := dec.Reason
+			if detailText == "" {
+				detailText = dec.RunDetails.RawResponse
+			}
+			extractedSteps = append(extractedSteps, ConversationStep{
+				ID:        fmt.Sprintf("step-%d", dec.I),
+				Name:      stepName,
+				Detail:    detailText,
+				Type:      stepType,
+				Duration:  stepDur,
+				Collapsed: true,
+			})
+		}
+	}
+
+	if err != nil {
+		log.Printf("[ERROR][%s] RunPrompt completed with error: %v (type=%s, duration=%s)", execID, err, errorType, duration)
+	} else {
+		log.Printf("[INFO][%s] RunPrompt completed successfully in %s (decisions=%d, steps=%d, output bytes=%d)", execID, duration, len(extractedDecisions), len(extractedSteps), len(output))
+	}
 
 	if cID == "" {
 		cID = fmt.Sprintf("conv-%d", time.Now().UnixMilli())
@@ -1196,6 +1244,7 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 		ID:                execID,
 		Prompt:            prompt,
 		Timestamp:         time.Now().Format("15:04:05"),
+		Steps:             extractedSteps,
 		Output:            output,
 		Status:            status,
 		Duration:          duration,
@@ -1223,6 +1272,8 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 		ErrorType:         errorType,
 		FixHelp:           fixHelp,
 		DebugInfo:         debugInfo,
+		Steps:             extractedSteps,
+		Decisions:         extractedDecisions,
 		Conversation:      savedConv,
 		WorkflowExecution: workflowExec,
 	}
@@ -1716,6 +1767,8 @@ func (b *AgentBridge) HandleAction(action string, payload string) (res string) {
 		if err := json.Unmarshal([]byte(payload), &req); err != nil {
 			req.Prompt = payload
 		}
+		log.Printf("[INFO] AgentBridge.HandleAction \"runPrompt\": prompt=%q, model=%q, reasoning=%q, convID=%q, keyPresent=%v, url=%q",
+			req.Prompt, req.Model, req.Reasoning, req.ConversationID, req.AiApiKey != "", req.AiApiUrl)
 		if req.AiApiKey != "" {
 			b.mu.Lock()
 			b.aiApiKey = strings.TrimSpace(req.AiApiKey)
