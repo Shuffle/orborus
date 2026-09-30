@@ -137,11 +137,21 @@ func onReady(cfg *pkg.Config) {
 
 	mQuit := systray.AddMenuItem("Quit Shuffle Agent", "Exit the agent runner")
 
-	// Optimisation: Only create and show WebView on boot if explicitly requested (e.g. standalone UI flag).
-	// Otherwise, WebView is lazily initialized on demand when the user clicks "Open Window".
-	if cfg.IsStandalone && (os.Getenv("OPEN_WINDOW") == "true" || os.Getenv("OPEN_WINDOW") == "1") {
-		log.Println("[INFO] Standalone mode: opening dashboard window on boot")
-		win := getOrCreateAgentWindow(cfg)
+	// Pre-initialize and pre-warm WebView window so it is ready on demand
+	win := getOrCreateAgentWindow(cfg)
+	win.Prewarm()
+	shouldOpenWindow := os.Getenv("OPEN_WINDOW") == "true" || os.Getenv("OPEN_WINDOW") == "1" || os.Getenv("WINDOW") == "true"
+	for _, arg := range os.Args[1:] {
+		if arg == "--window" || arg == "-w" || arg == "window" || arg == "ui" {
+			shouldOpenWindow = true
+			break
+		}
+	}
+	if cfg.IsStandalone && os.Getenv("TRAY_ONLY") != "true" && os.Getenv("TRAY_ONLY") != "1" {
+		shouldOpenWindow = true
+	}
+	if shouldOpenWindow {
+		log.Println("[INFO] Opening dashboard window on boot")
 		win.Show()
 	}
 

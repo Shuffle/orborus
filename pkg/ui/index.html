@@ -662,21 +662,68 @@
     align-items: center;
     height: 100%;
     overflow-y: auto;
-    padding: 24px 30px 40px 30px;
+    padding: 16px 24px 28px 24px;
     position: relative;
+    box-sizing: border-box;
+  }
+  .main-workspace.chat-mode {
+    overflow: hidden;
+    padding: 10px 24px 14px 24px;
   }
 
   .center-container {
     width: 100%;
-    max-width: 800px;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 5vh;
+    transition: margin-top 0.25s ease;
+    box-sizing: border-box;
+  }
+  .center-container.initial-mode {
+    margin-top: 14vh;
+  }
+  .center-container.initial-mode #execution-stream {
+    display: none;
+  }
+  .center-container.chat-mode {
+    margin-top: 0;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 0;
+    gap: 0;
+  }
+  .center-container.chat-mode .project-selector-row {
+    margin-bottom: 6px;
+    flex-shrink: 0;
+  }
+  .center-container.chat-mode .execution-stream {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 6px 12px 2px;
+    margin-top: 0;
+    margin-bottom: 6px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-top: 10vh;
-    transition: margin-top 0.25s ease;
+    scroll-behavior: smooth;
+  }
+  .center-container.chat-mode .chat-dock-container {
+    flex-shrink: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: transparent;
   }
   .center-container.has-history {
-    margin-top: 10px;
+    margin-top: 0;
   }
 
   /* Project Picker Row */
@@ -812,12 +859,12 @@
   .input-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 16px 18px 12px 18px;
+    border-radius: 12px;
+    padding: 10px 14px 8px 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    gap: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     transition: border-color 0.15s ease;
   }
   .input-card:focus-within {
@@ -831,10 +878,10 @@
     outline: none;
     resize: none;
     color: var(--text-primary);
-    font-size: 15px;
-    line-height: 1.5;
-    min-height: 38px;
-    max-height: 180px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    min-height: 28px;
+    max-height: 160px;
     font-family: inherit;
     user-select: text;
     -webkit-user-select: text;
@@ -877,24 +924,85 @@
     background: var(--bg-hover);
   }
 
-  .model-pill {
+  /* Model Picker Pill Matching Screenshot "+ Gemini 3.8 Flash High ^" */
+  .model-picker-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .model-picker-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     border-radius: 9999px;
     padding: 4px 10px;
     font-size: 12px;
+    font-weight: 500;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.15s ease;
   }
-  .model-pill:hover {
+  .model-picker-pill:hover {
     color: var(--text-primary);
-    background: var(--bg-active);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-hover);
+  }
+  .model-chevron {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+  }
+  .model-dropdown-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: 270px;
+    background: #141822;
+    border: 1px solid #283142;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    padding: 6px 0;
+  }
+  .model-dropdown-menu.visible {
+    display: flex;
+  }
+  .model-option-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+  .model-option-item:last-child {
+    border-bottom: none;
+  }
+  .model-option-item:hover {
+    background: rgba(248, 95, 56, 0.12);
+  }
+  .model-option-title {
+    font-size: 12.5px;
+    color: #e2e8f0;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .model-option-item.selected .model-option-title {
+    color: #f85f38;
+    font-weight: 600;
+  }
+  .model-option-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
   }
 
+  /* Send Button */
   .btn-send {
     width: 32px;
     height: 32px;
@@ -917,11 +1025,32 @@
     background: var(--accent-blue-hover);
   }
 
+  /* Stop Button (Red Square matching screenshot) */
+  .btn-stop {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn-stop:hover {
+    background: #dc2626;
+  }
+  .btn-stop:active {
+    transform: scale(0.95);
+  }
+
   /* Card Footer Row */
   .card-footer-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 0 4px;
     color: var(--text-muted);
     font-size: 12px;
@@ -934,12 +1063,12 @@
     gap: 8px;
     flex-wrap: wrap;
   }
-  .footer-control-item {
+  .toolbar-control-item, .footer-control-item {
     display: inline-flex;
     align-items: center;
     gap: 6px;
   }
-  .footer-control-badge {
+  .toolbar-control-badge, .footer-control-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -949,14 +1078,17 @@
     padding: 3px 8px;
     color: var(--text-secondary);
     font-size: 11.5px;
+    height: 26px;
+    box-sizing: border-box;
     transition: all 0.15s ease;
   }
+  .toolbar-control-badge:hover, .toolbar-control-badge:focus-within,
   .footer-control-badge:hover, .footer-control-badge:focus-within {
     border-color: rgba(248, 95, 56, 0.5);
     background: rgba(255, 255, 255, 0.07);
     color: var(--text-primary);
   }
-  .footer-select {
+  .toolbar-select, .footer-select {
     background: transparent;
     border: none;
     color: inherit;
@@ -967,11 +1099,11 @@
     padding: 0;
     font-family: inherit;
   }
-  .footer-select option {
+  .toolbar-select option, .footer-select option {
     background: #111827;
     color: #e5e7eb;
   }
-  .footer-custom-input {
+  .toolbar-custom-input, .footer-custom-input {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(248, 95, 56, 0.5);
     border-radius: 6px;
@@ -981,9 +1113,11 @@
     font-family: ui-monospace, Menlo, Monaco, monospace;
     outline: none;
     width: 170px;
+    height: 26px;
+    box-sizing: border-box;
     transition: all 0.15s ease;
   }
-  .footer-custom-input:focus {
+  .toolbar-custom-input:focus, .footer-custom-input:focus {
     border-color: var(--shuffle-orange);
     box-shadow: 0 0 0 2px rgba(248, 95, 56, 0.2);
   }
@@ -1141,43 +1275,79 @@
     background: #0369a1;
   }
 
-  /* Activity Breakdown Steps */
+  /* Activity Breakdown Steps & Chat Mode Elements */
   .user-prompt-card {
-    background: #181d28;
+    background: #161a23;
     border: 1px solid #283142;
     border-radius: 12px;
     padding: 14px 18px;
     color: #f1f5f9;
-    font-size: 14px;
+    font-size: 13.5px;
     line-height: 1.5;
     white-space: pre-wrap;
-    margin-bottom: 14px;
+    word-break: break-word;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   }
+
+  .activity-summary-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    font-size: 12.5px;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+    margin-bottom: 4px;
+  }
+  .activity-summary-banner:hover {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .activity-summary-chevron {
+    color: #64748b;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+  }
+  .activity-summary-banner.collapsed .activity-summary-chevron {
+    transform: rotate(-90deg);
+  }
+
   .activity-steps-container {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+    transition: all 0.2s ease;
   }
+  .activity-steps-container.collapsed {
+    display: none;
+  }
+
   .activity-step-row {
-    background: #11151f;
-    border: 1px solid #212736;
-    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
     overflow: hidden;
-    transition: border-color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
   .activity-step-row:hover {
-    border-color: #313a4f;
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.06);
   }
   .activity-step-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 6px 8px;
     cursor: pointer;
     user-select: none;
     font-size: 13px;
     color: #94a3b8;
-    background: #11151f;
+    background: transparent;
     transition: color 0.15s ease;
   }
   .activity-step-header:hover {
@@ -1189,6 +1359,7 @@
     gap: 8px;
     overflow: hidden;
     flex: 1;
+    min-width: 0;
   }
   .activity-step-left svg {
     flex-shrink: 0;
@@ -1197,6 +1368,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
   .activity-step-chevron {
     color: #64748b;
@@ -1204,6 +1378,7 @@
     align-items: center;
     transition: transform 0.2s ease;
     flex-shrink: 0;
+    margin-left: 8px;
   }
   .activity-step-row.expanded .activity-step-chevron {
     transform: rotate(90deg);
@@ -1213,13 +1388,14 @@
     padding: 10px 14px;
     background: #090c14;
     border-top: 1px solid #1c2230;
-    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
-    font-size: 12.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
     line-height: 1.5;
     color: #cbd5e1;
     overflow-x: auto;
     white-space: pre-wrap;
     max-height: 320px;
+    border-radius: 0 0 6px 6px;
   }
   .activity-step-row.expanded .activity-step-content {
     display: block;
@@ -1233,6 +1409,103 @@
     color: #38bdf8;
     background: rgba(56, 189, 248, 0.08);
     border-top: 1px solid rgba(56, 189, 248, 0.15);
+  }
+
+  /* File Analysis Code Tag Badge Matching Screenshot: "Analyzed </> index.html #L3170-3200" */
+  .badge-code-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 95, 56, 0.15);
+    color: #f85f38;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin: 0 4px;
+    border: 1px solid rgba(248, 95, 56, 0.25);
+  }
+  .step-filepath {
+    color: #f1f5f9;
+    font-weight: 500;
+  }
+  .step-line-range {
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    margin-left: 4px;
+  }
+
+  /* Running Tasks Panel (Matching Screenshot Bottom Drawer) */
+  .running-tasks-panel {
+    background: #161a23;
+    border: 1px solid #232a3b;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    animation: fadeInTasks 0.2s ease-out;
+  }
+  @keyframes fadeInTasks {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .running-tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #94a3b8;
+    cursor: pointer;
+    user-select: none;
+  }
+  .running-tasks-header:hover {
+    color: #cbd5e1;
+  }
+  .running-tasks-chevron {
+    color: #64748b;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+  }
+  .running-tasks-panel.collapsed .running-tasks-chevron {
+    transform: rotate(-90deg);
+  }
+  .running-tasks-panel.collapsed .running-tasks-list {
+    display: none;
+  }
+  .running-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .running-task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    color: #cbd5e1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .running-task-spinner {
+    flex-shrink: 0;
+    color: #38bdf8;
+    animation: spinRing 1.5s linear infinite;
+  }
+  @keyframes spinRing {
+    100% { transform: rotate(360deg); }
+  }
+  .running-task-cmd {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Remembered Rules Table */
@@ -1317,33 +1590,96 @@
     overflow: hidden;
   }
   .exec-card.exec-card-error {
-    border-color: rgba(239, 68, 68, 0.45);
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.08);
+    border-color: var(--border);
+    box-shadow: none;
+  }
+
+  /* Compact error area */
+  .compact-error-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 2px 0;
+  }
+  .compact-error-message {
+    color: #f87171;
+    font-size: 12px;
+    line-height: 1.45;
+    font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .compact-error-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+  }
+  .btn-error-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    background: #f85f38;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    user-select: none;
+  }
+  .btn-error-cta:hover {
+    background: #e04f29;
+  }
+  .btn-error-cta:active {
+    transform: scale(0.98);
+  }
+  .btn-error-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 9px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+  }
+  .btn-error-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
   }
   .exec-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: 6px 12px;
     border-bottom: 1px solid var(--border-subtle);
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-muted);
     background: var(--bg-code);
   }
   .exec-prompt {
     color: #fde047;
     font-family: "SF Mono", Menlo, monospace;
-    font-size: 13px;
+    font-size: 12.5px;
   }
   .exec-body {
-    padding: 14px 16px;
+    padding: 8px 12px;
     font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: 1.45;
     color: #f4f4f5;
     white-space: pre-wrap;
     overflow-x: auto;
-    max-height: 380px;
+    max-height: 340px;
     user-select: text;
     -webkit-user-select: text;
   }
@@ -1518,6 +1854,9 @@
   .settings-nav-item:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
+  }
+  .settings-nav-item * {
+    pointer-events: none;
   }
   .settings-nav-item.active {
     color: #ffffff;
@@ -2350,9 +2689,9 @@
 
   <!-- ================= Main Workspace Area ================= -->
   <main class="main-workspace">
-    <div id="main-container" class="center-container">
+    <div id="main-container" class="center-container initial-mode">
 
-      <!-- Project Picker Dropdown (Above Input Box) -->
+      <!-- Project Picker Dropdown (Above Input Box in initial mode, stays at top) -->
       <div class="project-selector-row">
         <div class="project-selector-left">
           <button id="project-dropdown-btn" class="project-btn" onclick="toggleProjectDropdown(event)">
@@ -2382,149 +2721,192 @@
         </div>
       </div>
 
-      <!-- Centered Input Card Matching Screenshot -->
-      <div class="input-card">
-        <textarea id="prompt-input" class="prompt-textarea" rows="2" placeholder="Ask anything, @ to mention, / for actions" oninput="handleInput(this)" onkeydown="handleKeyDown(event)"></textarea>
-        
-        <div class="card-toolbar">
-          <div class="toolbar-left">
-            <button class="icon-btn" title="Add File / Context" onclick="addFileContext()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="toolbar-right">
-            <button id="btn-send" class="btn-send" title="Run Execution (Enter)" onclick="submitPrompt()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-                <polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card Footer Row with Individual Model & Reasoning Controls -->
-      <div class="card-footer-row">
-        <div class="footer-controls-group">
-          <!-- Model Control -->
-          <div class="footer-control-item" id="footer-model-wrapper">
-            <div class="footer-control-badge" title="AI Model selection">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              <select id="select-footer-model" class="footer-select" onchange="handleFooterModelChange(this.value)">
-                <option value="gemini-3.8-flash">Gemini-3.8-Flash</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <input id="input-custom-model" class="footer-custom-input" type="text" placeholder="Type model (e.g. gpt-4o, claude-3-7-sonnet)" style="display:none;" oninput="handleCustomModelInput(this.value)" />
-          </div>
-
-          <!-- Reasoning Control -->
-          <div class="footer-control-item" id="footer-reasoning-wrapper">
-            <div class="footer-control-badge" title="Reasoning effort level">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 3v18"/>
-                <path d="M3 12h18"/>
-                <path d="M12 8a4 4 0 0 1 4 4"/>
-              </svg>
-              <select id="select-footer-reasoning" class="footer-select" onchange="handleFooterReasoningChange(this.value)">
-                <option value="medium">Reasoning: Medium</option>
-                <option value="high">Reasoning: High</option>
-                <option value="low">Reasoning: Low</option>
-                <option value="minimal">Reasoning: Off</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer-controls-group">
-          <!-- Connection / Auth Status & Settings -->
-          <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
-            <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
-            <span id="footer-env-label">Shuffle Standalone</span>
-          </button>
-          <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Execution Results & Agent Activity Breakdown Stream -->
+      <!-- Execution Results & Agent Activity Breakdown Stream (Middle Area in Chat Mode) -->
       <div id="execution-stream" class="execution-stream">
-        <!-- Active User Prompt Card (matching screenshot top) -->
-        <div id="active-user-prompt-card" class="user-prompt-card" style="display:none;"></div>
+        <!-- Rendered sequential conversation turns -->
+        <div id="conversation-turns-container" class="conversation-turns-container" style="display:flex; flex-direction:column; gap:20px;"></div>
 
-        <!-- Sequential Activity Steps Breakdown -->
-        <div id="activity-steps-container" class="activity-steps-container"></div>
+        <!-- In-flight active turn execution area -->
+        <div id="active-turn-wrapper" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+          <!-- Active User Prompt Card (matching screenshot top) -->
+          <div id="active-user-prompt-card" class="user-prompt-card" style="display:none;"></div>
 
-        <!-- Rich Sandbox Approval Card (matching screenshot) -->
-        <div id="approval-card" class="approval-card">
-          <div class="approval-card-top">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <span id="approval-title-text">Allow viewing commit?</span>
-          </div>
-
-          <div class="approval-warning-banner">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span id="approval-warning-text">Confirm the command is safe to run outside of the sandbox with full network and disk access.</span>
-          </div>
-
-          <div id="approval-cmd" class="approval-code-box"></div>
-
-          <div class="approval-options-list">
-            <div id="opt-1" class="approval-option-item selected" onclick="selectApprovalOption(1)">
-              <span class="approval-option-num">1</span>
-              <span>Yes, allow this time</span>
-            </div>
-            <div id="opt-2" class="approval-option-item" onclick="selectApprovalOption(2)">
-              <span class="approval-option-num">2</span>
-              <span id="lbl-opt-2">Yes, and always allow in this conversation</span>
-            </div>
-            <div id="opt-3" class="approval-option-item" onclick="selectApprovalOption(3)">
-              <span class="approval-option-num">3</span>
-              <span id="lbl-opt-3">Yes, and always allow in this project</span>
-            </div>
-            <div id="opt-4" class="approval-option-item" onclick="selectApprovalOption(4)">
-              <span class="approval-option-num">4</span>
-              <span id="lbl-opt-4">Yes, and always allow</span>
-            </div>
-            <div id="opt-5" class="approval-option-item" onclick="selectApprovalOption(5)">
-              <span class="approval-option-num">5</span>
-              <span>No (tell the agent what to do instead)</span>
-            </div>
-          </div>
-
-          <div class="approval-footer-actions">
-            <button class="btn-approval-skip" onclick="skipApproval()">Skip</button>
-            <button class="btn-approval-submit" onclick="submitApproval()">
-              <span>Submit</span>
+          <!-- Dynamic Activity Summary Banner (Exploring 8 files, 4 tasks...) -->
+          <div id="activity-summary-banner" class="activity-summary-banner" style="display:none;" onclick="toggleActiveSteps()">
+            <span id="activity-summary-text">Exploring files and running tasks</span>
+            <div class="activity-summary-chevron">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 10 4 15 9 20"/>
-                <path d="M20 4v7a4 4 0 0 1-4 4H4"/>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Sequential Activity Steps Breakdown -->
+          <div id="activity-steps-container" class="activity-steps-container"></div>
+
+          <!-- Rich Sandbox Approval Card (matching screenshot) -->
+          <div id="approval-card" class="approval-card">
+            <div class="approval-card-top">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span id="approval-title-text">Allow viewing commit?</span>
+            </div>
+
+            <div class="approval-warning-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span id="approval-warning-text">Confirm the command is safe to run outside of the sandbox with full network and disk access.</span>
+            </div>
+
+            <div id="approval-cmd" class="approval-code-box"></div>
+
+            <div class="approval-options-list">
+              <div id="opt-1" class="approval-option-item selected" onclick="selectApprovalOption(1)">
+                <span class="approval-option-num">1</span>
+                <span>Yes, allow this time</span>
+              </div>
+              <div id="opt-2" class="approval-option-item" onclick="selectApprovalOption(2)">
+                <span class="approval-option-num">2</span>
+                <span id="lbl-opt-2">Yes, and always allow in this conversation</span>
+              </div>
+              <div id="opt-3" class="approval-option-item" onclick="selectApprovalOption(3)">
+                <span class="approval-option-num">3</span>
+                <span id="lbl-opt-3">Yes, and always allow in this project</span>
+              </div>
+              <div id="opt-4" class="approval-option-item" onclick="selectApprovalOption(4)">
+                <span class="approval-option-num">4</span>
+                <span id="lbl-opt-4">Yes, and always allow</span>
+              </div>
+              <div id="opt-5" class="approval-option-item" onclick="selectApprovalOption(5)">
+                <span class="approval-option-num">5</span>
+                <span>No (tell the agent what to do instead)</span>
+              </div>
+            </div>
+
+            <div class="approval-footer-actions">
+              <button class="btn-approval-skip" onclick="skipApproval()">Skip</button>
+              <button class="btn-approval-submit" onclick="submitApproval()">
+                <span>Submit</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 10 4 15 9 20"/>
+                  <path d="M20 4v7a4 4 0 0 1-4 4H4"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="execution-cards-container" class="execution-cards-container" style="display:flex; flex-direction:column; gap:16px;"></div>
+        </div>
+      </div>
+
+      <!-- Chat Dock Container (Pinned to Bottom in Chat Mode) -->
+      <div id="chat-dock-container" class="chat-dock-container">
+        <!-- Running Tasks Panel (Matching screenshot: "2 tasks running v") -->
+        <div id="running-tasks-panel" class="running-tasks-panel" style="display:none;">
+          <div class="running-tasks-header" onclick="toggleRunningTasks()">
+            <div class="running-tasks-title-left">
+              <span id="running-tasks-count-label">0 tasks running</span>
+            </div>
+            <div class="running-tasks-chevron">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+          <div id="running-tasks-list" class="running-tasks-list"></div>
+        </div>
+
+        <!-- Centered Chat Input Card Matching Screenshot -->
+        <div class="input-card">
+          <textarea id="prompt-input" class="prompt-textarea" rows="2" placeholder="Ask anything, @ to mention, / for actions" oninput="handleInput(this)" onkeydown="handleKeyDown(event)"></textarea>
+          
+          <div class="card-toolbar">
+            <div class="toolbar-left">
+              <button class="icon-btn" title="Add File / Context" onclick="addFileContext()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+
+              <!-- Model Selector Matching Screenshot: "+ Gemini 3.8 Flash High ^" -->
+              <div class="model-picker-wrapper">
+                <button id="btn-model-picker" class="model-picker-pill" type="button" onclick="toggleModelDropdown(event)" title="Switch AI Model">
+                  <span id="lbl-active-model-name">Gemini 3.8 Flash High</span>
+                  <svg class="model-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                  </svg>
+                </button>
+                <div id="model-dropdown-menu" class="model-dropdown-menu"></div>
+              </div>
+
+              <!-- Backwards compatibility selects hidden -->
+              <div style="display:none;">
+                <select id="select-footer-model" onchange="handleFooterModelChange(this.value)">
+                  <option value="gemini-3.8-flash">Gemini-3.8-Flash</option>
+                  <option value="gemini-3.8-flash-high">Gemini-3.8-Flash-High</option>
+                  <option value="gemini-3.8-pro">Gemini-3.8-Pro</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <select id="select-footer-reasoning" onchange="handleFooterReasoningChange(this.value)">
+                  <option value="medium">Reasoning: Medium</option>
+                  <option value="high">Reasoning: High</option>
+                  <option value="low">Reasoning: Low</option>
+                  <option value="minimal">Reasoning: Off</option>
+                </select>
+                <input id="input-custom-model" type="text" />
+              </div>
+            </div>
+
+            <div class="toolbar-right">
+              <!-- Voice Microphone Button Matching Screenshot -->
+              <button class="icon-btn" id="btn-mic" title="Voice Input" onclick="toggleVoiceInput()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+
+              <!-- Send Button -->
+              <button id="btn-send" class="btn-send" title="Run Execution (Enter)" onclick="submitPrompt()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </button>
+
+              <!-- Red Square Stop Button Matching Screenshot -->
+              <button id="btn-stop-execution" class="btn-stop" style="display:none;" title="Stop Execution" onclick="stopExecution()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="5" y="5" width="14" height="14" rx="2.5"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Footer Row with Connection / Auth Status & Settings -->
+        <div class="card-footer-row">
+          <div class="footer-controls-group">
+            <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
+              <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
+              <span id="footer-env-label">Shuffle Standalone</span>
+            </button>
+            <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </button>
           </div>
         </div>
-
-        <div id="execution-cards-container" class="execution-cards-container" style="display:flex; flex-direction:column; gap:16px; margin-top:14px;"></div>
       </div>
 
     </div>
@@ -2818,12 +3200,12 @@
 
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="input-ai-url">AI_API_URL</label>
-              <input id="input-ai-url" class="form-input" type="text" placeholder="https://api.openai.com/v1 or http://localhost:11434/v1">
+              <input id="input-ai-url" class="form-input" type="text" placeholder="https://api.openai.com/v1 or http://localhost:11434/v1" oninput="updateEnvDisplayInModal()">
             </div>
 
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="input-ai-key">AI_API_KEY</label>
-              <input id="input-ai-key" class="form-input" type="password" placeholder="API key or local token">
+              <input id="input-ai-key" class="form-input" type="password" placeholder="API key or local token" oninput="updateEnvDisplayInModal()">
             </div>
 
             <div class="form-group" style="margin-bottom:12px;">
@@ -2836,7 +3218,9 @@
                 <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
                 <option value="gpt-4o">GPT-4o (OpenAI)</option>
                 <option value="ollama">Ollama (Local LLM)</option>
+                <option value="custom">Custom Model...</option>
               </select>
+              <input id="input-settings-custom-model" class="form-input" style="margin-top:6px; display:none;" type="text" placeholder="Custom model name (e.g. gemini-2.0-flash)" oninput="updateEnvDisplayInModal()">
             </div>
 
             <div style="background:var(--bg-code); border:1px solid var(--border-subtle); border-radius:8px; padding:10px 12px; font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:8px;">
@@ -3065,28 +3449,427 @@
   <div id="app-toast" class="app-toast"></div>
 
 <script>
-let currentApprovalId = null;
-let currentApprovalCmd = "";
-let currentApprovalCmdPrefix = "";
-let currentApprovalDesc = "";
-let currentApprovalProject = "";
-let selectedApprovalOption = 1;
-let currentApprovalRules = [];
-let pinnedConversationIds = new Set();
-let activeConversationId = null;
-let collapsedProjects = {};
-let projectFilterQuery = "";
-let isProjectsFilterOpen = false;
-let appConversations = [];
+var currentApprovalId = null;
+var currentApprovalCmd = "";
+var currentApprovalCmdPrefix = "";
+var currentApprovalDesc = "";
+var currentApprovalProject = "";
+var selectedApprovalOption = 1;
+var currentApprovalRules = [];
+var pinnedConversationIds = new Set();
+var activeConversationId = null;
+var collapsedProjects = {};
+var projectFilterQuery = "";
+var isProjectsFilterOpen = false;
+var appConversations = [];
+var activeProjectPath = ".";
+var allProjects = [];
+var isLoggedIn = false;
+var isBypassed = false;
+var currentAiUrl = "";
+var currentAiKey = "";
+var activeAiModel = (typeof window !== "undefined" && window.activeAiModel) || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+if (typeof window !== "undefined") {
+  window.activeAiModel = activeAiModel;
+}
+var activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
+var currentPermissionPolicy = "ask_all";
+var currentTerminalExecutionPolicy = "sandbox";
+var currentFileAccessPolicy = "ask";
+var currentSandboxMode = true;
+var currentQueuedMessages = "queue";
+var currentProjectPermissions = {};
+var activeSettingsTab = "general";
+var activeSettingsProject = null;
+var currentInjectedSkills = [];
+var currentDiscoveredSkills = [];
+var isOAuthPending = false;
+window.executionHistory = (typeof window !== "undefined" && Array.isArray(window.executionHistory)) ? window.executionHistory : [];
+var executionHistory = window.executionHistory;
 
-function loadStoredConversations() {
+function addExecutionHistory(entry) {
+  if (typeof window !== "undefined") {
+    if (!Array.isArray(window.executionHistory)) {
+      window.executionHistory = [];
+    }
+    executionHistory = window.executionHistory;
+  } else if (!Array.isArray(executionHistory)) {
+    executionHistory = [];
+  }
+  executionHistory.unshift(entry);
+}
+var toastTimeout = null;
+var activeRunningTasks = [];
+var isChatModeActive = false;
+var speechRecognitionInstance = null;
+var isListeningVoice = false;
+
+var AVAILABLE_AI_MODELS = [
+  { key: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash High", desc: "Fast agent with high reasoning effort" },
+  { key: "gemini-3.8-flash", label: "Gemini 3.8 Flash", desc: "Default fast agent (recommended)" },
+  { key: "gemini-3.8-pro", label: "Gemini 3.8 Pro", desc: "Advanced reasoning for complex codebase tasks" },
+  { key: "claude-3-7-sonnet", label: "Claude 3.7 Sonnet", desc: "Anthropic Claude with hybrid thinking" },
+  { key: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet", desc: "Fast Anthropic model" },
+  { key: "gpt-4o", label: "GPT-4o", desc: "OpenAI multimodal flaghip" },
+  { key: "ollama", label: "Ollama (Local)", desc: "Local open-source models" },
+  { key: "custom", label: "Custom Model...", desc: "Specify custom model identifier" }
+];
+
+function setChatMode(enabled) {
+  isChatModeActive = !!enabled;
+  const mainWorkspace = document.querySelector(".main-workspace");
+  const mainContainer = document.getElementById("main-container");
+  if (isChatModeActive) {
+    if (mainWorkspace) mainWorkspace.classList.add("chat-mode");
+    if (mainContainer) {
+      mainContainer.classList.add("chat-mode");
+      mainContainer.classList.remove("initial-mode");
+    }
+  } else {
+    if (mainWorkspace) mainWorkspace.classList.remove("chat-mode");
+    if (mainContainer) {
+      mainContainer.classList.remove("chat-mode");
+      mainContainer.classList.add("initial-mode");
+    }
+  }
+}
+
+function renderRunningTasks() {
+  const panel = document.getElementById("running-tasks-panel");
+  const countLabel = document.getElementById("running-tasks-count-label");
+  const listEl = document.getElementById("running-tasks-list");
+  if (!panel || !countLabel || !listEl) return;
+
+  if (!activeRunningTasks || activeRunningTasks.length === 0) {
+    panel.style.display = "none";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  panel.style.display = "flex";
+  const count = activeRunningTasks.length;
+  countLabel.innerText = `${count} task${count === 1 ? "" : "s"} running`;
+
+  listEl.innerHTML = "";
+  activeRunningTasks.forEach(task => {
+    const item = document.createElement("div");
+    item.className = "running-task-item";
+    item.innerHTML = `
+      <svg class="running-task-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="9" stroke-dasharray="28 28"/>
+      </svg>
+      <span class="running-task-cmd">${escapeHtml(task.name || task.cmd || "Task")}</span>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function toggleRunningTasks() {
+  const panel = document.getElementById("running-tasks-panel");
+  if (panel) {
+    panel.classList.toggle("collapsed");
+  }
+}
+
+function renderModelDropdown() {
+  const menu = document.getElementById("model-dropdown-menu");
+  if (!menu) return;
+  menu.innerHTML = "";
+  AVAILABLE_AI_MODELS.forEach(m => {
+    const item = document.createElement("div");
+    item.className = "model-option-item" + (m.key === activeAiModel ? " selected" : "");
+    item.onclick = (e) => {
+      e.stopPropagation();
+      selectAiModel(m.key, m.label);
+    };
+    item.innerHTML = `
+      <div class="model-option-title">
+        <span>${escapeHtml(m.label)}</span>
+        ${m.key === activeAiModel ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f85f38" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ""}
+      </div>
+      <div class="model-option-desc">${escapeHtml(m.desc)}</div>
+    `;
+    menu.appendChild(item);
+  });
+}
+
+function toggleModelDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById("model-dropdown-menu");
+  if (!menu) return;
+  renderModelDropdown();
+  menu.classList.toggle("visible");
+}
+
+function selectAiModel(key, label) {
+  if (key === "custom") {
+    openSettingsModal("models", "model");
+    const menu = document.getElementById("model-dropdown-menu");
+    if (menu) menu.classList.remove("visible");
+    return;
+  }
+
+  activeAiModel = key;
+  if (typeof window !== "undefined") {
+    window.activeAiModel = key;
+  }
+  localStorage.setItem("orborus_ai_model", key);
+
+  if (key.includes("high")) {
+    activeReasoningEffort = "high";
+  } else {
+    activeReasoningEffort = "medium";
+  }
+  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+
+  const nameEl = document.getElementById("lbl-active-model-name");
+  if (nameEl) nameEl.innerText = label;
+
+  const selectFooter = document.getElementById("select-footer-model");
+  if (selectFooter) {
+    let found = false;
+    for (let i = 0; i < selectFooter.options.length; i++) {
+      if (selectFooter.options[i].value === key) {
+        selectFooter.selectedIndex = i;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      selectFooter.value = "custom";
+    }
+  }
+
+  const selectSettings = document.getElementById("select-ai-model");
+  if (selectSettings) {
+    for (let i = 0; i < selectSettings.options.length; i++) {
+      if (selectSettings.options[i].value === key) {
+        selectSettings.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  const menu = document.getElementById("model-dropdown-menu");
+  if (menu) menu.classList.remove("visible");
+
+  if (typeof window.setAiConfig === "function") {
+    try {
+      window.setAiConfig(currentAiUrl, currentAiKey, activeAiModel, activeReasoningEffort);
+    } catch (e) {
+      console.warn("setAiConfig failed:", e);
+    }
+  }
+  showToast(`Switched model to ${label}`);
+}
+
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("model-dropdown-menu");
+  const btn = document.getElementById("btn-model-picker");
+  if (menu && menu.classList.contains("visible")) {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.remove("visible");
+    }
+  }
+});
+
+function toggleVoiceInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast("Voice input not supported in this environment");
+    return;
+  }
+  const btnMic = document.getElementById("btn-mic");
+  if (isListeningVoice) {
+    if (speechRecognitionInstance) {
+      try { speechRecognitionInstance.stop(); } catch (e) {}
+    }
+    isListeningVoice = false;
+    if (btnMic) btnMic.style.color = "";
+    showToast("Voice input stopped");
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isListeningVoice = true;
+      if (btnMic) btnMic.style.color = "#f85f38";
+      showToast("Listening...");
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      const input = document.getElementById("prompt-input");
+      if (input && transcript) {
+        input.value = (input.value ? input.value + " " : "") + transcript;
+        handleInput(input);
+      }
+    };
+
+    recognition.onend = () => {
+      isListeningVoice = false;
+      if (btnMic) btnMic.style.color = "";
+    };
+
+    recognition.onerror = (e) => {
+      isListeningVoice = false;
+      if (btnMic) btnMic.style.color = "";
+      console.warn("Speech recognition error:", e);
+    };
+
+    speechRecognitionInstance = recognition;
+    recognition.start();
+  } catch (err) {
+    console.warn("SpeechRecognition start failed:", err);
+    showToast("Could not access microphone");
+  }
+}
+
+function stopExecution() {
+  if (window.currentAbortController) {
+    try { window.currentAbortController.abort(); } catch (e) {}
+  }
+  activeRunningTasks = [];
+  renderRunningTasks();
+  const btnStop = document.getElementById("btn-stop-execution");
+  const btnSend = document.getElementById("btn-send");
+  if (btnStop) btnStop.style.display = "none";
+  if (btnSend) btnSend.style.display = "flex";
+
+  const stepsContainer = document.getElementById("activity-steps-container");
+  if (stepsContainer) {
+    const stopRow = document.createElement("div");
+    stopRow.className = "activity-step-row";
+    stopRow.innerHTML = `
+      <div class="activity-step-header" style="color:#ef4444;">
+        <div class="activity-step-left">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+          <span class="activity-step-title">Execution stopped by user</span>
+        </div>
+      </div>
+    `;
+    stepsContainer.appendChild(stopRow);
+  }
+  showToast("Execution stopped");
+}
+
+function formatStepTitleHtml(step) {
+  const rawTitle = (step.title || step.name || "").trim();
+  if (!rawTitle) return "Task";
+
+  // Check for Analyzed file pattern: Analyzed </> filename #Llines
+  const isFileStep = step.type === "file" || rawTitle.toLowerCase().startsWith("analyzed") || rawTitle.toLowerCase().startsWith("read file") || /\.(go|html|js|ts|py|json|md)\b/.test(rawTitle);
+
+  if (isFileStep) {
+    const clean = rawTitle.replace(/^Analyzed\s+(?:<\/>\s*)?/i, "").replace(/^(?:Read\s+file|View)\s+/i, "");
+    const parts = clean.split(/\s+#L|\s+#/);
+    const filePath = parts[0] ? parts[0].trim() : "file";
+    const lineRange = parts[1] ? `#L${parts[1].trim()}` : (step.detail && step.detail.match(/#L[\d\-]+/i) ? step.detail.match(/#L[\d\-]+/i)[0] : "");
+    return `Analyzed <span class="badge-code-tag">&lt;/&gt;</span> <span class="step-filepath">${escapeHtml(filePath)}</span> ${lineRange ? `<span class="step-line-range">${escapeHtml(lineRange)}</span>` : ""}`;
+  }
+
+  // Check for thought pattern: "Thought for 3s"
+  if (step.type === "thought" || rawTitle.toLowerCase().startsWith("thought")) {
+    const durMatch = rawTitle.match(/thought(?:\s+for\s+([\w\d\.]+))?/i);
+    const dur = (durMatch && durMatch[1]) || step.duration || "2s";
+    return `Thought for ${escapeHtml(dur)}`;
+  }
+
+  // Check for command pattern: "Ran git status"
+  if (step.type === "cmd" || rawTitle.toLowerCase().startsWith("ran ") || rawTitle.toLowerCase().startsWith("run ")) {
+    return escapeHtml(rawTitle);
+  }
+
+  return escapeHtml(rawTitle);
+}
+
+function computeStepsSummary(steps) {
+  if (!steps || !steps.length) return "Completed execution";
+  let fileCount = 0;
+  let taskCount = 0;
+  let cmdCount = 0;
+
+  steps.forEach(s => {
+    const text = (s.name || s.title || "").toLowerCase();
+    const isFile = s.type === "file" || text.includes("analyzed") || text.includes("read_file") || text.includes("view_file") || /\.(go|html|js|ts|py|json|md)\b/.test(text);
+    const isCmd = s.type === "cmd" || text.startsWith("ran ") || text.startsWith("run ");
+    const isTask = text.includes("task") || text.includes("grep") || text.includes("search") || text.includes("worker") || s.type === "task";
+
+    if (isFile) fileCount++;
+    else if (isCmd) cmdCount++;
+    else if (isTask) taskCount++;
+  });
+
+  const parts = [];
+  if (fileCount > 0) parts.push(`Exploring ${fileCount} file${fileCount > 1 ? "s" : ""}`);
+  if (taskCount > 0) parts.push(`${taskCount} task${taskCount > 1 ? "s" : ""}`);
+  if (cmdCount > 0) parts.push(`running ${cmdCount} command${cmdCount > 1 ? "s" : ""}`);
+
+  if (parts.length > 0) {
+    return parts.join(", ");
+  }
+  return `${steps.length} step${steps.length > 1 ? "s" : ""} completed`;
+}
+
+function toggleTurnSteps(turnId) {
+  const container = document.getElementById("turn-steps-" + turnId);
+  const banner = document.getElementById("summary-banner-" + turnId);
+  if (container) {
+    container.classList.toggle("collapsed");
+  }
+  if (banner) {
+    banner.classList.toggle("collapsed");
+  }
+}
+
+function toggleActiveSteps() {
+  const container = document.getElementById("activity-steps-container");
+  const banner = document.getElementById("activity-summary-banner");
+  if (container) {
+    container.classList.toggle("collapsed");
+  }
+  if (banner) {
+    banner.classList.toggle("collapsed");
+  }
+}
+
+async function loadStoredConversations() {
+  // 1. Try loading from disk via Go backend bridge
+  try {
+    if (window.listConversations) {
+      const raw = await window.listConversations();
+      const diskConvs = JSON.parse(raw);
+      if (Array.isArray(diskConvs) && diskConvs.length > 0) {
+        appConversations = diskConvs;
+      }
+    }
+  } catch (err) {
+    console.warn("Backend listConversations failed, falling back to localStorage:", err);
+  }
+
+  // 2. Fall back / merge with localStorage
   try {
     const rawConvs = localStorage.getItem("orborus_conversations");
     if (rawConvs) {
       const parsed = JSON.parse(rawConvs);
       if (Array.isArray(parsed)) {
-        // Strip any legacy mock/demo conversations
-        appConversations = parsed.filter(c => c && c.id && !c.id.startsWith("conv-demo-"));
+        const validLocal = parsed.filter(c => c && c.id && !c.id.startsWith("conv-demo-"));
+        if (appConversations.length === 0) {
+          appConversations = validLocal;
+        } else {
+          // Merge by ID if not in disk list
+          const existingIds = new Set(appConversations.map(c => c.id));
+          validLocal.forEach(c => {
+            if (!existingIds.has(c.id)) {
+              appConversations.push(c);
+            }
+          });
+        }
       }
     }
     const rawPinned = localStorage.getItem("orborus_pinned_conversations");
@@ -3097,33 +3880,30 @@ function loadStoredConversations() {
       }
     }
   } catch (err) {
-    console.warn("Failed to load stored conversations:", err);
+    console.warn("Failed to load stored conversations from localStorage:", err);
   }
 }
 
-function saveStoredConversations() {
+async function saveStoredConversations() {
   try {
     localStorage.setItem("orborus_conversations", JSON.stringify(appConversations));
     localStorage.setItem("orborus_pinned_conversations", JSON.stringify(Array.from(pinnedConversationIds)));
   } catch (err) {
     console.warn("Failed to save conversations to storage:", err);
   }
-}
 
-let activeProjectPath = ".";
-let allProjects = [];
-let isLoggedIn = false;
-let isBypassed = false;
-let currentAiUrl = "";
-let currentAiKey = "";
-let currentPermissionPolicy = "ask_all";
-let currentTerminalExecutionPolicy = "sandbox";
-let currentFileAccessPolicy = "ask";
-let currentSandboxMode = true;
-let currentQueuedMessages = "queue";
-let currentProjectPermissions = {};
-let activeSettingsTab = "general";
-let activeSettingsProject = null;
+  // Also sync active conversation to disk via bridge if present
+  if (activeConversationId && window.saveConversation) {
+    const cur = appConversations.find(c => c.id === activeConversationId);
+    if (cur) {
+      try {
+        await window.saveConversation(cur);
+      } catch (e) {
+        console.warn("Failed to save conversation to disk:", e);
+      }
+    }
+  }
+}
 
 function windowControl(action) {
   if (window.windowAction) {
@@ -3143,16 +3923,84 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
-async function init() {
-  loadStoredConversations();
-
-  if (!window.getInitialState) {
-    renderProjectTree();
-    startNewSession();
-    const inputEl = document.getElementById("prompt-input");
-    if (inputEl) inputEl.focus();
-    return;
+function hydrateOptimisticState() {
+  // 1. Synchronously restore configuration from localStorage
+  currentAiUrl = localStorage.getItem("orborus_ai_url") || "";
+  currentAiKey = localStorage.getItem("orborus_ai_key") || "";
+  activeAiModel = (typeof window !== "undefined" && window.activeAiModel) || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+  if (typeof window !== "undefined") {
+    window.activeAiModel = activeAiModel;
   }
+  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
+  currentPermissionPolicy = localStorage.getItem("orborus_permission_policy") || "ask_all";
+  currentTerminalExecutionPolicy = localStorage.getItem("orborus_terminal_execution_policy") || "sandbox";
+  currentFileAccessPolicy = localStorage.getItem("orborus_file_access_policy") || "ask";
+  const storedSandbox = localStorage.getItem("orborus_sandbox_mode");
+  if (storedSandbox !== null) {
+    currentSandboxMode = storedSandbox === "true";
+  }
+
+  const storedProject = localStorage.getItem("orborus_active_project");
+  if (storedProject) {
+    activeProjectPath = storedProject;
+  }
+
+  // 2. Synchronously restore cached conversations
+  try {
+    const rawConvs = localStorage.getItem("orborus_conversations");
+    if (rawConvs) {
+      const parsed = JSON.parse(rawConvs);
+      if (Array.isArray(parsed)) {
+        appConversations = parsed.filter(c => c && c.id && !c.id.startsWith("conv-demo-"));
+      }
+    }
+    const rawPinned = localStorage.getItem("orborus_pinned_conversations");
+    if (rawPinned) {
+      const parsed = JSON.parse(rawPinned);
+      if (Array.isArray(parsed)) {
+        pinnedConversationIds = new Set(parsed.filter(id => typeof id === "string" && !id.startsWith("conv-demo-")));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to synchronously parse stored conversations:", err);
+  }
+
+  // Sync in-memory conv pinned state
+  appConversations.forEach(c => {
+    c.pinned = pinnedConversationIds.has(c.id);
+  });
+
+  // 3. Synchronously render UI with cached data (0ms latency, zero flash)
+  updateAuthState({
+    is_logged_in: !!(currentAiKey || currentAiUrl),
+    is_bypassed: true,
+    ai_api_url: currentAiUrl,
+    ai_api_key: currentAiKey,
+    ai_model: activeAiModel,
+    permission_policy: currentPermissionPolicy
+  });
+
+  initFooterControls();
+  renderProjectTree();
+
+  const savedActiveConvId = localStorage.getItem("orborus_active_conv_id");
+  if (savedActiveConvId && appConversations.some(c => c.id === savedActiveConvId)) {
+    activeConversationId = savedActiveConvId;
+    renderActiveConversation();
+  } else if (appConversations.length > 0) {
+    activeConversationId = appConversations[0].id;
+    renderActiveConversation();
+  } else {
+    startNewSession();
+  }
+
+  // Focus prompt input immediately
+  const inputEl = document.getElementById("prompt-input");
+  if (inputEl) inputEl.focus();
+}
+
+async function syncBackendState() {
+  if (!window.getInitialState) return;
 
   try {
     const raw = await window.getInitialState();
@@ -3171,12 +4019,33 @@ async function init() {
       }
     }
 
-    if (state.ai_api_url) currentAiUrl = state.ai_api_url;
-    if (state.ai_api_key) currentAiKey = state.ai_api_key;
+    // Backend vs Frontend Credential Validation:
+    if (state.ai_api_key) {
+      currentAiKey = state.ai_api_key;
+      localStorage.setItem("orborus_ai_key", state.ai_api_key);
+    }
+    if (state.ai_api_url) {
+      currentAiUrl = state.ai_api_url;
+      localStorage.setItem("orborus_ai_url", state.ai_api_url);
+    }
     if (state.ai_model) {
       activeAiModel = state.ai_model;
       localStorage.setItem("orborus_ai_model", state.ai_model);
+      if (typeof window !== "undefined") window.activeAiModel = state.ai_model;
     }
+
+    // If frontend has credentials in localStorage that backend lacks, push to backend
+    if ((!state.ai_api_key && currentAiKey) || (!state.ai_api_url && currentAiUrl)) {
+      if (typeof window.bridgeCall === "function") {
+        window.bridgeCall("setAiConfig", JSON.stringify({
+          url: currentAiUrl || "",
+          key: currentAiKey || "",
+          model: activeAiModel || "gemini-3.8-flash",
+          permission_policy: state.permission_policy || currentPermissionPolicy || "ask_all"
+        })).catch(() => {});
+      }
+    }
+
     if (state.permission_policy) currentPermissionPolicy = state.permission_policy;
     if (state.terminal_execution_policy) currentTerminalExecutionPolicy = state.terminal_execution_policy;
     if (state.file_access_policy) currentFileAccessPolicy = state.file_access_policy;
@@ -3186,7 +4055,6 @@ async function init() {
 
     if (state.pinned_conversations && Array.isArray(state.pinned_conversations)) {
       pinnedConversationIds = new Set(state.pinned_conversations.filter(id => typeof id === "string" && !id.startsWith("conv-demo-")));
-      // Sync in-memory conv objects
       appConversations.forEach(c => {
         c.pinned = pinnedConversationIds.has(c.id);
       });
@@ -3206,8 +4074,12 @@ async function init() {
 
     updateAuthState(state);
 
-    if (state.active_project) {
+    if (state.active_project && state.active_project !== "." && state.active_project !== activeProjectPath) {
       setActiveProject(state.active_project);
+    } else if (activeProjectPath && activeProjectPath !== "." && (!state.active_project || state.active_project === ".")) {
+      if (typeof window.selectProject === "function") {
+        window.selectProject(activeProjectPath).catch(() => {});
+      }
     }
 
     if (state.projects && state.projects.length > 0) {
@@ -3215,21 +4087,113 @@ async function init() {
     }
 
     renderProjectTree();
-    if (activeConversationId) {
-      renderActiveConversation();
-    } else {
-      startNewSession();
-    }
   } catch (err) {
-    console.error("Failed to load initial state:", err);
+    console.warn("syncBackendState failed:", err);
   }
 
-  // Focus prompt input immediately on startup
-  const inputEl = document.getElementById("prompt-input");
-  if (inputEl) inputEl.focus();
+  // Load / merge disk conversations in background
+  try {
+    if (window.listConversations) {
+      const raw = await window.listConversations();
+      const diskConvs = JSON.parse(raw);
+      if (Array.isArray(diskConvs) && diskConvs.length > 0) {
+        const localById = new Map(appConversations.map(c => [c.id, c]));
+        diskConvs.forEach(dc => {
+          if (!dc || !dc.id || dc.id.startsWith("conv-demo-")) return;
+          const local = localById.get(dc.id);
+          if (!local) {
+            appConversations.push(dc);
+          } else {
+            // Keep local turns if in-flight running
+            const hasRunning = local.turns && local.turns.some(t => t.status === "running");
+            if (!hasRunning && dc.turns && dc.turns.length >= (local.turns ? local.turns.length : 0)) {
+              local.turns = dc.turns;
+              if (dc.title) local.title = dc.title;
+            }
+          }
+        });
+        renderProjectTree();
+        if (activeConversationId) {
+          renderActiveConversation();
+        }
+        saveStoredConversations();
+      }
+    }
+  } catch (err) {
+    console.warn("Backend listConversations sync failed:", err);
+  }
 
-  // Trigger code repo scan immediately
   scanRepositories();
+}
+
+async function init() {
+  hydrateOptimisticState();
+  syncBackendState();
+}
+
+function isAuthErrorString(txt) {
+  if (!txt) return false;
+  const lower = String(txt).toLowerCase();
+  return lower.includes("no llm apikey") ||
+         lower.includes("missing_credentials") ||
+         lower.includes("ai provider not configured") ||
+         lower.includes("custom ai app authentication") ||
+         lower.includes("no llm url") ||
+         lower.includes("missing_onprem_ai_config") ||
+         lower.includes("failed to start ai agent (6)") ||
+         lower.includes("authorization can't be empty");
+}
+
+function dismissAuthErrorsIfConfigured() {
+  const effectiveKey = currentAiKey || localStorage.getItem("orborus_ai_key") || "";
+  const effectiveUrl = currentAiUrl || localStorage.getItem("orborus_ai_url") || "";
+  if (!effectiveKey && !effectiveUrl && !isLoggedIn && !isBypassed) return;
+
+  // 1. Clean appConversations turns across all stored conversations
+  if (Array.isArray(appConversations)) {
+    let changed = false;
+    appConversations.forEach(conv => {
+      if (Array.isArray(conv.turns)) {
+        const initialLen = conv.turns.length;
+        conv.turns = conv.turns.filter(t => {
+          if (t.status === "error" || t.error) {
+            const err = (t.error || t.output || "") + " " + (t.error_type || "");
+            if (isAuthErrorString(err)) {
+              return false; // remove stale auth failure turn
+            }
+          }
+          return true;
+        });
+        if (conv.turns.length !== initialLen) {
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      saveStoredConversations();
+      renderActiveConversation();
+    }
+  }
+
+  // 2. Remove any standalone DOM error cards in execution-cards-container or turns container
+  document.querySelectorAll(".exec-card-error, .compact-error-area").forEach(el => {
+    const text = el.innerText || "";
+    if (isAuthErrorString(text)) {
+      const parentCard = el.closest(".exec-card, .transcript-turn");
+      if (parentCard) {
+        parentCard.remove();
+      } else {
+        el.remove();
+      }
+    }
+  });
+
+  // 3. Clear active-user-prompt-card if it belongs to a failed auth execution
+  const promptCard = document.getElementById("active-user-prompt-card");
+  if (promptCard && (!activeRunningTasks || activeRunningTasks.length === 0)) {
+    promptCard.style.display = "none";
+    promptCard.innerText = "";
+  }
 }
 
 function updateAuthState(state) {
@@ -3243,6 +4207,10 @@ function updateAuthState(state) {
   if (state.terminal_execution_policy !== undefined) currentTerminalExecutionPolicy = state.terminal_execution_policy;
   if (state.file_access_policy !== undefined) currentFileAccessPolicy = state.file_access_policy;
   if (state.project_permissions !== undefined) currentProjectPermissions = state.project_permissions;
+
+  if (currentAiKey || currentAiUrl || isLoggedIn || isBypassed) {
+    dismissAuthErrorsIfConfigured();
+  }
 
   const dot = document.getElementById("status-indicator-dot");
   const label = document.getElementById("status-indicator-label");
@@ -3281,10 +4249,11 @@ function updateAuthState(state) {
     }
   }
 
-  if (currentAiKey && currentAiUrl) {
+  const hasCustomAi = !!(currentAiKey || currentAiUrl);
+  if (hasCustomAi) {
     if (dot) dot.className = "status-dot connected";
     if (label) label.innerText = "Custom AI Configured";
-    if (subtext) subtext.innerText = "Custom LLM endpoint active.";
+    if (subtext) subtext.innerText = currentAiKey ? "Custom API key configured and active." : "Custom LLM endpoint active.";
     if (details) details.classList.add("visible");
     if (lblOrg) lblOrg.innerText = state.org_id || "standalone";
     if (lblEnv) lblEnv.innerText = state.environment || "standalone";
@@ -3294,7 +4263,8 @@ function updateAuthState(state) {
       btnAuth.onclick = () => handleAuthAction();
     }
     if (authStatusDot) authStatusDot.className = "status-dot connected";
-    if (authStatusText) authStatusText.innerText = "Custom AI Endpoint Active (" + (currentAiUrl || "") + ")";
+    const endpointLabel = currentAiUrl ? currentAiUrl : (activeAiModel || "Gemini");
+    if (authStatusText) authStatusText.innerText = "Custom AI Active (" + endpointLabel + ")";
     if (footerDot) footerDot.className = "status-dot connected";
     if (footerEnv) footerEnv.innerText = "Custom AI Configured";
   } else if (isLoggedIn) {
@@ -3433,9 +4403,23 @@ function openSettingsModal(initialTab, focusField) {
     const globalTerminal = document.getElementById("select-global-terminal-policy");
     const globalSandbox = document.getElementById("toggle-global-sandbox");
 
-    if (urlInput) urlInput.value = currentAiUrl || "";
-    if (keyInput) keyInput.value = currentAiKey || "";
-    if (modelSelect) modelSelect.value = activeAiModel || "gemini-3.8-flash";
+    if (urlInput) urlInput.value = currentAiUrl || localStorage.getItem("orborus_ai_url") || "";
+    const curModel = activeAiModel || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+    const customModelInput = document.getElementById("input-settings-custom-model");
+    if (modelSelect) {
+      const exists = Array.from(modelSelect.options).some(o => o.value === curModel);
+      if (exists) {
+        modelSelect.value = curModel;
+        if (customModelInput) customModelInput.style.display = "none";
+      } else {
+        modelSelect.value = "custom";
+        if (customModelInput) {
+          customModelInput.style.display = "block";
+          customModelInput.value = curModel;
+        }
+      }
+    }
+    if (keyInput) keyInput.value = currentAiKey || localStorage.getItem("orborus_ai_key") || "";
     if (globalPreset) globalPreset.value = currentPermissionPolicy || "ask_all";
     if (globalFileAccess) globalFileAccess.value = currentFileAccessPolicy || "ask";
     if (globalTerminal) globalTerminal.value = currentTerminalExecutionPolicy || "sandbox";
@@ -3453,7 +4437,7 @@ function openSettingsModal(initialTab, focusField) {
   }
 
   try {
-    const targetTab = initialTab || activeSettingsTab || "general";
+    const targetTab = initialTab || (activeSettingsTab && !activeSettingsTab.startsWith("project:") ? activeSettingsTab : "general");
     switchSettingsTab(targetTab);
     updateEnvDisplayInModal();
     if (targetTab === "models") {
@@ -3482,7 +4466,12 @@ function openSettingsModal(initialTab, focusField) {
 
 function closeSettingsModal() {
   const modal = document.getElementById("settings-modal");
-  if (modal) modal.classList.remove("visible");
+  if (modal) {
+    modal.classList.remove("visible");
+  }
+  if (typeof checkModalActive === "function") {
+    checkModalActive();
+  }
 }
 
 function setQueuedMessageMode(mode) {
@@ -3550,6 +4539,14 @@ function switchSettingsTab(tabName) {
     if (titleEl) titleEl.innerText = "AI & Models";
     if (descEl) descEl.innerText = "Configure your LLM endpoint, credentials, and execution policy.";
     updateEnvDisplayInModal();
+  } else if (tabName === "skills") {
+    const btn = document.getElementById("settings-tab-btn-skills");
+    if (btn) btn.classList.add("active");
+    const panel = document.getElementById("settings-panel-skills");
+    if (panel) panel.classList.add("active");
+    if (titleEl) titleEl.innerText = "Agent Skills & Capabilities";
+    if (descEl) descEl.innerText = "Inject SKILL.md files or custom skill capabilities into the agent runner.";
+    loadAndRenderSkills();
   } else {
     // Default: general
     activeSettingsTab = "general";
@@ -3562,6 +4559,273 @@ function switchSettingsTab(tabName) {
   }
 }
 
+async function loadAndRenderSkills() {
+  try {
+    let raw = null;
+    if (window.listSkills) {
+      raw = await window.listSkills(activeProjectPath || "");
+    } else if (window.bridgeCall) {
+      raw = await window.bridgeCall("listSkills", activeProjectPath || "");
+    }
+
+    if (raw) {
+      let res;
+      try {
+        res = typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch (e) {
+        res = null;
+      }
+      if (res) {
+        if (Array.isArray(res)) {
+          currentDiscoveredSkills = res.filter(s => s.source !== "injected");
+          currentInjectedSkills = res.filter(s => s.source === "injected");
+        } else {
+          if (Array.isArray(res.injected_skills)) currentInjectedSkills = res.injected_skills;
+          if (Array.isArray(res.skills)) currentDiscoveredSkills = res.skills.filter(s => s.source !== "injected");
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to query skills list:", err);
+  }
+
+  renderSkillsView();
+}
+
+function renderSkillsView() {
+  const injContainer = document.getElementById("injected-skills-container");
+  const discContainer = document.getElementById("discovered-skills-container");
+
+  if (injContainer) {
+    if (!currentInjectedSkills || currentInjectedSkills.length === 0) {
+      injContainer.innerHTML = '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:6px 0;">No injected skills yet. Click &quot;Inject Skill File&quot; or &quot;New Custom Skill&quot; above.</div>';
+    } else {
+      injContainer.innerHTML = "";
+      currentInjectedSkills.forEach(skill => {
+        const card = document.createElement("div");
+        card.className = "skill-card";
+        const controlBadge = skill.is_control
+          ? '<span class="skill-badge control">CONTROL</span>'
+          : '';
+        const descHtml = skill.description
+          ? `<div class="skill-card-desc">${escapeHtml(skill.description)}</div>`
+          : '';
+        const pathHtml = skill.path
+          ? `<div class="skill-card-path" title="${escapeHtml(skill.path)}">Path: ${escapeHtml(skill.path)}</div>`
+          : '';
+        const instructionsHtml = skill.instructions
+          ? `<details style="margin-top:8px;">
+               <summary style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;">View Instructions / Procedure</summary>
+               <pre class="skill-card-instructions">${escapeHtml(skill.instructions)}</pre>
+             </details>`
+          : '';
+
+        card.innerHTML = `
+          <div class="skill-card-header">
+            <div class="skill-card-title-group">
+              <span class="skill-card-name">${escapeHtml(skill.name)}</span>
+              <span class="skill-badge injected">INJECTED</span>
+              ${controlBadge}
+            </div>
+            <button type="button" class="btn-skill-revoke" onclick="removeInjectedSkill('${escapeHtml(skill.name)}')">Revoke</button>
+          </div>
+          ${descHtml}
+          ${pathHtml}
+          ${instructionsHtml}
+        `;
+        injContainer.appendChild(card);
+      });
+    }
+  }
+
+  if (discContainer) {
+    if (!currentDiscoveredSkills || currentDiscoveredSkills.length === 0) {
+      discContainer.innerHTML = '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:6px 0;">No workspace or built-in skills detected.</div>';
+    } else {
+      discContainer.innerHTML = "";
+      currentDiscoveredSkills.forEach(skill => {
+        const card = document.createElement("div");
+        card.className = "skill-card";
+        const sourceBadge = skill.source === "project"
+          ? '<span class="skill-badge project">PROJECT</span>'
+          : '<span class="skill-badge global">GLOBAL</span>';
+        const controlBadge = skill.is_control
+          ? '<span class="skill-badge control">CONTROL</span>'
+          : '';
+        const descHtml = skill.description
+          ? `<div class="skill-card-desc">${escapeHtml(skill.description)}</div>`
+          : '';
+        const pathHtml = skill.path
+          ? `<div class="skill-card-path" title="${escapeHtml(skill.path)}">Path: ${escapeHtml(skill.path)}</div>`
+          : '';
+        const instructionsHtml = skill.instructions
+          ? `<details style="margin-top:8px;">
+               <summary style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;">View Instructions / Procedure</summary>
+               <pre class="skill-card-instructions">${escapeHtml(skill.instructions)}</pre>
+             </details>`
+          : '';
+
+        card.innerHTML = `
+          <div class="skill-card-header">
+            <div class="skill-card-title-group">
+              <span class="skill-card-name">${escapeHtml(skill.name)}</span>
+              ${sourceBadge}
+              ${controlBadge}
+            </div>
+          </div>
+          ${descHtml}
+          ${pathHtml}
+          ${instructionsHtml}
+        `;
+        discContainer.appendChild(card);
+      });
+    }
+  }
+}
+
+function toggleCustomSkillForm(forceState) {
+  const box = document.getElementById("custom-skill-form-box");
+  if (!box) return;
+  if (typeof forceState === "boolean") {
+    box.style.display = forceState ? "block" : "none";
+  } else {
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+  if (box.style.display === "block") {
+    const input = document.getElementById("input-skill-name");
+    if (input) input.focus();
+  }
+}
+
+async function browseAndInjectSkillFile() {
+  try {
+    let raw = null;
+    if (window.injectSkillFile) {
+      raw = await window.injectSkillFile("");
+    } else if (window.bridgeCall) {
+      raw = await window.bridgeCall("injectSkillFile", JSON.stringify({ path: "" }));
+    } else if (window.chooseFile) {
+      const chosen = await window.chooseFile();
+      let path = "";
+      if (typeof chosen === "string") {
+        try {
+          const parsed = JSON.parse(chosen);
+          if (parsed && parsed.status === "ok" && parsed.path) path = parsed.path;
+        } catch (e) {
+          path = chosen;
+        }
+      }
+      if (path && path.trim()) {
+        if (window.injectSkillFile) {
+          raw = await window.injectSkillFile(path.trim());
+        } else if (window.bridgeCall) {
+          raw = await window.bridgeCall("injectSkillFile", JSON.stringify({ path: path.trim() }));
+        }
+      }
+    }
+
+    if (!raw) return;
+    const res = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (res.status === "cancelled") {
+      return;
+    }
+    if (res.status === "ok") {
+      const skillName = res.skill ? res.skill.name : "Skill";
+      showToast("Injected skill: " + skillName);
+      if (res.injected_skills) {
+        currentInjectedSkills = res.injected_skills;
+      }
+      await loadAndRenderSkills();
+    } else if (res.error) {
+      showToast("Failed to inject skill: " + res.error);
+    }
+  } catch (err) {
+    console.error("Error injecting skill file:", err);
+    showToast("Error injecting skill file: " + (err.message || err));
+  }
+}
+
+async function submitCustomSkillForm() {
+  const nameEl = document.getElementById("input-skill-name");
+  const descEl = document.getElementById("input-skill-description");
+  const instEl = document.getElementById("input-skill-instructions");
+  const ctrlEl = document.getElementById("check-skill-control");
+
+  const name = nameEl ? nameEl.value.trim() : "";
+  const desc = descEl ? descEl.value.trim() : "";
+  const inst = instEl ? instEl.value.trim() : "";
+  const isCtrl = ctrlEl ? ctrlEl.checked : false;
+
+  if (!name) {
+    showToast("Please provide a skill name");
+    if (nameEl) nameEl.focus();
+    return;
+  }
+
+  const payload = {
+    name: name,
+    description: desc,
+    instructions: inst,
+    is_control: isCtrl,
+    source: "injected"
+  };
+
+  try {
+    let raw = null;
+    if (window.injectSkill) {
+      raw = await window.injectSkill(JSON.stringify(payload));
+    } else if (window.bridgeCall) {
+      raw = await window.bridgeCall("injectSkill", JSON.stringify(payload));
+    }
+
+    if (raw) {
+      const res = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (res.status === "ok") {
+        showToast("Skill injected: " + name);
+        if (nameEl) nameEl.value = "";
+        if (descEl) descEl.value = "";
+        if (instEl) instEl.value = "";
+        if (ctrlEl) ctrlEl.checked = false;
+        toggleCustomSkillForm(false);
+        if (res.injected_skills) currentInjectedSkills = res.injected_skills;
+        await loadAndRenderSkills();
+        return;
+      } else if (res.error) {
+        showToast("Failed to inject skill: " + res.error);
+        return;
+      }
+    }
+    showToast("Skill injected: " + name);
+    toggleCustomSkillForm(false);
+    await loadAndRenderSkills();
+  } catch (err) {
+    console.error("Error submitting custom skill:", err);
+    showToast("Error saving skill: " + (err.message || err));
+  }
+}
+
+async function removeInjectedSkill(skillName) {
+  if (!skillName) return;
+  try {
+    let raw = null;
+    if (window.removeInjectedSkill) {
+      raw = await window.removeInjectedSkill(skillName);
+    } else if (window.bridgeCall) {
+      raw = await window.bridgeCall("removeInjectedSkill", JSON.stringify({ name: skillName }));
+    }
+
+    if (raw) {
+      const res = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (res && res.injected_skills) currentInjectedSkills = res.injected_skills;
+    }
+    showToast("Skill removed: " + skillName);
+    await loadAndRenderSkills();
+  } catch (err) {
+    console.error("Error removing skill:", err);
+    showToast("Error removing skill: " + (err.message || err));
+  }
+}
+
 function renderSettingsProjectsList() {
   const container = document.getElementById("settings-projects-list");
   if (!container) return;
@@ -3569,10 +4833,12 @@ function renderSettingsProjectsList() {
 
   // Collect unique projects from allProjects or activeProjectPath
   const projectsMap = new Map();
-  if (activeProjectPath && activeProjectPath !== ".") {
-    const parts = activeProjectPath.split("/").filter(Boolean);
-    const activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") ||
-      (parts.length > 0 ? parts[parts.length - 1] : "Active Workspace");
+  if (activeProjectPath) {
+    let activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") || "";
+    if (!activeName || activeName === "Orborus Agent Runner") {
+      const parts = activeProjectPath === "." ? [] : activeProjectPath.split("/").filter(Boolean);
+      activeName = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+    }
     projectsMap.set(activeProjectPath, { name: activeName, path: activeProjectPath });
   }
 
@@ -3600,7 +4866,8 @@ function renderSettingsProjectsList() {
   projectsMap.forEach(proj => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "settings-nav-item project-item";
+    const isSelectedInSettings = activeSettingsProject === proj.path || activeSettingsTab === ("project:" + proj.path);
+    btn.className = "settings-nav-item project-item" + (isSelectedInSettings ? " active" : "");
     btn.dataset.projectPath = proj.path;
     const isActiveProj = proj.path === activeProjectPath;
 
@@ -3639,7 +4906,7 @@ function selectSettingsProject(path, name) {
   const panel = document.getElementById("settings-panel-project");
   if (panel) panel.classList.add("active");
 
-  const displayName = name || path.split("/").filter(Boolean).pop() || "Project";
+  const displayName = name || (path === "." ? "Orborus Agent Runner" : path.split("/").filter(Boolean).pop()) || "Project";
   const titleEl = document.getElementById("settings-view-title");
   const descEl = document.getElementById("settings-view-desc");
   if (titleEl) titleEl.innerText = displayName;
@@ -3722,14 +4989,13 @@ function updateProjectSandboxField(value) {
   }
 }
 
-function switchActiveWorkspaceFromSettings() {
+async function switchActiveWorkspaceFromSettings() {
   if (!activeSettingsProject) return;
   const nameEl = document.getElementById("lbl-project-name");
   const name = nameEl ? nameEl.innerText : activeSettingsProject.split("/").filter(Boolean).pop() || "Project";
-  setActiveProject(activeSettingsProject, name);
+  await selectProject(activeSettingsProject, name);
   selectSettingsProject(activeSettingsProject, name);
   renderSettingsProjectsList();
-  renderProjectTree();
   showToast("Switched active workspace to: " + name);
 }
 
@@ -3738,8 +5004,21 @@ function updateEnvDisplayInModal() {
   const keyEl = document.getElementById("env-display-key");
   const modelEl = document.getElementById("env-display-model");
   const urlInput = document.getElementById("input-ai-url");
+  const keyInput = document.getElementById("input-ai-key");
   const modelSelect = document.getElementById("select-ai-model");
-  const model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+  const customModelInput = document.getElementById("input-settings-custom-model");
+  let model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+
+  if (model === "custom") {
+    if (customModelInput) {
+      customModelInput.style.display = "block";
+      if (customModelInput.value.trim()) {
+        model = customModelInput.value.trim();
+      }
+    }
+  } else if (customModelInput) {
+    customModelInput.style.display = "none";
+  }
 
   let defaultUrl = "";
   if (model.startsWith("gemini")) {
@@ -3754,135 +5033,244 @@ function updateEnvDisplayInModal() {
     urlInput.placeholder = defaultUrl + " (default)";
   }
 
+  const effectiveUrl = (urlInput && urlInput.value.trim()) || currentAiUrl || "";
+  const effectiveKey = (keyInput && keyInput.value.trim()) || currentAiKey || "";
+
   if (urlEl) {
-    if (currentAiUrl) {
-      urlEl.innerText = currentAiUrl;
+    if (effectiveUrl) {
+      urlEl.innerText = effectiveUrl;
     } else if (defaultUrl) {
       urlEl.innerText = defaultUrl + " (default)";
     } else {
       urlEl.innerText = "not set";
     }
   }
-  if (keyEl) keyEl.innerText = currentAiKey ? (currentAiKey.length > 8 ? currentAiKey.substring(0, 4) + "..." + currentAiKey.substring(currentAiKey.length - 4) : "configured") : "not set";
+  if (keyEl) {
+    if (effectiveKey) {
+      keyEl.innerText = effectiveKey.length > 8 ? effectiveKey.substring(0, 4) + "..." + effectiveKey.substring(effectiveKey.length - 4) : "configured";
+    } else {
+      keyEl.innerText = "not set";
+    }
+  }
   if (modelEl) modelEl.innerText = model;
 }
 
 async function saveSettings() {
-  const urlInput = document.getElementById("input-ai-url");
-  const keyInput = document.getElementById("input-ai-key");
-  const modelSelect = document.getElementById("select-ai-model");
-  const globalPreset = document.getElementById("select-global-preset");
-  const globalFileAccess = document.getElementById("select-global-file-access");
-  const globalTerminal = document.getElementById("select-global-terminal-policy");
-  const globalSandbox = document.getElementById("toggle-global-sandbox");
+  try {
+    const urlInput = document.getElementById("input-ai-url");
+    const keyInput = document.getElementById("input-ai-key");
+    const modelSelect = document.getElementById("select-ai-model");
+    const customModelInput = document.getElementById("input-settings-custom-model");
+    const globalPreset = document.getElementById("select-global-preset");
+    const globalFileAccess = document.getElementById("select-global-file-access");
+    const globalTerminal = document.getElementById("select-global-terminal-policy");
+    const globalSandbox = document.getElementById("toggle-global-sandbox");
 
-  const url = urlInput ? urlInput.value.trim() : "";
-  const key = keyInput ? keyInput.value.trim() : "";
-  const model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
-  const preset = globalPreset ? globalPreset.value : (currentPermissionPolicy || "ask_all");
-  const fileAccess = globalFileAccess ? globalFileAccess.value : (currentFileAccessPolicy || "ask");
-  const terminal = globalTerminal ? globalTerminal.value : (currentTerminalExecutionPolicy || "sandbox");
-  const sandbox = globalSandbox ? globalSandbox.checked : true;
+    const url = urlInput ? urlInput.value.trim() : (currentAiUrl || "");
+    let key = keyInput ? keyInput.value.trim() : "";
+    if (!key && currentAiKey && activeSettingsTab !== "models") {
+      key = currentAiKey;
+    }
+    let model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+    if (model === "custom" && customModelInput && customModelInput.value.trim()) {
+      model = customModelInput.value.trim();
+    }
+    const preset = globalPreset ? globalPreset.value : (currentPermissionPolicy || "ask_all");
+    const fileAccess = globalFileAccess ? globalFileAccess.value : (currentFileAccessPolicy || "ask");
+    const terminal = globalTerminal ? globalTerminal.value : (currentTerminalExecutionPolicy || "sandbox");
+    const sandbox = globalSandbox ? globalSandbox.checked : true;
 
-  currentAiUrl = url;
-  currentAiKey = key;
-  currentPermissionPolicy = preset;
-  currentFileAccessPolicy = fileAccess;
-  currentTerminalExecutionPolicy = terminal;
-  currentSandboxMode = sandbox;
-  activeAiModel = model;
-  localStorage.setItem("orborus_ai_model", model);
-  updateEnvDisplayInModal();
+    currentAiUrl = url;
+    currentAiKey = key;
+    currentPermissionPolicy = preset;
+    currentFileAccessPolicy = fileAccess;
+    currentTerminalExecutionPolicy = terminal;
+    currentSandboxMode = sandbox;
+    activeAiModel = model;
 
-  const footerModelSelect = document.getElementById("select-footer-model");
-  const customInput = document.getElementById("input-custom-model");
-  if (footerModelSelect) {
-    if (model === "gemini-3.8-flash") {
-      footerModelSelect.value = "gemini-3.8-flash";
-      if (customInput) customInput.style.display = "none";
+    if (url) {
+      localStorage.setItem("orborus_ai_url", url);
     } else {
-      footerModelSelect.value = "custom";
-      if (customInput) {
-        customInput.style.display = "inline-block";
-        customInput.value = model;
-      }
+      localStorage.removeItem("orborus_ai_url");
     }
-  }
-
-  const settingsPayload = {
-    permission_policy: preset,
-    terminal_execution_policy: terminal,
-    file_access_policy: fileAccess,
-    sandbox_mode: sandbox,
-    queued_messages: currentQueuedMessages || "queue",
-    project_permissions: currentProjectPermissions || {},
-    ai_api_url: url,
-    ai_api_key: key,
-    ai_model: model
-  };
-
-  if (window.saveAllSettings) {
-    try {
-      const resp = await window.saveAllSettings(settingsPayload);
-      const res = JSON.parse(resp);
-      updateAuthState(res);
-    } catch (err) {
-      console.error("Failed to save all settings via bridge:", err);
+    if (key) {
+      localStorage.setItem("orborus_ai_key", key);
+    } else if (activeSettingsTab === "models") {
+      localStorage.removeItem("orborus_ai_key");
     }
-  } else {
-    if (window.setPermissionPolicy) {
-      try {
-        await window.setPermissionPolicy(preset);
-      } catch (err) {
-        console.error("Failed to save permission policy:", err);
-      }
-    }
-    if (window.setAiConfig) {
-      try {
-        const resp = await window.setAiConfig(url, key, preset, model);
-        const res = JSON.parse(resp);
-        updateAuthState(res);
-      } catch (err) {
-        console.error("Failed to save AI config:", err);
-      }
-    }
-  }
+    localStorage.setItem("orborus_ai_model", model);
+    localStorage.setItem("orborus_permission_policy", preset);
+    localStorage.setItem("orborus_terminal_execution_policy", terminal);
+    localStorage.setItem("orborus_file_access_policy", fileAccess);
+    localStorage.setItem("orborus_sandbox_mode", sandbox ? "true" : "false");
 
-  const baseUrlInput = document.getElementById("input-base-url");
-  const orgIdInput = document.getElementById("input-org-id");
-  const authKeyInput = document.getElementById("input-auth-key");
-  const envNameInput = document.getElementById("input-env-name");
+    updateEnvDisplayInModal();
 
-  if (baseUrlInput || orgIdInput || authKeyInput || envNameInput) {
-    const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : "";
-    const orgId = orgIdInput ? orgIdInput.value.trim() : "";
-    const auth = authKeyInput ? authKeyInput.value.trim() : "";
-    const env = envNameInput ? envNameInput.value.trim() : "";
-    if (orgId || auth || env || baseUrl) {
-      if (window.updateAuth) {
-        try {
-          await window.updateAuth({
-            base_url: baseUrl,
-            org_id: orgId,
-            auth: auth,
-            environment: env
-          });
-        } catch (err) {
-          console.error("Failed to update credentials during saveSettings:", err);
+    // Optimistically update Auth State UI immediately
+    updateAuthState({
+      is_logged_in: !!(key || url),
+      is_bypassed: true,
+      ai_api_url: url,
+      ai_api_key: key,
+      ai_model: model,
+      permission_policy: preset
+    });
+
+    const footerModelSelect = document.getElementById("select-footer-model");
+    const customInput = document.getElementById("input-custom-model");
+    if (footerModelSelect) {
+      if (model === "gemini-3.8-flash") {
+        footerModelSelect.value = "gemini-3.8-flash";
+        if (customInput) customInput.style.display = "none";
+      } else {
+        footerModelSelect.value = "custom";
+        if (customInput) {
+          customInput.style.display = "inline-block";
+          customInput.value = model;
         }
       }
     }
-  }
 
-  showToast("Settings saved successfully");
-  closeSettingsModal();
+    // Dismiss settings modal immediately for instant UI feedback
+    closeSettingsModal();
+    showToast("Settings saved");
+
+    if (activeSettingsProject) {
+      const pPreset = document.getElementById("select-project-preset");
+      const pFile = document.getElementById("select-project-file-access");
+      const pTerm = document.getElementById("select-project-terminal-policy");
+      const pSand = document.getElementById("select-project-sandbox");
+      const pCmds = document.getElementById("input-project-allowed-commands");
+      if (!currentProjectPermissions) currentProjectPermissions = {};
+      if (!currentProjectPermissions[activeSettingsProject]) {
+        currentProjectPermissions[activeSettingsProject] = {};
+      }
+      if (pPreset) currentProjectPermissions[activeSettingsProject].permission_policy = pPreset.value;
+      if (pFile) currentProjectPermissions[activeSettingsProject].file_access_policy = pFile.value;
+      if (pTerm) currentProjectPermissions[activeSettingsProject].terminal_execution_policy = pTerm.value;
+      if (pSand) {
+        currentProjectPermissions[activeSettingsProject].sandbox_mode = pSand.value === "enabled" ? true : (pSand.value === "disabled" ? false : null);
+      }
+      if (pCmds) currentProjectPermissions[activeSettingsProject].allowed_commands = pCmds.value;
+    }
+
+    const settingsPayload = {
+      permission_policy: preset,
+      terminal_execution_policy: terminal,
+      file_access_policy: fileAccess,
+      sandbox_mode: sandbox,
+      queued_messages: currentQueuedMessages || "queue",
+      project_permissions: currentProjectPermissions || {},
+      ai_api_url: url,
+      ai_api_key: key,
+      ai_model: model
+    };
+
+    let savedState = null;
+    const payloadStr = JSON.stringify(settingsPayload);
+
+    if (typeof window.saveAllSettings === "function") {
+      try {
+        const resp = await window.saveAllSettings(settingsPayload);
+        savedState = typeof resp === "string" ? JSON.parse(resp) : resp;
+      } catch (err) {
+        console.warn("saveAllSettings error, falling back:", err);
+      }
+    }
+    if (!savedState && typeof window.bridgeCall === "function") {
+      try {
+        const resp = await window.bridgeCall("saveAllSettings", payloadStr);
+        savedState = typeof resp === "string" ? JSON.parse(resp) : resp;
+      } catch (err) {
+        console.warn("bridgeCall saveAllSettings error:", err);
+      }
+    }
+    if (!savedState && typeof window.setAiConfig === "function") {
+      try {
+        const resp = await window.setAiConfig(url, key, preset, model);
+        savedState = typeof resp === "string" ? JSON.parse(resp) : resp;
+      } catch (err) {
+        console.warn("setAiConfig error:", err);
+      }
+    }
+    if (!savedState && typeof window.bridgeCall === "function") {
+      try {
+        const resp = await window.bridgeCall("setAiConfig", JSON.stringify({ url: url, key: key, permission_policy: preset, model: model }));
+        savedState = typeof resp === "string" ? JSON.parse(resp) : resp;
+      } catch (err) {
+        console.warn("bridgeCall setAiConfig error:", err);
+      }
+    }
+
+    if (savedState) {
+      updateAuthState(savedState);
+    } else {
+      updateAuthState({
+        is_logged_in: true,
+        is_bypassed: true,
+        ai_api_url: url,
+        ai_api_key: key,
+        ai_model: model,
+        permission_policy: preset,
+        sandbox_mode: sandbox,
+        terminal_execution_policy: terminal,
+        file_access_policy: fileAccess
+      });
+    }
+
+    const baseUrlInput = document.getElementById("input-base-url");
+    const orgIdInput = document.getElementById("input-org-id");
+    const authKeyInput = document.getElementById("input-auth-key");
+    const envNameInput = document.getElementById("input-env-name");
+
+    if (baseUrlInput || orgIdInput || authKeyInput || envNameInput) {
+      const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : "";
+      const orgId = orgIdInput ? orgIdInput.value.trim() : "";
+      const auth = authKeyInput ? authKeyInput.value.trim() : "";
+      const env = envNameInput ? envNameInput.value.trim() : "";
+      if (orgId || auth || env || baseUrl) {
+        if (typeof window.updateAuth === "function") {
+          try {
+            await window.updateAuth({
+              base_url: baseUrl,
+              org_id: orgId,
+              auth: auth,
+              environment: env
+            });
+          } catch (err) {
+            console.warn("updateAuth error during saveSettings:", err);
+          }
+        } else if (typeof window.bridgeCall === "function") {
+          try {
+            await window.bridgeCall("updateAuth", JSON.stringify({
+              base_url: baseUrl,
+              org_id: orgId,
+              auth: auth,
+              environment: env
+            }));
+          } catch (err) {
+            console.warn("bridgeCall updateAuth error:", err);
+          }
+        }
+      }
+    }
+
+    dismissAuthErrorsIfConfigured();
+    showToast("Settings saved successfully");
+    closeSettingsModal();
+  } catch (err) {
+    console.error("Critical error in saveSettings:", err);
+    dismissAuthErrorsIfConfigured();
+    showToast("Settings saved locally");
+    closeSettingsModal();
+  }
 }
 
-let isOAuthPending = false;
 window.onAuthUpdated = function(state) {
   console.log("[OAUTH] Dynamic auth updated:", state);
   isOAuthPending = false;
   updateAuthState(state);
+  dismissAuthErrorsIfConfigured();
 };
 
 async function loginWithOAuth() {
@@ -3914,13 +5302,15 @@ async function scanRepositories() {
   try {
     if (window.listProjects) {
       const raw = await window.listProjects();
-      const projects = JSON.parse(raw);
+      const projects = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (Array.isArray(projects)) {
         allProjects = projects;
       }
       renderProjectTree();
+      renderSettingsProjectsList();
     } else {
       renderProjectTree();
+      renderSettingsProjectsList();
     }
   } catch (err) {
     console.error("Scan error:", err);
@@ -3973,29 +5363,58 @@ async function togglePinConversation(convId, event) {
   const conv = appConversations.find(c => c.id === convId);
   if (conv) conv.pinned = pinnedConversationIds.has(convId);
 
-  // Persist to backend if bridge available
+  // Optimistic UI update immediately
+  renderProjectTree();
+  saveStoredConversations();
+
+  // Persist to backend in background
   if (window.setPinnedConversations) {
     try {
-      await window.setPinnedConversations(JSON.stringify(Array.from(pinnedConversationIds)));
+      window.setPinnedConversations(JSON.stringify(Array.from(pinnedConversationIds))).catch(() => {});
     } catch (e) {
       console.warn("setPinnedConversations error:", e);
     }
   }
-
-  renderProjectTree();
-  saveStoredConversations();
 }
 
-function selectConversation(convId) {
+async function selectConversation(convId) {
   activeConversationId = convId;
-  const conv = appConversations.find(c => c.id === convId);
-  if (conv) {
-    if (conv.projectId && conv.projectId !== activeProjectPath) {
-      setActiveProject(conv.projectId, conv.projectName);
+  localStorage.setItem("orborus_active_conv_id", convId);
+
+  // 1. Optimistic instant switch (0ms latency)
+  const cachedConv = appConversations.find(c => c.id === convId);
+  if (cachedConv) {
+    const projPath = cachedConv.projectId || cachedConv.project_id;
+    const projName = cachedConv.projectName || cachedConv.project_name;
+    if (projPath && projPath !== activeProjectPath) {
+      setActiveProject(projPath, projName);
     }
   }
   renderProjectTree();
   renderActiveConversation();
+
+  // 2. Fetch full conversation transcript from backend disk in background
+  if (window.getConversation) {
+    try {
+      const raw = await window.getConversation(convId);
+      const diskConv = JSON.parse(raw);
+      if (diskConv && diskConv.id && !diskConv.error) {
+        if (!Array.isArray(appConversations)) appConversations = [];
+        const idx = appConversations.findIndex(c => c.id === convId);
+        if (idx !== -1) {
+          appConversations[idx] = diskConv;
+        } else {
+          appConversations.unshift(diskConv);
+        }
+        if (activeConversationId === convId) {
+          renderActiveConversation();
+        }
+        saveStoredConversations();
+      }
+    } catch (e) {
+      console.warn("Failed to fetch fresh conversation from disk:", e);
+    }
+  }
 }
 
 function renderProjectTree() {
@@ -4098,9 +5517,15 @@ function renderProjectTree() {
     projGroup.className = "project-group" + (isCollapsed ? " collapsed" : "");
 
     // Folder header row
-    const folderRow = document.createElement("div");
-    folderRow.className = "project-folder-row" + (proj.Path === activeProjectPath ? " active" : "");
-    folderRow.onclick = (e) => toggleProjectCollapse(proj.Path, e);
+    folderRow.onclick = async (e) => {
+      if (proj.Path !== activeProjectPath) {
+        await selectProject(proj.Path, projName);
+        collapsedProjects[proj.Path] = false;
+        renderProjectTree();
+      } else {
+        toggleProjectCollapse(proj.Path, e);
+      }
+    };
 
     folderRow.innerHTML = `
       <div class="project-folder-left">
@@ -4179,34 +5604,43 @@ function toggleProjectDropdown(event, forceState) {
 
 async function selectProject(path, displayName) {
   if (!path) return;
-  if (window.selectProject) {
-    try {
-      await window.selectProject(path);
-    } catch (err) {
-      console.warn("window.selectProject error:", err);
-    }
-  }
   let name = displayName;
   if (!name) {
     const parts = path.split("/").filter(Boolean);
     name = parts.length > 0 ? parts[parts.length - 1] : "Project";
   }
+  if (!Array.isArray(allProjects)) allProjects = [];
   const existing = allProjects.find(p => p.Path === path);
   if (!existing) {
     allProjects.unshift({ Name: name, Path: path });
   }
+
+  // 1. Optimistic UI update immediately
   setActiveProject(path, name);
   renderProjects(allProjects);
+  renderProjectTree();
+  localStorage.setItem("orborus_active_project", path);
+
+  // 2. Notify backend in background
+  if (window.selectProject) {
+    try {
+      window.selectProject(path).catch(() => {});
+    } catch (err) {
+      console.warn("window.selectProject error:", err);
+    }
+  }
 }
 
 function setActiveProject(path, displayName) {
   activeProjectPath = path;
+  localStorage.setItem("orborus_active_project", path);
   let name = displayName;
   if (!name) {
     const parts = path.split("/").filter(Boolean);
     name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
   }
-  document.getElementById("active-project-name").innerText = name;
+  const el = document.getElementById("active-project-name");
+  if (el) el.innerText = name;
 }
 
 function toggleSidebar() {
@@ -4299,6 +5733,7 @@ function chooseCustomDirectory() {
 function closeCustomDirModal() {
   const modal = document.getElementById("custom-dir-modal");
   if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 async function browseNativeDirectory() {
@@ -4375,6 +5810,7 @@ async function addFileContext() {
 function closeFileContextModal() {
   const modal = document.getElementById("file-context-modal");
   if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 function submitFileContext() {
@@ -4414,8 +5850,6 @@ const AVAILABLE_MODELS = [
   { id: "gpt-4o", name: "GPT-4o", note: "OpenAI" },
   { id: "ollama", name: "Ollama", note: "Local LLM" },
 ];
-let activeAiModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
-let activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
 
 function selectModel(modelId) {
   activeAiModel = modelId;
@@ -4537,8 +5971,6 @@ function syncModelSettings(model) {
 }
 
 // ----------------- Conversation History -----------------
-let executionHistory = [];
-
 function toggleHistoryModal() {
   const modal = document.getElementById("history-modal");
   if (!modal) return;
@@ -4553,6 +5985,12 @@ function openHistoryModal() {
   const modal = document.getElementById("history-modal");
   if (!modal) return;
   modal.classList.add("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
+  if (typeof window !== "undefined" && Array.isArray(window.executionHistory)) {
+    executionHistory = window.executionHistory;
+  } else if (!Array.isArray(executionHistory)) {
+    executionHistory = [];
+  }
   renderHistoryList(executionHistory);
   const searchInput = document.getElementById("history-search-input");
   if (searchInput) {
@@ -4564,6 +6002,7 @@ function openHistoryModal() {
 function closeHistoryModal() {
   const modal = document.getElementById("history-modal");
   if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 function renderHistoryList(items) {
@@ -4607,6 +6046,11 @@ function renderHistoryList(items) {
 }
 
 function filterHistory(query) {
+  if (typeof window !== "undefined" && Array.isArray(window.executionHistory)) {
+    executionHistory = window.executionHistory;
+  } else if (!Array.isArray(executionHistory)) {
+    executionHistory = [];
+  }
   const q = query.toLowerCase().trim();
   if (!q) {
     renderHistoryList(executionHistory);
@@ -4619,6 +6063,11 @@ function filterHistory(query) {
 }
 
 function useHistoryPrompt(index) {
+  if (typeof window !== "undefined" && Array.isArray(window.executionHistory)) {
+    executionHistory = window.executionHistory;
+  } else if (!Array.isArray(executionHistory)) {
+    executionHistory = [];
+  }
   const item = executionHistory[index];
   if (!item) return;
   const textarea = document.getElementById("prompt-input");
@@ -4632,6 +6081,11 @@ function useHistoryPrompt(index) {
 }
 
 function runHistoryPrompt(index) {
+  if (typeof window !== "undefined" && Array.isArray(window.executionHistory)) {
+    executionHistory = window.executionHistory;
+  } else if (!Array.isArray(executionHistory)) {
+    executionHistory = [];
+  }
   const item = executionHistory[index];
   if (!item) return;
   closeHistoryModal();
@@ -4644,7 +6098,12 @@ function runHistoryPrompt(index) {
 }
 
 async function clearAllHistory() {
-  executionHistory = [];
+  if (typeof window !== "undefined") {
+    window.executionHistory = [];
+    executionHistory = window.executionHistory;
+  } else {
+    executionHistory = [];
+  }
   appConversations = [];
   pinnedConversationIds.clear();
   saveStoredConversations();
@@ -4666,11 +6125,20 @@ async function clearAllHistory() {
 // ----------------- Session & Execution -----------------
 function startNewSession() {
   activeConversationId = null;
+  localStorage.removeItem("orborus_active_conv_id");
+  setChatMode(false);
+  activeRunningTasks = [];
+  renderRunningTasks();
+
+  const turnsContainer = document.getElementById("conversation-turns-container");
+  if (turnsContainer) turnsContainer.innerHTML = "";
   const promptCard = document.getElementById("active-user-prompt-card");
   if (promptCard) {
     promptCard.innerText = "";
     promptCard.style.display = "none";
   }
+  const summaryBanner = document.getElementById("activity-summary-banner");
+  if (summaryBanner) summaryBanner.style.display = "none";
   const stepsContainer = document.getElementById("activity-steps-container");
   if (stepsContainer) stepsContainer.innerHTML = "";
   const container = document.getElementById("execution-cards-container");
@@ -4678,6 +6146,14 @@ function startNewSession() {
   const approvalCard = document.getElementById("approval-card");
   if (approvalCard) approvalCard.classList.remove("visible");
   currentApprovalId = null;
+
+  const btnStop = document.getElementById("btn-stop-execution");
+  const btnSend = document.getElementById("btn-send");
+  if (btnStop) btnStop.style.display = "none";
+  if (btnSend) {
+    btnSend.style.display = "flex";
+    btnSend.classList.remove("active");
+  }
 
   const topbarConv = document.getElementById("topbar-conv-title");
   if (topbarConv) topbarConv.innerText = "New Conversation";
@@ -4691,8 +6167,6 @@ function startNewSession() {
     input.style.height = "auto";
     setTimeout(() => input.focus(), 50);
   }
-  const btn = document.getElementById("btn-send");
-  if (btn) btn.classList.remove("active");
 
   renderProjectTree();
   showToast("Started new conversation session");
@@ -4722,89 +6196,183 @@ async function submitPrompt() {
   const prompt = textarea.value.trim();
   if (!prompt) return;
 
+  setChatMode(true);
+
   textarea.value = "";
   textarea.style.height = "auto";
-  document.getElementById("btn-send").classList.remove("active");
+  const btnSend = document.getElementById("btn-send");
+  const btnStop = document.getElementById("btn-stop-execution");
+  if (btnSend) {
+    btnSend.classList.remove("active");
+    btnSend.style.display = "none";
+  }
+  if (btnStop) btnStop.style.display = "flex";
 
   document.getElementById("main-container").classList.add("has-history");
 
   const promptCard = document.getElementById("active-user-prompt-card");
   if (promptCard) {
-    promptCard.innerText = prompt;
-    promptCard.style.display = "block";
+    promptCard.innerText = "";
+    promptCard.style.display = "none";
   }
 
-  const stepsContainer = document.getElementById("activity-steps-container");
-  if (stepsContainer) {
-    stepsContainer.innerHTML = `
-      <div class="activity-step-row expanded" style="border-style:dashed;">
-        <div class="activity-step-header">
-          <div class="activity-step-left">
-            <div class="spinner" style="width:12px; height:12px;"></div>
-            <span class="activity-step-name">Processing prompt in ${escapeHtml(activeProjectPath)}...</span>
-          </div>
-        </div>
-      </div>
-    `;
+  const shortTaskName = prompt.split("\n")[0].substring(0, 52);
+  activeRunningTasks = [{
+    id: "task-" + Date.now(),
+    name: shortTaskName
+  }];
+  renderRunningTasks();
+
+  const summaryBanner = document.getElementById("activity-summary-banner");
+  const summaryText = document.getElementById("activity-summary-text");
+  if (summaryBanner && summaryText) {
+    summaryBanner.style.display = "flex";
+    summaryText.innerText = `Running task: ${shortTaskName}`;
   }
 
+  // 1. Create immediate optimistic turn in running state
+  const turnId = "turn-" + Date.now();
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const optimisticTurn = {
+    id: turnId,
+    prompt: prompt,
+    timestamp: timeStr,
+    steps: [],
+    output: "",
+    status: "running",
+    duration: "0s"
+  };
+
+  const firstLine = prompt.split("\n")[0].substring(0, 36);
+  if (!activeConversationId) {
+    activeConversationId = "conv-" + Date.now();
+    localStorage.setItem("orborus_active_conv_id", activeConversationId);
+    const newConv = {
+      id: activeConversationId,
+      projectId: activeProjectPath,
+      project_id: activeProjectPath,
+      projectName: document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : (activeProjectPath.split("/").pop() || "Local Workspace"),
+      project_name: document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : (activeProjectPath.split("/").pop() || "Local Workspace"),
+      title: firstLine,
+      pinned: false,
+      turns: [optimisticTurn]
+    };
+    if (!Array.isArray(appConversations)) appConversations = [];
+    appConversations.unshift(newConv);
+    const topbarConv = document.getElementById("topbar-conv-title");
+    if (topbarConv) topbarConv.innerText = firstLine;
+  } else {
+    if (!Array.isArray(appConversations)) appConversations = [];
+    let curConv = appConversations.find(c => c.id === activeConversationId);
+    if (!curConv) {
+      curConv = {
+        id: activeConversationId,
+        projectId: activeProjectPath,
+        project_id: activeProjectPath,
+        projectName: document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : (activeProjectPath.split("/").pop() || "Local Workspace"),
+        project_name: document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : (activeProjectPath.split("/").pop() || "Local Workspace"),
+        title: firstLine,
+        pinned: false,
+        turns: []
+      };
+      appConversations.unshift(curConv);
+    }
+    if (!curConv.turns) curConv.turns = [];
+    curConv.turns.push(optimisticTurn);
+    curConv.updated_at = new Date().toISOString();
+  }
+
+  // Paint optimistic state immediately (0ms delay)
+  renderProjectTree();
+  renderActiveConversation();
+  saveStoredConversations();
+
+  const stream = document.getElementById("execution-stream");
+  if (stream) {
+    setTimeout(() => { stream.scrollTop = stream.scrollHeight; }, 30);
+  }
+
+  // Live duration timer
   const startTime = Date.now();
-  if (window.isDebug) {
-    console.log("[DEBUG] Dispatching prompt execution:", {
-      prompt: prompt,
-      project: activeProjectPath,
-      model: activeAiModel,
-      reasoning: activeReasoningEffort,
-      ai_url: currentAiUrl,
-      policy: currentPermissionPolicy
-    });
-  }
+  const liveTimer = setInterval(() => {
+    const elapsedSec = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+    optimisticTurn.duration = `${elapsedSec}s`;
+    const durEl = document.getElementById("live-dur-" + turnId);
+    if (durEl) {
+      durEl.innerText = `${elapsedSec}s`;
+    }
+  }, 1000);
 
   try {
     let raw;
-    if (typeof window.runPrompt === "function") {
+    const effectiveKey = currentAiKey || localStorage.getItem("orborus_ai_key") || "";
+    const effectiveUrl = currentAiUrl || localStorage.getItem("orborus_ai_url") || "";
+    if (effectiveKey || effectiveUrl) {
+      dismissAuthErrorsIfConfigured();
+    }
+
+    const promptPayload = JSON.stringify({
+      prompt: prompt,
+      bypass: false,
+      conversation_id: activeConversationId || "",
+      model: activeAiModel || "gemini-3.8-flash",
+      reasoning: activeReasoningEffort || "medium",
+      ai_api_key: effectiveKey,
+      ai_api_url: effectiveUrl
+    });
+
+    if (typeof window.bridgeCall === "function") {
+      raw = await window.bridgeCall("runPrompt", promptPayload);
+    } else if (typeof window.runPrompt === "function") {
       raw = await window.runPrompt(prompt, false, activeConversationId || "");
-    } else if (typeof window.bridgeCall === "function") {
-      raw = await window.bridgeCall("runPrompt", JSON.stringify({
-        prompt: prompt,
-        bypass: false,
-        conversation_id: activeConversationId || "",
-        model: activeAiModel || "gemini-3.8-flash",
-        reasoning: activeReasoningEffort || "medium"
-      }));
     } else {
       await new Promise(r => setTimeout(r, 400));
       raw = JSON.stringify({
         prompt: prompt,
         output: "Completed local execution.",
         steps: [
-          { id: "step-1", name: "Analyzed prompt", duration: "0.2s", detail: "Parsed input command and checked workspace.", type: "thought" },
-          { id: "step-2", name: "Workspace check", duration: "0.1s", detail: `Target: ${activeProjectPath}`, type: "cmd" }
+          { id: "step-1", name: "Analyzed prompt", duration: "0.2s", detail: "Parsed input command.", type: "thought" },
+          { id: "step-2", name: "Completed query", duration: "0.2s", detail: "Finished execution successfully.", type: "cmd" }
         ]
       });
     }
 
-    if (stepsContainer) {
-      stepsContainer.innerHTML = "";
+    clearInterval(liveTimer);
+
+    let res = null;
+    if (typeof raw === "object" && raw !== null) {
+      res = raw;
+    } else if (typeof raw === "string" && raw.trim().length > 0) {
+      try {
+        res = JSON.parse(raw);
+      } catch (parseErr) {
+        console.warn("Failed to parse bridge response as JSON:", raw, parseErr);
+        res = {
+          status: "error",
+          error: raw || "Execution failed",
+          error_type: "execution_error",
+          fix_help: "Backend returned non-JSON output. Check application logs."
+        };
+      }
+    } else {
+      res = {
+        status: "error",
+        error: "Internal error: Backend returned an empty response",
+        error_type: "execution_error",
+        fix_help: "Check backend terminal logs for detailed traces."
+      };
     }
 
-    const res = JSON.parse(raw);
-    if (window.isDebug) {
-      console.log("[DEBUG] Execution response received:", res);
-    }
+    activeRunningTasks = [];
+    renderRunningTasks();
+    if (btnStop) btnStop.style.display = "none";
+    if (btnSend) btnSend.style.display = "flex";
 
-    if (res.needs_login) {
-      loginWithOAuth();
-      renderErrorResult(prompt, res.error);
-      return;
-    }
-
-    if (res.needs_ai_config) {
-      renderErrorResult(prompt, res.error || res.output || "AI Provider Not Configured: This prompt requires an AI model to process.", res);
-      return;
-    }
+    const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+    optimisticTurn.duration = res.duration || `${elapsed}s`;
 
     if (res.needs_approval) {
+      optimisticTurn.status = "needs_approval";
       currentApprovalId = res.id;
       currentApprovalCmd = res.prompt;
       currentApprovalCmdPrefix = res.command_prefix || res.prompt.trim().split(/\s+/).slice(0, 2).join(" ");
@@ -4818,66 +6386,79 @@ async function submitPrompt() {
         desc: currentApprovalDesc,
         project: currentApprovalProject
       });
+      renderActiveConversation();
+      await saveStoredConversations();
       return;
     }
 
-    if (res.steps && Array.isArray(res.steps) && res.steps.length > 0 && stepsContainer) {
-      res.steps.forEach(step => {
-        const stepRow = document.createElement("div");
-        stepRow.className = "activity-step-row expanded";
-        stepRow.id = "step-row-" + (step.id || Math.random().toString(36).substr(2, 6));
-        const iconSvg = step.type === "cmd" 
-          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`
-          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
-        stepRow.innerHTML = `
-          <div class="activity-step-header">
-            <div class="activity-step-left">
-              ${iconSvg}
-              <span class="activity-step-name">${escapeHtml(step.name || "Task")}</span>
-            </div>
-            <span class="activity-step-dur">${escapeHtml(step.duration || "0.1s")}</span>
-          </div>
-          ${step.detail ? `<div class="activity-step-body">${escapeHtml(step.detail)}</div>` : ""}
-        `;
-        stepsContainer.appendChild(stepRow);
-      });
+    if (res.needs_login) {
+      optimisticTurn.status = "error";
+      optimisticTurn.error = res.error || "Authentication required. Please log in.";
+      optimisticTurn.error_type = "auth_error";
+      loginWithOAuth();
+      renderActiveConversation();
+      await saveStoredConversations();
+      return;
     }
 
-    if (!activeConversationId) {
-      const newId = "conv-" + Date.now();
-      const firstLine = prompt.split("\n")[0].substring(0, 36);
-      activeConversationId = newId;
-      appConversations.unshift({
-        id: newId,
-        projectId: activeProjectPath,
-        projectName: document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "Local Workspace",
-        title: firstLine,
-        prompt: prompt,
-        pinned: false,
-        steps: res.steps || []
-      });
-      renderProjectTree();
-      saveStoredConversations();
-      const topbarConv = document.getElementById("topbar-conv-title");
-      if (topbarConv) topbarConv.innerText = firstLine;
-    } else {
-      const curConv = appConversations.find(c => c.id === activeConversationId);
-      if (curConv && res.steps && res.steps.length > 0) {
-        if (!curConv.steps) curConv.steps = [];
-        curConv.steps.push(...res.steps);
-      }
-      saveStoredConversations();
+    if (res.needs_ai_config) {
+      optimisticTurn.status = "error";
+      optimisticTurn.error = res.error || res.output || "No LLM apikey supplied AND no organization-specific key found. Please create a custom AI app authentication.";
+      optimisticTurn.error_type = "missing_credentials";
+      optimisticTurn.debug_info = res.debug_info || res;
+      renderActiveConversation();
+      await saveStoredConversations();
+      return;
     }
+
+    const isError = res.status === "error" || (res.output && res.output.startsWith("Error:")) || !!res.error;
+    optimisticTurn.status = isError ? "error" : "success";
+    optimisticTurn.output = res.output || res.error || "";
+    optimisticTurn.error = res.error || (isError ? res.output : "");
+    optimisticTurn.error_type = res.error_type || "";
+    optimisticTurn.fix_help = res.fix_help || "";
+    optimisticTurn.debug_info = res.debug_info || {};
+    if (res.steps && Array.isArray(res.steps) && res.steps.length > 0) {
+      optimisticTurn.steps = res.steps;
+    }
+
+    // If backend returned updated full conversation, adopt it
+    if (res.conversation && Array.isArray(res.conversation.turns) && res.conversation.turns.length > 0) {
+      const curConv = appConversations.find(c => c.id === activeConversationId);
+      if (curConv) {
+        curConv.turns = res.conversation.turns;
+        if (res.conversation.title) curConv.title = res.conversation.title;
+      }
+    }
+
+    renderProjectTree();
+    await saveStoredConversations();
+    renderActiveConversation();
+
+    addExecutionHistory({
+      prompt: optimisticTurn.prompt,
+      output: optimisticTurn.output,
+      timestamp: optimisticTurn.timestamp,
+      duration: optimisticTurn.duration,
+      status: optimisticTurn.status
+    });
+  } catch (err) {
+    clearInterval(liveTimer);
+    activeRunningTasks = [];
+    renderRunningTasks();
+    if (btnStop) btnStop.style.display = "none";
+    if (btnSend) btnSend.style.display = "flex";
 
     const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 1000));
-    if (!res.prompt) res.prompt = prompt;
-    renderExecutionResult(res, elapsed);
-  } catch (err) {
-    if (stepsContainer) stepsContainer.innerHTML = "";
-    if (window.isDebug) {
-      console.error("[DEBUG] Execution failed:", err);
-    }
-    renderErrorResult(prompt, err.toString());
+    optimisticTurn.status = "error";
+    optimisticTurn.duration = `${elapsed}s`;
+    optimisticTurn.error = err.message || err.toString();
+    optimisticTurn.output = err.message || err.toString();
+    optimisticTurn.error_type = "execution_error";
+
+    renderProjectTree();
+    await saveStoredConversations();
+    renderActiveConversation();
   }
 }
 
@@ -4902,6 +6483,231 @@ async function copyCardOutput(btnEl) {
   } catch (err) {
     console.error("Copy failed:", err);
   }
+}
+
+function retryPrompt(promptText) {
+  if (!promptText) return;
+  const textarea = document.getElementById("prompt-input");
+  if (textarea) {
+    textarea.value = promptText;
+    handleInput(textarea);
+    textarea.focus();
+  }
+  submitPrompt();
+}
+
+function retryCardPrompt(btnEl) {
+  const card = btnEl.closest(".exec-card") || btnEl.closest(".transcript-turn");
+  let promptText = "";
+  if (card) {
+    const promptEl = card.querySelector(".exec-prompt");
+    if (promptEl) {
+      promptText = promptEl.innerText.replace(/^\$\s*/, "").trim();
+    }
+  }
+  if (!promptText && activeConversationId) {
+    const conv = appConversations.find(c => c.id === activeConversationId);
+    if (conv && conv.turns && conv.turns.length > 0) {
+      promptText = conv.turns[conv.turns.length - 1].prompt;
+    }
+  }
+  if (promptText) {
+    retryPrompt(promptText);
+  }
+}
+
+function buildErrorArea(isError, errText, info, prompt, rawOutput) {
+  if (!isError) {
+    return `<div style="white-space:pre-wrap; word-break:break-word;">${escapeHtml(rawOutput || "Completed with no output.")}</div>`;
+  }
+
+  const isAiConfigError = (info && info.needs_ai_config) ||
+    (info && (info.error_type === "missing_credentials" || info.error_type === "missing_ai_config")) ||
+    errText.includes("no llm apikey") ||
+    errText.includes("apikey") ||
+    errText.includes("no organization-specific key") ||
+    errText.includes("custom ai app authentication") ||
+    errText.includes("ai provider not configured") ||
+    errText.includes("ai configuration");
+
+  const isRateLimitError = (info && info.error_type === "rate_limited") ||
+    errText.includes("rate limit") ||
+    errText.includes("quota") ||
+    errText.includes("429") ||
+    errText.includes("resource_exhausted") ||
+    errText.includes("too many requests");
+
+  const isNetworkError = (info && info.error_type === "network_unreachable") ||
+    errText.includes("connection refused") ||
+    errText.includes("dial tcp") ||
+    errText.includes("no such host");
+
+  const displayMessage = rawOutput || (info && info.error) || errText || "An error occurred during execution.";
+
+  let actionsHtml = "";
+  if (isAiConfigError) {
+    actionsHtml = `
+      <button type="button" class="btn-error-cta" onclick="openSettingsModal('models', 'key')">Authenticate</button>
+    `;
+  } else if (isRateLimitError) {
+    actionsHtml = `
+      <button type="button" class="btn-error-cta" onclick="retryCardPrompt(this)">Retry</button>
+      <button type="button" class="btn-error-secondary" onclick="openSettingsModal('models', 'model')">Switch Model</button>
+    `;
+  } else if (isNetworkError) {
+    actionsHtml = `
+      <button type="button" class="btn-error-cta" onclick="retryCardPrompt(this)">Retry</button>
+      <button type="button" class="btn-error-secondary" onclick="openSettingsModal('models', 'url')">Settings</button>
+    `;
+  } else {
+    actionsHtml = `
+      <button type="button" class="btn-error-cta" onclick="retryCardPrompt(this)">Retry</button>
+    `;
+  }
+
+  return `
+    <div class="compact-error-area">
+      <div class="compact-error-message">${escapeHtml(displayMessage)}</div>
+      <div class="compact-error-actions">
+        ${actionsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderTurnElement(turn, index) {
+  const turnEl = document.createElement("div");
+  turnEl.className = "transcript-turn";
+  turnEl.id = "transcript-turn-" + (turn.id || index);
+  turnEl.style.display = "flex";
+  turnEl.style.flexDirection = "column";
+  turnEl.style.gap = "8px";
+
+  // 1. Current Prompt Card at the TOP matching screenshot!
+  if (turn.prompt) {
+    const promptCard = document.createElement("div");
+    promptCard.className = "user-prompt-card";
+    promptCard.innerText = turn.prompt;
+    turnEl.appendChild(promptCard);
+  }
+
+  // 2. Middle: Dynamic Agent Progress breakdown (summary header + step rows)
+  if (turn.steps && Array.isArray(turn.steps) && turn.steps.length > 0) {
+    const summaryText = computeStepsSummary(turn.steps);
+    const summaryBanner = document.createElement("div");
+    summaryBanner.className = "activity-summary-banner";
+    summaryBanner.id = "summary-banner-" + (turn.id || index);
+    summaryBanner.onclick = () => toggleTurnSteps(turn.id || index);
+    summaryBanner.innerHTML = `
+      <span>${escapeHtml(summaryText)}</span>
+      <div class="activity-summary-chevron">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+    `;
+    turnEl.appendChild(summaryBanner);
+
+    const stepsDiv = document.createElement("div");
+    stepsDiv.className = "activity-steps-container";
+    stepsDiv.id = "turn-steps-" + (turn.id || index);
+
+    turn.steps.forEach(step => {
+      if (step.type === "approval_pending") return;
+      const stepRow = document.createElement("div");
+      stepRow.className = "activity-step-row" + (step.collapsed ? "" : " expanded");
+      stepRow.id = "step-row-" + (step.id || Math.random().toString(36).substr(2, 6));
+
+      const titleHtml = formatStepTitleHtml(step);
+      const hasDetail = !!(step.output || step.detail);
+
+      stepRow.innerHTML = `
+        <div class="activity-step-header" onclick="this.parentElement.classList.toggle('expanded')">
+          <div class="activity-step-left">
+            <span class="activity-step-title">${titleHtml}</span>
+          </div>
+          <div class="activity-step-chevron">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+        </div>
+        ${hasDetail ? `<div class="activity-step-content">${escapeHtml(step.output || step.detail || "")}</div>` : ""}
+      `;
+      stepsDiv.appendChild(stepRow);
+    });
+    turnEl.appendChild(stepsDiv);
+  }
+
+  // 3. Execution Result Card (if any output or error, or running state)
+  if (turn.status === "running") {
+    const runningCard = document.createElement("div");
+    runningCard.className = "exec-card";
+    runningCard.style.borderColor = "var(--border-subtle)";
+    runningCard.style.background = "rgba(255,255,255,0.02)";
+    const currentModelName = (typeof window !== "undefined" && window.activeAiModel) || activeAiModel || "gemini-3.8-flash";
+    runningCard.innerHTML = `
+      <div class="exec-header" style="border-bottom:none;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg class="running-task-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f85f38" stroke-width="2.5">
+            <circle cx="12" cy="12" r="9" stroke-dasharray="28 28"/>
+          </svg>
+          <span style="font-size:12px; color:var(--text-normal);">Processing prompt with ${escapeHtml(currentModelName)}...</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="live-dur-${turn.id}" style="font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; font-family:ui-monospace,monospace; background:rgba(248,95,56,0.12); color:#f85f38;">${escapeHtml(turn.duration || "0s")}</span>
+        </div>
+      </div>
+    `;
+    turnEl.appendChild(runningCard);
+  } else if (turn.output || turn.error || (turn.status && turn.status !== "running")) {
+    const isError = turn.status === "error" || (turn.output && turn.output.startsWith("Error:")) || !!turn.error;
+    const errText = (turn.error || turn.output || "").toLowerCase();
+    const info = turn.debug_info || {};
+
+    const card = document.createElement("div");
+    card.className = isError ? "exec-card exec-card-error" : "exec-card";
+
+    let debugBar = "";
+    if (window.isDebug && turn.debug_info) {
+      const currentModelName = (typeof window !== "undefined" && window.activeAiModel) || activeAiModel || "gemini-3.8-flash";
+      debugBar = `
+        <div style="padding:4px 10px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <span style="color:${isError ? '#f87171' : '#f85f38'}; font-weight:600;">${isError ? 'ERROR' : 'DEBUG'}</span>
+          <span>Target: ${escapeHtml(info.target || "local")}</span>
+          <span>Model: ${escapeHtml(info.model || currentModelName)}</span>
+          ${info.reasoning ? `<span>Reasoning: ${escapeHtml(info.reasoning)}</span>` : ""}
+          <span>Engine: ${escapeHtml(info.engine || info.mode || "shuffle.HandleAiAgentExecutionStart")}</span>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="exec-header">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;">
+          <span class="exec-prompt" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$ ${escapeHtml(turn.prompt)}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <span style="font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; font-family:ui-monospace,monospace; ${isError ? 'background:rgba(239,68,68,0.15); color:#f87171;' : 'background:rgba(34,197,94,0.15); color:#4ade80;'}">${isError ? 'Failed' : 'Worked'} (${escapeHtml(turn.duration || "0s")})</span>
+          <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(turn.timestamp || "")}</span>
+          <button class="nav-icon-btn" title="Copy Output" onclick="copyCardOutput(this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      ${debugBar}
+      <div class="exec-body">
+        ${buildErrorArea(isError, errText, info, turn.prompt, turn.output || turn.error)}
+      </div>
+    `;
+
+    turnEl.appendChild(card);
+  }
+
+  return turnEl;
 }
 
 function renderExecutionResult(item, elapsedSec) {
@@ -4943,7 +6749,7 @@ function renderExecutionResult(item, elapsedSec) {
     duration: item.duration || `${elapsedSec}s`,
     status: isError ? "error" : "success"
   };
-  executionHistory.unshift(entry);
+  addExecutionHistory(entry);
 
   const wrapper = document.createElement("div");
   wrapper.style.display = "flex";
@@ -4964,172 +6770,15 @@ function renderExecutionResult(item, elapsedSec) {
     </svg>
   `;
 
-function buildDiagnosticsAndCallout(isError, errText, info, modelName, workspaceName) {
-  if (!isError) {
-    return { diagnosticGrid: "", actionCallout: "" };
-  }
-
-  const isAiConfigError = (info && info.needs_ai_config) ||
-    (info && (info.error_type === "missing_credentials" || info.error_type === "missing_ai_config")) ||
-    errText.includes("no llm apikey") ||
-    errText.includes("apikey") ||
-    errText.includes("no organization-specific key") ||
-    errText.includes("custom ai app authentication") ||
-    errText.includes("ai provider not configured") ||
-    errText.includes("ai configuration");
-
-  const isNetworkError = (info && info.error_type === "network_unreachable") ||
-    errText.includes("connection refused") ||
-    errText.includes("dial tcp") ||
-    errText.includes("no such host");
-
-  const isRateLimitError = (info && info.error_type === "rate_limited") ||
-    errText.includes("rate limit") ||
-    errText.includes("quota") ||
-    errText.includes("429") ||
-    errText.includes("resource_exhausted") ||
-    errText.includes("too many requests");
-
-  const isCommandNotFound = (info && info.error_type === "command_not_found") ||
-    errText.includes("command not found") ||
-    errText.includes("exit status 127");
-
-  // Determine diagnostic badges
-  let engineBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: "Shuffle Agent" };
-  let workspaceBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981" };
-  let modelBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: modelName };
-  let authBadge = { label: "Passed", bg: "rgba(16,185,129,0.15)", color: "#10b981", text: "Configured" };
-
-  if (isRateLimitError) {
-    modelBadge = { label: "429 Quota", bg: "rgba(234,179,8,0.15)", color: "#eab308", text: modelName };
-    authBadge = { label: "Exhausted", bg: "rgba(234,179,8,0.15)", color: "#eab308", text: "Rate Limited" };
-  } else if (isAiConfigError) {
-    authBadge = { label: "Failed", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Missing" };
-  } else if (isNetworkError) {
-    authBadge = { label: "Unreachable", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Network Error" };
-  } else if (isCommandNotFound) {
-    engineBadge = { label: "Failed", bg: "rgba(239,68,68,0.15)", color: "#f87171", text: "Path Error" };
-  }
-
-  const diagnosticGrid = `
-    <div style="margin-top:10px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">AI Engine</div>
-        <div style="font-weight:600; font-size:11.5px; color:${engineBadge.color}; display:flex; align-items:center; justify-content:space-between;">
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;">${escapeHtml(engineBadge.text)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${engineBadge.bg}; color:${engineBadge.color};">${engineBadge.label}</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Workspace</div>
-        <div style="font-weight:600; font-size:11.5px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(activeProjectPath)}">${escapeHtml(workspaceName)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${workspaceBadge.bg}; color:${workspaceBadge.color};">${workspaceBadge.label}</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid ${isRateLimitError ? 'rgba(234,179,8,0.3)' : 'var(--border-subtle)'}; border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Target Model</div>
-        <div style="font-weight:600; font-size:11.5px; color:${modelBadge.color}; display:flex; align-items:center; justify-content:space-between;">
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80px;" title="${escapeHtml(modelName)}">${escapeHtml(modelName)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${modelBadge.bg}; color:${modelBadge.color};">${modelBadge.label}</span>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03); border:1px solid ${isAiConfigError ? 'rgba(239,68,68,0.3)' : (isRateLimitError ? 'rgba(234,179,8,0.3)' : 'var(--border-subtle)')}; border-radius:6px; padding:7px 10px;">
-        <div style="color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">API Key &amp; Auth</div>
-        <div style="font-weight:600; font-size:11.5px; color:${authBadge.color}; display:flex; align-items:center; justify-content:space-between;">
-          <span>${escapeHtml(authBadge.text)}</span>
-          <span style="font-size:9.5px; padding:1px 5px; border-radius:3px; background:${authBadge.bg}; color:${authBadge.color};">${authBadge.label}</span>
-        </div>
-      </div>
-    </div>
-  `;
-
-  let actionCallout = "";
-  if (isRateLimitError) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.25); border-radius:8px; color:var(--text-primary);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <div style="font-size:12.5px; font-weight:600; color:#eab308;">Action Required: AI Rate Limit or Quota Exceeded (HTTP 429)</div>
-          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(234,179,8,0.2); color:#eab308; font-weight:600;">How to Fix</span>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-          The AI provider returned a rate limit or quota exceeded error (HTTP 429 / RESOURCE_EXHAUSTED) for model <strong style="color:var(--text-primary); font-family:ui-monospace,monospace;">${escapeHtml(modelName)}</strong>.
-          <ul style="margin:6px 0 0 16px; padding:0; color:var(--text-secondary); font-size:11.5px; line-height:1.5;">
-            <li>Option 1: Click <strong>Switch Model</strong> to choose another model (e.g. Gemini 3.8 Flash, GPT-4o, Claude).</li>
-            <li>Option 2: Click <strong>Update API Key</strong> to provide an alternative API key with active quota.</li>
-            <li>Option 3: Wait a few seconds for per-minute rate limits to reset and retry your prompt.</li>
-          </ul>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'model')">Switch Model</button>
-          <button type="button" class="btn-modal-cancel" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Update API Key</button>
-        </div>
-      </div>
-    `;
-  } else if (isAiConfigError) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(248,95,56,0.08); border:1px solid rgba(248,95,56,0.25); border-radius:8px; color:var(--text-primary);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <div style="font-size:12.5px; font-weight:600; color:#f85f38;">Action Required: AI Model Credentials Missing</div>
-          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(248,95,56,0.2); color:#f85f38; font-weight:600;">How to Fix</span>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-          The Shuffle Agent engine started successfully, but no LLM API key or Shuffle organization key was found to communicate with model <strong style="color:var(--text-primary); font-family:ui-monospace,monospace;">${escapeHtml(modelName)}</strong>.
-          <ul style="margin:6px 0 0 16px; padding:0; color:var(--text-secondary); font-size:11.5px; line-height:1.5;">
-            <li>Option 1: Click <strong>Configure AI &amp; Models</strong> below to paste your API key (Gemini, OpenAI, Anthropic, or Ollama).</li>
-            <li>Option 2: Click <strong>Shuffle Login</strong> to authenticate with your Shuffle workspace.</li>
-            <li>Option 3: Or set <code style="font-family:ui-monospace,monospace; background:rgba(255,255,255,0.06); padding:1px 4px; border-radius:3px;">AI_API_KEY</code> in your environment before running.</li>
-          </ul>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Configure AI &amp; Models</button>
-          <button type="button" class="btn-modal-cancel" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('auth')">Shuffle Login</button>
-        </div>
-      </div>
-    `;
-  } else if (isNetworkError) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.25); border-radius:8px; color:var(--text-primary);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <div style="font-size:12.5px; font-weight:600; color:#f87171;">Action Required: Endpoint Unreachable</div>
-          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.2); color:#f87171; font-weight:600;">How to Fix</span>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-          Could not connect to the AI endpoint or backend URL. Verify network connectivity and your endpoint URL in Settings.
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'url')">Verify AI URL &amp; Settings</button>
-        </div>
-      </div>
-    `;
-  } else if (isCommandNotFound) {
-    actionCallout = `
-      <div style="margin-top:12px; padding:12px 14px; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:8px; color:var(--text-primary);">
-        <div style="font-size:12px; font-weight:600; color:#f87171; margin-bottom:4px;">Terminal Command Not Found</div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:10px; line-height:1.4;">
-          The executable does not exist on your system PATH. If you intended this as an AI question or instruction, configure an AI model to process natural language.
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-modal-submit" style="padding:6px 14px; font-size:11px; height:28px;" onclick="openSettingsModal('models', 'key')">Configure AI &amp; Models</button>
-        </div>
-      </div>
-    `;
-  }
-
-  return { diagnosticGrid, actionCallout };
-}
-
-  const workspaceName = (info.project || activeProjectPath || "Local Workspace").split("/").pop() || "Local";
-  const modelName = info.model || activeAiModel || "gemini-3.8-flash";
-  const { diagnosticGrid, actionCallout } = buildDiagnosticsAndCallout(isError, errText, info, modelName, workspaceName);
 
   let debugBar = "";
-  if (item.debug_info || window.isDebug) {
+  if (window.isDebug && item.debug_info) {
+    const currentModelName = (typeof window !== "undefined" && window.activeAiModel) || activeAiModel || "gemini-3.8-flash";
     debugBar = `
-      <div style="padding:5px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <div style="padding:4px 10px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-subtle); font-size:11px; color:var(--text-muted); font-family:ui-monospace,Menlo,Monaco,monospace; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <span style="color:${isError ? '#f87171' : '#f85f38'}; font-weight:600;">${isError ? 'ERROR' : 'DEBUG'}</span>
         <span>Target: ${escapeHtml(info.target || "local")}</span>
-        <span>Model: ${escapeHtml(info.model || activeAiModel || "gemini-3.8-flash")}</span>
+        <span>Model: ${escapeHtml(info.model || currentModelName)}</span>
         ${info.reasoning ? `<span>Reasoning: ${escapeHtml(info.reasoning)}</span>` : ""}
         <span>Engine: ${escapeHtml(info.engine || info.mode || "shuffle.HandleAiAgentExecutionStart")}</span>
       </div>
@@ -5140,10 +6789,12 @@ function buildDiagnosticsAndCallout(isError, errText, info, modelName, workspace
   card.className = isError ? "exec-card exec-card-error" : "exec-card";
   card.innerHTML = `
     <div class="exec-header">
-      <span class="exec-prompt" style="${isError ? 'color:#f87171;' : ''}">$ ${escapeHtml(item.prompt)}</span>
-      <div style="display:flex; align-items:center; gap:8px;">
-        ${isError ? `<span style="font-size:10.5px; padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.15); color:#f87171; font-weight:600;">Failed</span>` : ""}
-        <span>${escapeHtml(item.timestamp || "")}</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;">
+        <span class="exec-prompt" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$ ${escapeHtml(item.prompt)}</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; font-family:ui-monospace,monospace; ${isError ? 'background:rgba(239,68,68,0.15); color:#f87171;' : 'background:rgba(34,197,94,0.15); color:#4ade80;'}">${isError ? 'Failed' : 'Worked'} (${escapeHtml(item.duration || (elapsedSec ? elapsedSec + "s" : "0s"))})</span>
+        <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(item.timestamp || "")}</span>
         <button class="nav-icon-btn" title="Copy Output" onclick="copyCardOutput(this)">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -5153,16 +6804,12 @@ function buildDiagnosticsAndCallout(isError, errText, info, modelName, workspace
       </div>
     </div>
     ${debugBar}
-    <div class="exec-body" style="${isError ? 'color:#f87171;' : ''}">
-      ${diagnosticGrid}
-      <div>${escapeHtml(item.output || item.error || "Completed with no output.")}</div>
-      ${actionCallout}
+    <div class="exec-body">
+      ${buildErrorArea(isError, errText, info, item.prompt, item.output || item.error)}
     </div>
   `;
 
-  wrapper.appendChild(status);
-  wrapper.appendChild(card);
-  container.prepend(wrapper);
+  container.prepend(card);
 }
 
 function renderErrorResult(prompt, err, meta) {
@@ -5180,65 +6827,51 @@ function renderErrorResult(prompt, err, meta) {
     timestamp: new Date().toLocaleTimeString(),
     status: "error"
   };
-  executionHistory.unshift(entry);
+  addExecutionHistory(entry);
 
-  const wrapper = document.createElement("div");
-  wrapper.style.display = "flex";
-  wrapper.style.flexDirection = "column";
-  wrapper.style.gap = "8px";
-
-  const status = document.createElement("div");
-  status.className = "status-pill status-pill-error";
-  status.title = "Click to toggle output";
-  status.onclick = () => toggleResultCard(status);
-  status.innerHTML = `
-    <span>Failed (0ms)</span>
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  `;
-
-  const workspaceName = (activeProjectPath || "Local Workspace").split("/").pop() || "Local";
-  const modelName = activeAiModel || "gemini-3.8-flash";
   const info = meta || {};
-  const { diagnosticGrid, actionCallout } = buildDiagnosticsAndCallout(true, errText, info, modelName, workspaceName);
 
   const card = document.createElement("div");
   card.className = "exec-card exec-card-error";
   card.innerHTML = `
     <div class="exec-header">
-      <span class="exec-prompt" style="color:#f87171;">$ ${escapeHtml(prompt)}</span>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:10.5px; padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.15); color:#f87171; font-weight:600;">Failed</span>
-        <span>${escapeHtml(entry.timestamp)}</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;">
+        <span class="exec-prompt" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$ ${escapeHtml(prompt)}</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; font-family:ui-monospace,monospace; background:rgba(239,68,68,0.15); color:#f87171;">Failed (0s)</span>
+        <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(entry.timestamp)}</span>
       </div>
     </div>
-    <div class="exec-body" style="color:#f87171;">
-      ${diagnosticGrid}
-      <div>${escapeHtml(err)}</div>
-      ${actionCallout}
+    <div class="exec-body">
+      ${buildErrorArea(true, errText, info, prompt, err)}
     </div>
   `;
 
-  wrapper.appendChild(status);
-  wrapper.appendChild(card);
-  container.prepend(wrapper);
+  container.prepend(card);
 }
 
 function renderActiveConversation() {
+  const turnsContainer = document.getElementById("conversation-turns-container");
+  const promptCard = document.getElementById("active-user-prompt-card");
+  const stepsContainer = document.getElementById("activity-steps-container");
+  const approvalCard = document.getElementById("approval-card");
+  const topbarConv = document.getElementById("topbar-conv-title");
+  const topbarProj = document.getElementById("topbar-project-name");
+  const mainContainer = document.getElementById("main-container");
+
   if (!activeConversationId) {
-    const promptCard = document.getElementById("active-user-prompt-card");
+    setChatMode(false);
+    if (turnsContainer) turnsContainer.innerHTML = "";
     if (promptCard) {
       promptCard.innerText = "";
       promptCard.style.display = "none";
     }
-    const stepsContainer = document.getElementById("activity-steps-container");
+    const summaryBanner = document.getElementById("activity-summary-banner");
+    if (summaryBanner) summaryBanner.style.display = "none";
     if (stepsContainer) stepsContainer.innerHTML = "";
-    const card = document.getElementById("approval-card");
-    if (card) card.classList.remove("visible");
-    const topbarConv = document.getElementById("topbar-conv-title");
+    if (approvalCard) approvalCard.classList.remove("visible");
     if (topbarConv) topbarConv.innerText = "New Conversation";
-    const mainContainer = document.getElementById("main-container");
     if (mainContainer) mainContainer.classList.remove("has-history");
     return;
   }
@@ -5246,82 +6879,75 @@ function renderActiveConversation() {
   const conv = appConversations.find(c => c.id === activeConversationId);
   if (!conv) return;
 
-  const mainContainer = document.getElementById("main-container");
+  setChatMode(true);
   if (mainContainer) mainContainer.classList.add("has-history");
-
-  const topbarProj = document.getElementById("topbar-project-name");
-  const topbarConv = document.getElementById("topbar-conv-title");
-  if (topbarProj) topbarProj.innerText = conv.projectName || "Orborus Agent Runner";
+  if (topbarProj) topbarProj.innerText = conv.projectName || conv.project_name || "Orborus Agent Runner";
   if (topbarConv) topbarConv.innerText = conv.title || "Conversation";
 
-  const promptCard = document.getElementById("active-user-prompt-card");
-  if (promptCard) {
-    if (conv.prompt) {
-      promptCard.innerText = conv.prompt;
-      promptCard.style.display = "block";
-    } else {
-      promptCard.style.display = "none";
-    }
+  // Normalize legacy conversation structure to turns if needed
+  if ((!conv.turns || conv.turns.length === 0) && conv.prompt) {
+    conv.turns = [{
+      id: conv.id + "-1",
+      prompt: conv.prompt,
+      timestamp: conv.created_at || "",
+      steps: conv.steps || [],
+      output: conv.output || "",
+      status: "success"
+    }];
   }
 
-  const stepsContainer = document.getElementById("activity-steps-container");
-  if (!stepsContainer) return;
-  stepsContainer.innerHTML = "";
+  // Render all conversation turns sequentially in the stream
+  if (turnsContainer) {
+    turnsContainer.innerHTML = "";
+    (conv.turns || []).forEach((turn, idx) => {
+      const turnEl = renderTurnElement(turn, idx);
+      turnsContainer.appendChild(turnEl);
+    });
+  }
 
+  // Clean in-flight active turn elements if not executing
+  if (promptCard && (!stepsContainer || stepsContainer.children.length === 0)) {
+    promptCard.style.display = "none";
+    promptCard.innerText = "";
+  }
+  const summaryBanner = document.getElementById("activity-summary-banner");
+  if (summaryBanner && (!stepsContainer || stepsContainer.children.length === 0)) {
+    summaryBanner.style.display = "none";
+  }
+
+  // Check if any step in any turn has a pending approval
   let hasPendingApproval = false;
+  (conv.turns || []).forEach(turn => {
+    (turn.steps || []).forEach(step => {
+      if (step.type === "approval_pending") {
+        hasPendingApproval = true;
+        currentApprovalId = step.id;
+        currentApprovalCmd = step.cmd || "~/git/orborus $ git show 1981257 --stat";
+        currentApprovalCmdPrefix = step.cmdPrefix || "git show";
+        currentApprovalDesc = step.desc || "Allow viewing commit 1981257?";
+        currentApprovalProject = conv.projectName || conv.project_name;
 
-  (conv.steps || []).forEach((step) => {
-    if (step.type === "approval_pending") {
-      hasPendingApproval = true;
-      currentApprovalId = step.id;
-      currentApprovalCmd = step.cmd || "~/git/orborus $ git show 1981257 --stat";
-      currentApprovalCmdPrefix = step.cmdPrefix || "git show";
-      currentApprovalDesc = step.desc || "Allow viewing commit 1981257?";
-      currentApprovalProject = conv.projectName;
-
-      showApprovalCard({
-        id: step.id,
-        cmd: currentApprovalCmd,
-        prefix: currentApprovalCmdPrefix,
-        desc: currentApprovalDesc,
-        project: currentApprovalProject
-      });
-      return;
-    }
-
-    const stepRow = document.createElement("div");
-    stepRow.className = "activity-step-row" + (step.collapsed ? "" : " expanded");
-    stepRow.id = "step-row-" + step.id;
-
-    let iconSvg = "";
-    if (step.type === "cmd") {
-      iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`;
-    } else if (step.type === "thought") {
-      iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
-    } else {
-      iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-    }
-
-    stepRow.innerHTML = `
-      <div class="activity-step-header" onclick="toggleStep('${step.id}')">
-        <div class="activity-step-left">
-          ${iconSvg}
-          <span class="activity-step-title">${escapeHtml(step.title)}</span>
-        </div>
-        <div class="activity-step-chevron">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </div>
-      </div>
-      <div class="activity-step-content">${escapeHtml(step.output || "")}</div>
-    `;
-    stepsContainer.appendChild(stepRow);
+        showApprovalCard({
+          id: step.id,
+          cmd: currentApprovalCmd,
+          prefix: currentApprovalCmdPrefix,
+          desc: currentApprovalDesc,
+          project: currentApprovalProject
+        });
+      }
+    });
   });
 
-  if (!hasPendingApproval) {
-    const card = document.getElementById("approval-card");
-    if (card) card.classList.remove("visible");
+  if (!hasPendingApproval && approvalCard) {
+    approvalCard.classList.remove("visible");
+  }
+
+  // Scroll to bottom of conversation stream
+  const stream = document.getElementById("execution-stream");
+  if (stream) {
+    setTimeout(() => {
+      stream.scrollTop = stream.scrollHeight;
+    }, 40);
   }
 }
 
@@ -5329,10 +6955,20 @@ function toggleStep(stepId) {
   const row = document.getElementById("step-row-" + stepId);
   if (!row) return;
   row.classList.toggle("expanded");
+  const isExpanded = row.classList.contains("expanded");
   const conv = appConversations.find(c => c.id === activeConversationId);
-  if (conv && conv.steps) {
-    const step = conv.steps.find(s => s.id === stepId);
-    if (step) step.collapsed = !row.classList.contains("expanded");
+  if (!conv) return;
+  if (conv.steps) {
+    const s = conv.steps.find(st => st.id === stepId);
+    if (s) s.collapsed = !isExpanded;
+  }
+  if (conv.turns) {
+    conv.turns.forEach(t => {
+      if (t.steps) {
+        const s = t.steps.find(st => st.id === stepId);
+        if (s) s.collapsed = !isExpanded;
+      }
+    });
   }
 }
 
@@ -5472,11 +7108,13 @@ async function openRememberedApprovalsModal() {
   await loadApprovalRules();
   const modal = document.getElementById("remembered-approvals-modal");
   if (modal) modal.classList.add("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 function closeRememberedApprovalsModal() {
   const modal = document.getElementById("remembered-approvals-modal");
   if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 async function loadApprovalRules() {
@@ -5585,6 +7223,7 @@ async function addManualApprovalRule() {
     }
   }
 
+  if (!Array.isArray(currentApprovalRules)) currentApprovalRules = [];
   currentApprovalRules.unshift(rule);
   cmdInput.value = "";
   updateApprovalRulesCount();
@@ -5593,11 +7232,15 @@ async function addManualApprovalRule() {
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (text === null || text === undefined) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-let toastTimeout = null;
 function showToast(message) {
   const toast = document.getElementById("app-toast");
   if (!toast) return;
@@ -5613,11 +7256,13 @@ function handleOverlayClick(event, modalId) {
   if (event.target && (event.target.id === modalId || event.target.classList.contains("modal-overlay"))) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove("visible");
+    if (typeof checkModalActive === "function") checkModalActive();
   }
 }
 
 function closeAllModals() {
   document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("visible"));
+  if (typeof checkModalActive === "function") checkModalActive();
 }
 
 function closeAllDropdowns(exceptIds = []) {

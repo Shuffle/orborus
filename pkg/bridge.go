@@ -20,16 +20,20 @@ import (
 
 // ExecutionEntry tracks an executed prompt or command
 type ExecutionEntry struct {
-	ID        string                 `json:"id"`
-	Timestamp string                 `json:"timestamp"`
-	Prompt    string                 `json:"prompt"`
-	Output    string                 `json:"output"`
-	Status    string                 `json:"status"` // "success", "error", "pending"
-	Duration  string                 `json:"duration"`
-	Error     string                 `json:"error,omitempty"`
-	ErrorType string                 `json:"error_type,omitempty"`
-	FixHelp   string                 `json:"fix_help,omitempty"`
-	DebugInfo map[string]interface{} `json:"debug_info,omitempty"`
+	ID             string                 `json:"id"`
+	ConversationID string                 `json:"conversation_id,omitempty"`
+	Timestamp      string                 `json:"timestamp"`
+	Prompt         string                 `json:"prompt"`
+	Output         string                 `json:"output"`
+	Status         string                 `json:"status"` // "success", "error", "pending"
+	Duration       string                 `json:"duration"`
+	Error          string                 `json:"error,omitempty"`
+	ErrorType      string                 `json:"error_type,omitempty"`
+	FixHelp        string                 `json:"fix_help,omitempty"`
+	DebugInfo         map[string]interface{}     `json:"debug_info,omitempty"`
+	Turns             []ConversationTurn         `json:"turns,omitempty"`
+	Conversation      *Conversation              `json:"conversation,omitempty"`
+	WorkflowExecution *shuffle.WorkflowExecution `json:"workflow_execution,omitempty"`
 }
 
 // ApprovalRequest tracks an action waiting for user permission
@@ -72,6 +76,9 @@ type AgentBridge struct {
 
 // NewAgentBridge initializes a new direct bridge
 func NewAgentBridge(cfg *Config) *AgentBridge {
+	if cfg == nil {
+		cfg = &Config{}
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
@@ -134,6 +141,8 @@ func NewAgentBridge(cfg *Config) *AgentBridge {
 		aiModel = "gemini-3.8-flash"
 	}
 	_ = os.Setenv("AI_MODEL", aiModel)
+	_ = os.Setenv("STANDALONE", "true")
+	_ = os.Setenv("SHUFFLE_STANDALONE", "true")
 
 	oauthLoggedIn := false
 	oauthToken := ""
@@ -353,12 +362,25 @@ func (b *AgentBridge) SetAiConfig(apiUrl, apiKey, model string) string {
 
 	if b.aiApiUrl != "" {
 		_ = os.Setenv("AI_API_URL", b.aiApiUrl)
+		if strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle") {
+			cleanUrl := strings.TrimRight(strings.TrimSuffix(b.aiApiUrl, "/api/v1"), "/")
+			_ = os.Setenv("SHUFFLE_BASE_URL", cleanUrl)
+			_ = os.Setenv("BASE_URL", cleanUrl)
+			if b.cfg != nil {
+				b.cfg.BaseURL = cleanUrl
+			}
+		}
 	} else {
 		_ = os.Unsetenv("AI_API_URL")
 	}
 
 	if b.aiApiKey != "" {
 		_ = os.Setenv("AI_API_KEY", b.aiApiKey)
+		_ = os.Setenv("SHUFFLE_AUTHORIZATION", b.aiApiKey)
+		_ = os.Setenv("SHUFFLE_SESSION_TOKEN", b.aiApiKey)
+		if b.cfg != nil && (strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle")) {
+			b.cfg.Auth = b.aiApiKey
+		}
 	} else {
 		_ = os.Unsetenv("AI_API_KEY")
 	}
@@ -554,7 +576,6 @@ func (b *AgentBridge) SetPermissionPolicy(policy string) string {
 // SaveAllSettings updates global settings, AI configuration, and project permissions
 func (b *AgentBridge) SaveAllSettings(payload string) string {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 
 	var req struct {
 		PermissionPolicy        string                       `json:"permission_policy"`
@@ -569,6 +590,7 @@ func (b *AgentBridge) SaveAllSettings(payload string) string {
 	}
 
 	if err := json.Unmarshal([]byte(payload), &req); err != nil {
+		b.mu.Unlock()
 		log.Printf("[WARN] Failed to unmarshal SaveAllSettings: %v", err)
 		return `{"status": "error", "error": "invalid json payload"}`
 	}
@@ -599,11 +621,32 @@ func (b *AgentBridge) SaveAllSettings(payload string) string {
 	if req.AiApiUrl != "" {
 		b.aiApiUrl = strings.TrimSpace(req.AiApiUrl)
 		_ = os.Setenv("AI_API_URL", b.aiApiUrl)
+		if strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle") {
+			cleanUrl := strings.TrimRight(strings.TrimSuffix(b.aiApiUrl, "/api/v1"), "/")
+			_ = os.Setenv("SHUFFLE_BASE_URL", cleanUrl)
+			_ = os.Setenv("BASE_URL", cleanUrl)
+			if b.cfg != nil {
+				b.cfg.BaseURL = cleanUrl
+			}
+		}
+	} else if strings.Contains(payload, `"ai_api_url"`) {
+		b.aiApiUrl = ""
+		_ = os.Unsetenv("AI_API_URL")
 	}
+
 	if req.AiApiKey != "" {
 		b.aiApiKey = strings.TrimSpace(req.AiApiKey)
 		_ = os.Setenv("AI_API_KEY", b.aiApiKey)
+		_ = os.Setenv("SHUFFLE_AUTHORIZATION", b.aiApiKey)
+		_ = os.Setenv("SHUFFLE_SESSION_TOKEN", b.aiApiKey)
+		if b.cfg != nil && (strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle")) {
+			b.cfg.Auth = b.aiApiKey
+		}
+	} else if strings.Contains(payload, `"ai_api_key"`) {
+		b.aiApiKey = ""
+		_ = os.Unsetenv("AI_API_KEY")
 	}
+
 	if req.AiModel != "" {
 		b.aiModel = strings.TrimSpace(req.AiModel)
 		_ = os.Setenv("AI_MODEL", b.aiModel)
@@ -611,7 +654,14 @@ func (b *AgentBridge) SaveAllSettings(payload string) string {
 
 	b.saveLocalStoreLocked()
 
-	return b.getInitialStateLocked()
+	stateStr := b.getInitialStateLocked()
+	cb := b.onAuthUpdated
+	b.mu.Unlock()
+
+	if cb != nil {
+		cb(stateStr)
+	}
+	return stateStr
 }
 
 // SetProjectPermissions saves permissions for a specific project
@@ -639,13 +689,30 @@ func (b *AgentBridge) getInitialStateLocked() string {
 
 	projCtx := GetRuleLoaderManager().LoadProjectContext(b.activeProject)
 
+	hostname := ""
+	machineID := ""
+	isStandalone := true
+	baseURL := ""
+	orgID := ""
+	auth := ""
+	env := ""
+	if b.cfg != nil {
+		hostname = b.cfg.Hostname
+		machineID = b.cfg.MachineID
+		isStandalone = b.cfg.IsStandalone
+		baseURL = b.cfg.BaseURL
+		orgID = b.cfg.Org
+		auth = b.cfg.Auth
+		env = b.cfg.Environment
+	}
+
 	state := map[string]interface{}{
-		"hostname":                  b.cfg.Hostname,
-		"machine_id":                b.cfg.MachineID,
+		"hostname":                  hostname,
+		"machine_id":                machineID,
 		"os":                        runtime.GOOS,
 		"arch":                      runtime.GOARCH,
-		"is_standalone":             b.cfg.IsStandalone,
-		"base_url":                  b.cfg.BaseURL,
+		"is_standalone":             isStandalone,
+		"base_url":                  baseURL,
 		"active_project":            b.activeProject,
 		"permission_policy":         b.permissionPolicy,
 		"terminal_execution_policy": b.terminalExecutionPolicy,
@@ -659,9 +726,9 @@ func (b *AgentBridge) getInitialStateLocked() string {
 		"projects_scanned":          b.projectsScanned,
 		"is_logged_in":              isLoggedIn,
 		"is_bypassed":               isBypassed,
-		"org_id":                    b.cfg.Org,
-		"auth":                      b.cfg.Auth,
-		"environment":               b.cfg.Environment,
+		"org_id":                    orgID,
+		"auth":                      auth,
+		"environment":               env,
 		"ai_api_url":                b.aiApiUrl,
 		"ai_api_key":                b.aiApiKey,
 		"ai_model":                  b.aiModel,
@@ -1039,10 +1106,11 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 	var output string
 	var err error
 	var debugInfo map[string]interface{}
+	var workflowExec *shuffle.WorkflowExecution
 
 	if shouldRunAi {
 		log.Printf("[INFO] RunPrompt routing decision: dispatching prompt %q to shuffle.HandleAiAgentExecutionStart (model=%s, reasoning=%s, url=%s, execID=%s)", prompt, activeModel, activeReasoning, activeUrl, execID)
-		output, err = b.executeAiRequest(prompt, execID, activeModel, activeReasoning)
+		output, workflowExec, err = b.executeAiRequest(prompt, execID, activeModel, activeReasoning)
 		debugInfo = map[string]interface{}{
 			"mode":      "shuffle_agent_start",
 			"target":    activeUrl,
@@ -1063,6 +1131,21 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 			"model":   "local_shell",
 			"project": project,
 			"engine":  "osctrl.RunCommandString",
+		}
+		workflowExec = &shuffle.WorkflowExecution{
+			Type:              "DIRECT_SHELL",
+			ExecutionId:       execID,
+			StartedAt:         start.Unix(),
+			CompletedAt:       time.Now().Unix(),
+			ExecutionArgument: prompt,
+			Result:            output,
+			Results: []shuffle.ActionResult{
+				{
+					ExecutionId: execID,
+					Result:      output,
+					Status:      "SUCCESS",
+				},
+			},
 		}
 	}
 
@@ -1105,17 +1188,46 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 
 	duration := time.Since(start).Round(time.Millisecond).String()
 
+	if cID == "" {
+		cID = fmt.Sprintf("conv-%d", time.Now().UnixMilli())
+	}
+
+	turn := ConversationTurn{
+		ID:                execID,
+		Prompt:            prompt,
+		Timestamp:         time.Now().Format("15:04:05"),
+		Output:            output,
+		Status:            status,
+		Duration:          duration,
+		Error:             errStr,
+		ErrorType:         errorType,
+		FixHelp:           fixHelp,
+		DebugInfo:         debugInfo,
+		WorkflowExecution: workflowExec,
+	}
+
+	savedConv, errSave := AppendTurnToConversation(cID, turn, project, "")
+	if errSave != nil {
+		log.Printf("[WARNING] Failed to append turn to conversation %s: %v", cID, errSave)
+	}
+
 	entry := ExecutionEntry{
-		ID:        execID,
-		Timestamp: time.Now().Format("15:04:05"),
-		Prompt:    prompt,
-		Output:    output,
-		Status:    status,
-		Duration:  duration,
-		Error:     errStr,
-		ErrorType: errorType,
-		FixHelp:   fixHelp,
-		DebugInfo: debugInfo,
+		ID:                execID,
+		ConversationID:    cID,
+		Timestamp:         time.Now().Format("15:04:05"),
+		Prompt:            prompt,
+		Output:            output,
+		Status:            status,
+		Duration:          duration,
+		Error:             errStr,
+		ErrorType:         errorType,
+		FixHelp:           fixHelp,
+		DebugInfo:         debugInfo,
+		Conversation:      savedConv,
+		WorkflowExecution: workflowExec,
+	}
+	if savedConv != nil {
+		entry.Turns = savedConv.Turns
 	}
 
 	b.mu.Lock()
@@ -1333,7 +1445,7 @@ func (b *AgentBridge) executeDirect(cmd string) (string, error) {
 }
 
 // executeAiRequest sends prompt to shuffle-shared/ai.go HandleAiAgentExecutionStart and RunAiQuery
-func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoning ...string) (string, error) {
+func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoning ...string) (string, *shuffle.WorkflowExecution, error) {
 	b.mu.Lock()
 	apiURL := b.getEffectiveAiUrlLocked()
 	apiKey := b.getEffectiveAiKeyLocked()
@@ -1359,9 +1471,24 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	// Export credentials and settings into environment for shuffle-shared/ai.go
 	if apiKey != "" {
 		os.Setenv("AI_API_KEY", apiKey)
+		os.Setenv("SHUFFLE_AUTHORIZATION", apiKey)
+		os.Setenv("SHUFFLE_SESSION_TOKEN", apiKey)
 	}
 	if apiURL != "" {
 		os.Setenv("AI_API_URL", apiURL)
+		if strings.Contains(apiURL, "shuffler.io") || strings.Contains(apiURL, "shuffle") {
+			cleanUrl := strings.TrimRight(strings.TrimSuffix(apiURL, "/api/v1"), "/")
+			os.Setenv("SHUFFLE_BASE_URL", cleanUrl)
+			os.Setenv("BASE_URL", cleanUrl)
+			b.mu.Lock()
+			if b.cfg != nil {
+				b.cfg.BaseURL = cleanUrl
+				if apiKey != "" {
+					b.cfg.Auth = apiKey
+				}
+			}
+			b.mu.Unlock()
+		}
 	}
 	if model != "" {
 		os.Setenv("AI_MODEL", model)
@@ -1370,9 +1497,8 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	os.Setenv("AI_REASONING_EFFORT", reasoning)
 	os.Setenv("AI_AGENT_REASONING_EFFORT", reasoning)
 	os.Setenv("SHUFFLE_REASONING_EFFORT", reasoning)
-	if b.cfg != nil && b.cfg.IsStandalone {
-		os.Setenv("STANDALONE", "true")
-	}
+	os.Setenv("STANDALONE", "true")
+	os.Setenv("SHUFFLE_STANDALONE", "true")
 
 	maskedKey := "none"
 	if len(apiKey) > 8 {
@@ -1443,6 +1569,15 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 		WorkflowId:        workflowID,
 		ExecutionId:       execID,
 		ExecutionOrg:      orgID,
+		Authorization: func() string {
+			if apiKey != "" {
+				return apiKey
+			}
+			if b.cfg != nil && b.cfg.Auth != "" {
+				return b.cfg.Auth
+			}
+			return fmt.Sprintf("auth-%d", time.Now().UnixNano())
+		}(),
 		StartedAt:         time.Now().Unix(),
 		ExecutionArgument: effectiveInput,
 	}
@@ -1450,18 +1585,52 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	log.Printf("[INFO][%s] AI Agent: Invoking shuffle.HandleAiAgentExecutionStart (workflow=%s, node=%s, caller=orborus, model=%s, url=%s, key=%s)",
 		execID, workflowID, actionID, model, apiURL, maskedKey)
 
-	_, agentErr := shuffle.HandleAiAgentExecutionStart(exec, startNode, false, "orborus")
-	if agentErr == nil {
-		if freshExec, fetchErr := shuffle.GetWorkflowExecution(context.Background(), execID); fetchErr == nil && freshExec != nil && len(freshExec.Results) > 0 {
-			res := freshExec.Results[len(freshExec.Results)-1].Result
-			if len(res) > 0 {
-				log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart completed successfully (output chars: %d)", execID, len(res))
-				return res, nil
+	var freshExec *shuffle.WorkflowExecution
+	var agentErr error
+
+	_ = os.Setenv("SHUFFLE_DISABLE_AGENT_SELFREQUEST", "true")
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ERROR][%s] Recovered from panic in shuffle.HandleAiAgentExecutionStart: %v", execID, r)
+				agentErr = fmt.Errorf("AI agent runtime error: %v", r)
 			}
+		}()
+		_, agentErr = shuffle.HandleAiAgentExecutionStart(exec, startNode, false, "orborus")
+	}()
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[WARNING][%s] Recovered from panic in shuffle.GetWorkflowExecution: %v", execID, r)
+			}
+		}()
+		if fe, fetchErr := shuffle.GetWorkflowExecution(context.Background(), execID); fetchErr == nil && fe != nil {
+			freshExec = fe
+		}
+	}()
+
+	if freshExec != nil && len(freshExec.Results) > 0 {
+		res := freshExec.Results[len(freshExec.Results)-1].Result
+		if len(res) > 0 {
+			if agentErr == nil {
+				log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart completed successfully (output chars: %d)", execID, len(res))
+				return res, freshExec, nil
+			}
+			log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart produced output with error: %v", execID, agentErr)
+			return res, freshExec, agentErr
 		}
 	}
 
 	if agentErr != nil {
+		agentErrStr := agentErr.Error()
+		if strings.Contains(agentErrStr, "No LLM apikey") || strings.Contains(agentErrStr, "missing_credentials") || strings.Contains(agentErrStr, "custom AI app authentication") {
+			exec.Status = "FAILURE"
+			exec.Result = agentErrStr
+			log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart reported auth requirement: %s", execID, agentErrStr)
+			return agentErrStr, &exec, agentErr
+		}
 		log.Printf("[WARNING][%s] shuffle.HandleAiAgentExecutionStart returned error: %v. Falling back to direct shuffle.RunAiQuery", execID, agentErr)
 	} else {
 		log.Printf("[DEBUG][%s] shuffle.HandleAiAgentExecutionStart finished without stored result. Delegating to direct shuffle.RunAiQuery", execID)
@@ -1478,23 +1647,40 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	defer cancel()
 
 	respStr, err := shuffle.RunAiQuery(ctx, callInfo, sysPrompt, prompt)
+	exec.CompletedAt = time.Now().Unix()
 	if err != nil {
+		exec.Status = "FAILURE"
+		exec.Result = err.Error()
 		log.Printf("[ERROR][%s] shuffle-shared/ai.go RunAiQuery returned error: %v", execID, err)
-		return respStr, err
+		return respStr, &exec, err
 	}
+
+	exec.Status = "FINISHED"
+	exec.Result = respStr
+	exec.Results = append(exec.Results, shuffle.ActionResult{
+		Action: shuffle.Action{
+			ID:      actionID,
+			Name:    "AgentQuery",
+			AppName: "Shuffle Agent",
+		},
+		ExecutionId: execID,
+		Result:      respStr,
+		Status:      "SUCCESS",
+	})
 
 	if isDebug {
 		log.Printf("[DEBUG][%s] shuffle-shared/ai.go RunAiQuery completed successfully (output chars: %d)", execID, len(respStr))
 	}
 
-	return respStr, nil
+	return respStr, &exec, nil
 }
 
 // HandleAction dispatches incoming actions from the WebKit/UI bridge
-func (b *AgentBridge) HandleAction(action string, payload string) string {
+func (b *AgentBridge) HandleAction(action string, payload string) (res string) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[ERROR] Recovered from panic in AgentBridge.HandleAction: %v", r)
+			res = fmt.Sprintf(`{"status":"error","error":%q,"error_type":"execution_error","fix_help":"Internal runtime panic: %v"}`, fmt.Sprintf("Internal runtime error: %v", r), r)
 		}
 	}()
 
@@ -1524,9 +1710,36 @@ func (b *AgentBridge) HandleAction(action string, payload string) string {
 			ConversationID string `json:"conversation_id"`
 			Model          string `json:"model"`
 			Reasoning      string `json:"reasoning"`
+			AiApiKey       string `json:"ai_api_key"`
+			AiApiUrl       string `json:"ai_api_url"`
 		}
 		if err := json.Unmarshal([]byte(payload), &req); err != nil {
 			req.Prompt = payload
+		}
+		if req.AiApiKey != "" {
+			b.mu.Lock()
+			b.aiApiKey = strings.TrimSpace(req.AiApiKey)
+			_ = os.Setenv("AI_API_KEY", b.aiApiKey)
+			_ = os.Setenv("SHUFFLE_AUTHORIZATION", b.aiApiKey)
+			_ = os.Setenv("SHUFFLE_SESSION_TOKEN", b.aiApiKey)
+			if b.cfg != nil && (strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle")) {
+				b.cfg.Auth = b.aiApiKey
+			}
+			b.mu.Unlock()
+		}
+		if req.AiApiUrl != "" {
+			b.mu.Lock()
+			b.aiApiUrl = strings.TrimSpace(req.AiApiUrl)
+			_ = os.Setenv("AI_API_URL", b.aiApiUrl)
+			if strings.Contains(b.aiApiUrl, "shuffler.io") || strings.Contains(b.aiApiUrl, "shuffle") {
+				cleanUrl := strings.TrimRight(strings.TrimSuffix(b.aiApiUrl, "/api/v1"), "/")
+				_ = os.Setenv("SHUFFLE_BASE_URL", cleanUrl)
+				_ = os.Setenv("BASE_URL", cleanUrl)
+				if b.cfg != nil {
+					b.cfg.BaseURL = cleanUrl
+				}
+			}
+			b.mu.Unlock()
 		}
 		return b.RunPromptWithOpts(req.Prompt, req.Bypass, req.ConversationID, req.Model, req.Reasoning)
 
@@ -1633,7 +1846,41 @@ func (b *AgentBridge) HandleAction(action string, payload string) string {
 		}
 		return `{"status": "cancelled", "path": ""}`
 
+	case "listConversations":
+		convs, err := ListConversations()
+		if err != nil {
+			log.Printf("[ERROR] ListConversations error: %v", err)
+			return `[]`
+		}
+		resp, _ := json.Marshal(convs)
+		return string(resp)
+
+	case "getConversation":
+		conv, err := LoadConversation(strings.TrimSpace(payload))
+		if err != nil || conv == nil {
+			return `{"error": "not found"}`
+		}
+		resp, _ := json.Marshal(conv)
+		return string(resp)
+
+	case "saveConversation":
+		var conv Conversation
+		if err := json.Unmarshal([]byte(payload), &conv); err == nil && conv.ID != "" {
+			if err := SaveConversation(&conv); err != nil {
+				return fmt.Sprintf(`{"error": %q}`, err.Error())
+			}
+			return `{"status": "ok"}`
+		}
+		return `{"error": "invalid payload"}`
+
+	case "deleteConversation":
+		if err := DeleteConversation(strings.TrimSpace(payload)); err != nil {
+			return fmt.Sprintf(`{"error": %q}`, err.Error())
+		}
+		return `{"status": "ok"}`
+
 	case "clearHistory":
+		_ = ClearAllConversations()
 		return b.ClearHistory()
 
 	case "saveAllSettings":
