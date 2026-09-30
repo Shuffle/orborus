@@ -4,3 +4,6 @@
 .claude
 helpers
 *.md
+darwin.go
+pkg/
+orborus-*

@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build !windows && !darwin
 
 package main
 
@@ -29,7 +29,7 @@ func init() {
 
 func main() {
 	appConfig := pkg.LoadConfig()
-	log.Printf("[INFO] Starting Shuffle Agent Runner (Darwin Native Starter)")
+	log.Printf("[INFO] Starting Shuffle Agent Runner (Linux/Unix Native Starter)")
 
 	isDebugStartup := strings.EqualFold(os.Getenv("DEBUG"), "true") || os.Getenv("DEBUG") == "1" || appConfig.Debug
 	if isDebugStartup {
@@ -45,8 +45,8 @@ func main() {
 
 	isAccessTrusted := osctrl.CheckAccessibilityTrusted()
 	hasScreenAccess := osctrl.CheckScreenRecordingPermission()
-	log.Printf("[INFO] macOS Accessibility Trust: %v", isAccessTrusted)
-	log.Printf("[INFO] macOS Screen Recording Access: %v", hasScreenAccess)
+	log.Printf("[INFO] Linux Privileges / Access: %v", isAccessTrusted)
+	log.Printf("[INFO] Linux Screen Recording Access: %v", hasScreenAccess)
 
 	// Background execution is separated from the UI starter
 	if !appConfig.IsStandalone {
@@ -103,11 +103,11 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 }
 
 func onReady(cfg *pkg.Config) {
-	log.Println("[INFO] Systray event loop initialized on main thread")
+	log.Println("[INFO] Systray event loop initialized on Linux")
 
 	globalBridge = pkg.NewAgentBridge(cfg)
 
-	// Configure top menu bar icon and tooltip
+	// Configure top / system tray icon and tooltip
 	systray.SetTooltip("Shuffle Agent")
 	if len(pkg.ShuffleIconPNG) > 0 {
 		systray.SetIcon(pkg.ShuffleIconPNG)

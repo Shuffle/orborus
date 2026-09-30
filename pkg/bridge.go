@@ -1,21 +1,20 @@
 package pkg
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/shuffle/osctrl"
+	"github.com/shuffle/osctrl/webview"
 	shuffle "github.com/shuffle/shuffle-shared"
 )
 
@@ -27,6 +26,9 @@ type ExecutionEntry struct {
 	Output    string                 `json:"output"`
 	Status    string                 `json:"status"` // "success", "error", "pending"
 	Duration  string                 `json:"duration"`
+	Error     string                 `json:"error,omitempty"`
+	ErrorType string                 `json:"error_type,omitempty"`
+	FixHelp   string                 `json:"fix_help,omitempty"`
 	DebugInfo map[string]interface{} `json:"debug_info,omitempty"`
 }
 
@@ -786,8 +788,113 @@ func isSafeCommand(cmd string) bool {
 	return safeBins[parts[0]]
 }
 
+// getEffectiveAiUrlLocked infers the LLM endpoint based on custom URL, model selection, or environment
+func (b *AgentBridge) getEffectiveAiUrlLocked() string {
+	if b.aiApiUrl != "" {
+		return b.aiApiUrl
+	}
+	if envUrl := os.Getenv("AI_API_URL"); envUrl != "" {
+		return envUrl
+	}
+	if envUrl := os.Getenv("SHUFFLE_BACKEND"); envUrl != "" {
+		return strings.TrimRight(envUrl, "/") + "/api/v1"
+	}
+	if envUrl := os.Getenv("SHUFFLE_URL"); envUrl != "" {
+		return strings.TrimRight(envUrl, "/") + "/api/v1"
+	}
+	if b.cfg != nil && b.cfg.BaseURL != "" && (b.oauthLoggedIn || b.cfg.Auth != "") {
+		return strings.TrimRight(b.cfg.BaseURL, "/") + "/api/v1"
+	}
 
-// RunPrompt executes an agent action directly in-memory using osctrl
+	key := b.getEffectiveAiKeyLocked()
+	model := strings.ToLower(b.aiModel)
+	if model == "" {
+		model = "gemini-3.8-flash-high"
+	}
+
+	// If API key is present or local Ollama is selected, infer the provider endpoint
+	if key != "" {
+		if strings.HasPrefix(model, "gemini") {
+			return "https://generativelanguage.googleapis.com/v1beta/openai"
+		}
+		if strings.HasPrefix(model, "gpt") {
+			return "https://api.openai.com/v1"
+		}
+	}
+	if strings.HasPrefix(model, "ollama") {
+		return "http://localhost:11434/v1"
+	}
+
+	return ""
+}
+
+// getEffectiveAiKeyLocked retrieves the active AI credential from local store, env, or Shuffle session
+func (b *AgentBridge) getEffectiveAiKeyLocked() string {
+	if b.aiApiKey != "" {
+		return b.aiApiKey
+	}
+	if k := os.Getenv("AI_API_KEY"); k != "" {
+		return k
+	}
+	if k := os.Getenv("GEMINI_API_KEY"); k != "" {
+		return k
+	}
+	if k := os.Getenv("OPENAI_API_KEY"); k != "" {
+		return k
+	}
+	if k := os.Getenv("SHUFFLE_AUTHORIZATION"); k != "" {
+		return k
+	}
+	if k := os.Getenv("SHUFFLE_SESSION_TOKEN"); k != "" {
+		return k
+	}
+	if b.oauthLoggedIn && b.oauthToken != "" {
+		return b.oauthToken
+	}
+	if b.cfg != nil && b.cfg.Auth != "" {
+		return b.cfg.Auth
+	}
+	return ""
+}
+
+// isLikelyShellCommand determines whether an input string is an executable command vs natural language prompt
+func isLikelyShellCommand(cmd string) bool {
+	trimmed := strings.TrimSpace(cmd)
+	if trimmed == "" {
+		return false
+	}
+	if strings.HasPrefix(trimmed, "$ ") || strings.HasPrefix(trimmed, "> ") {
+		return true
+	}
+	if strings.Contains(trimmed, " | ") || strings.Contains(trimmed, " && ") || strings.Contains(trimmed, " || ") || strings.Contains(trimmed, " > ") || strings.Contains(trimmed, " ; ") {
+		return true
+	}
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return false
+	}
+	bin := parts[0]
+	if strings.HasPrefix(bin, "./") || strings.HasPrefix(bin, "../") || strings.HasPrefix(bin, "/") || strings.HasPrefix(bin, "~/") {
+		return true
+	}
+	builtins := map[string]bool{
+		"cd": true, "pwd": true, "export": true, "set": true, "alias": true,
+		"echo": true, "cat": true, "clear": true, "source": true, "exit": true,
+		"history": true, "type": true, "kill": true, "which": true, "make": true,
+		"brew": true, "curl": true, "wget": true, "git": true, "docker": true,
+		"npm": true, "yarn": true, "pnpm": true, "go": true, "python": true,
+		"python3": true, "node": true, "sh": true, "bash": true, "zsh": true,
+	}
+	if builtins[bin] {
+		return true
+	}
+	if _, err := exec.LookPath(bin); err == nil {
+		return true
+	}
+	return false
+}
+
+// RunPrompt executes an agent action directly in-memory using osctrl or via LLM endpoint
 func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...string) string {
 	start := time.Now()
 	execID := fmt.Sprintf("exec-%d", time.Now().UnixNano())
@@ -798,39 +905,41 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 	}
 
 	b.mu.Lock()
-	isBypassed := b.isAuthBypassed()
-	isLoggedIn := isBypassed || b.oauthLoggedIn
+	effectiveUrl := b.getEffectiveAiUrlLocked()
+	effectiveKey := b.getEffectiveAiKeyLocked()
+	hasAiEndpoint := effectiveUrl != "" && (effectiveKey != "" || strings.Contains(effectiveUrl, "localhost") || strings.Contains(effectiveUrl, "127.0.0.1"))
+	activeModel := b.aiModel
+	activeUrl := effectiveUrl
+	project := b.activeProject
+	isShellCmd := isLikelyShellCommand(prompt)
+	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 	b.mu.Unlock()
 
-	if !isLoggedIn {
-		entry := ExecutionEntry{
-			ID:        execID,
-			Timestamp: time.Now().Format("15:04:05"),
-			Prompt:    prompt,
-			Output:    "AI Configuration or Shuffle Login Required: Please configure AI_API_KEY and AI_API_URL in Settings, or authenticate with Shuffle.",
-			Status:    "error",
-			Duration:  "0ms",
+	if isDebug {
+		maskedKey := "none"
+		if len(effectiveKey) > 8 {
+			maskedKey = effectiveKey[:4] + "..." + effectiveKey[len(effectiveKey)-4:]
+		} else if effectiveKey != "" {
+			maskedKey = "***"
 		}
-		b.mu.Lock()
-		b.history = append([]ExecutionEntry{entry}, b.history...)
-		b.mu.Unlock()
+		log.Printf("[DEBUG] RunPrompt received: prompt=%q, convID=%q, forceApprove=%v, activeProject=%q", prompt, cID, forceApprove, project)
+		log.Printf("[DEBUG] RunPrompt [Stage 1: Credentials]: effectiveUrl=%q, key=%s, hasAiEndpoint=%v, activeModel=%q (sources checked: settings, env AI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, SHUFFLE_AUTHORIZATION, SHUFFLE_BACKEND)",
+			effectiveUrl, maskedKey, hasAiEndpoint, activeModel)
+		log.Printf("[DEBUG] RunPrompt [Stage 2: Classification]: prompt=%q, isShellCmd=%v", prompt, isShellCmd)
+	}
 
-		resp, _ := json.Marshal(map[string]interface{}{
-			"id":              execID,
-			"status":          "error",
-			"error":           entry.Output,
-			"needs_login":     false,
-			"needs_ai_config": true,
-			"prompt":          prompt,
-			"duration":        "0ms",
-		})
-		return string(resp)
+	// Prompts sent to the agent always start the AI Agent unless explicitly formatted as a shell command ($ or >)
+	trimmedPrompt := strings.TrimSpace(prompt)
+	isExplicitShell := strings.HasPrefix(trimmedPrompt, "$ ") || strings.HasPrefix(trimmedPrompt, "> ")
+	shouldRunAi := !isExplicitShell
+
+	if isDebug {
+		log.Printf("[DEBUG] RunPrompt [Routing Decision]: shouldRunAi=%v, isExplicitShell=%v, activeModel=%q", shouldRunAi, isExplicitShell, activeModel)
 	}
 
 	b.mu.Lock()
 	needsApproval := false
-	if !forceApprove {
-		// First check remembered approval rules and project allowed commands
+	if !forceApprove && !shouldRunAi {
 		if b.isCommandAllowedLocked(prompt, cID, b.activeProject) {
 			needsApproval = false
 		} else {
@@ -875,6 +984,10 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 		}
 		b.mu.Unlock()
 
+		if isDebug {
+			log.Printf("[DEBUG] RunPrompt requires approval: ID=%s, command=%q, prefix=%q (stopping until user responds)", execID, prompt, prefix)
+		}
+
 		// Return pending approval notification with rich options metadata
 		resp, _ := json.Marshal(map[string]interface{}{
 			"id":              execID,
@@ -890,51 +1003,67 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 	}
 	b.mu.Unlock()
 
-	// Execute command or dispatch to AI endpoint
-	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
-
-	b.mu.Lock()
-	hasAiEndpoint := b.aiApiUrl != ""
-	activeModel := b.aiModel
-	activeUrl := b.aiApiUrl
-	project := b.activeProject
-	b.mu.Unlock()
-
 	var output string
 	var err error
 	var debugInfo map[string]interface{}
 
-	if isDebug {
-		log.Printf("[DEBUG] RunPrompt initiated: prompt=%q, forceApprove=%v, project=%q, hasAi=%v, url=%q, model=%q",
-			prompt, forceApprove, project, hasAiEndpoint, activeUrl, activeModel)
-	}
-
-	if hasAiEndpoint {
-		log.Printf("[INFO] AI Agent Execution (%s) via %s: %s", activeModel, activeUrl, prompt)
-		output, err = b.executeAiRequest(prompt)
+	if shouldRunAi {
+		log.Printf("[INFO] RunPrompt routing decision: dispatching prompt %q to shuffle.HandleAiAgentExecutionStart (model=%s, url=%s, execID=%s)", prompt, activeModel, activeUrl, execID)
+		output, err = b.executeAiRequest(prompt, execID)
 		debugInfo = map[string]interface{}{
-			"mode":    "ai_endpoint",
-			"target":  activeUrl,
-			"model":   activeModel,
-			"project": project,
+			"mode":     "shuffle_agent_start",
+			"target":   activeUrl,
+			"model":    activeModel,
+			"project":  project,
+			"has_url":  activeUrl != "",
+			"has_key":  effectiveKey != "",
+			"is_auth":  b.oauthLoggedIn,
+			"engine":   "shuffle.HandleAiAgentExecutionStart",
 		}
 	} else {
-		log.Printf("[INFO] Direct In-Memory Execution in %s: %s", project, prompt)
+		log.Printf("[INFO] RunPrompt routing decision: explicit shell command %q dispatched to osctrl direct execution in %s", prompt, project)
 		output, err = b.executeDirect(prompt)
 		debugInfo = map[string]interface{}{
-			"mode":    "direct_exec",
+			"mode":    "osctrl_direct_exec",
 			"target":  project,
 			"model":   "local_shell",
 			"project": project,
+			"engine":  "osctrl.RunCommandString",
 		}
 	}
 
 	status := "success"
+	errStr := ""
+	errorType := ""
+	fixHelp := ""
 	if err != nil {
 		status = "error"
-		output = fmt.Sprintf("Error: %v\nOutput: %s", err, output)
+		errStr = err.Error()
+
+		errLower := strings.ToLower(errStr)
+		if strings.Contains(errLower, "no llm apikey") || strings.Contains(errLower, "apikey") || strings.Contains(errLower, "unauthorized") || strings.Contains(errLower, "custom ai app authentication") || strings.Contains(errLower, "no organization-specific key") {
+			errorType = "missing_credentials"
+			fixHelp = "No AI model credentials found. Configure your API key (Gemini, OpenAI, Anthropic, or Ollama) in Settings > AI & Models, or log in with your Shuffle account in Settings > Shuffle Account."
+		} else if strings.Contains(errLower, "connection refused") || strings.Contains(errLower, "dial tcp") || strings.Contains(errLower, "no such host") {
+			errorType = "network_unreachable"
+			fixHelp = "Could not connect to the AI endpoint or Shuffle backend. Check your network connection and verify AI API URL in Settings > AI & Models."
+		} else if strings.Contains(errLower, "rate limit") || strings.Contains(errLower, "quota") || strings.Contains(errLower, "429") || strings.Contains(errLower, "resource_exhausted") || strings.Contains(errLower, "too many requests") {
+			errorType = "rate_limited"
+			fixHelp = "AI model rate limit or quota exceeded (HTTP 429). Check your provider quota or switch to another model in Settings > AI & Models."
+		} else if strings.Contains(errLower, "127") || strings.Contains(errLower, "command not found") {
+			errorType = "command_not_found"
+			fixHelp = "Command was not found on your system PATH."
+		} else {
+			errorType = "execution_error"
+			fixHelp = "Agent execution stopped with an error. Review the error details below."
+		}
+
+		if output == "" {
+			output = errStr
+		}
+
 		if isDebug {
-			log.Printf("[DEBUG] RunPrompt completed with error: %v", err)
+			log.Printf("[DEBUG] RunPrompt completed with error: %v (type=%s)", err, errorType)
 		}
 	} else if isDebug {
 		log.Printf("[DEBUG] RunPrompt completed successfully (output bytes: %d)", len(output))
@@ -949,6 +1078,9 @@ func (b *AgentBridge) RunPrompt(prompt string, forceApprove bool, convID ...stri
 		Output:    output,
 		Status:    status,
 		Duration:  duration,
+		Error:     errStr,
+		ErrorType: errorType,
+		FixHelp:   fixHelp,
 		DebugInfo: debugInfo,
 	}
 
@@ -1165,20 +1297,27 @@ func (b *AgentBridge) GetHostTelemetry() string {
 }
 
 func (b *AgentBridge) executeDirect(cmd string) (string, error) {
-	fullCmd := cmd
+	cleanCmd := strings.TrimPrefix(strings.TrimSpace(cmd), "$ ")
+	cleanCmd = strings.TrimPrefix(cleanCmd, "> ")
+	cleanCmd = osctrl.RCECleanup(cleanCmd)
+	fullCmd := cleanCmd
 	if b.activeProject != "" && b.activeProject != "." {
-		fullCmd = fmt.Sprintf("cd %s && %s", b.activeProject, cmd)
+		fullCmd = fmt.Sprintf("cd %s && %s", b.activeProject, cleanCmd)
 	}
 	return osctrl.RunCommandString(fullCmd, 30*time.Second, nil)
 }
 
-// executeAiRequest sends prompt to the configured AI API URL
-func (b *AgentBridge) executeAiRequest(prompt string) (string, error) {
+// executeAiRequest sends prompt to shuffle-shared/ai.go HandleAiAgentExecutionStart and RunAiQuery
+func (b *AgentBridge) executeAiRequest(prompt, execID string) (string, error) {
 	b.mu.Lock()
-	apiURL := b.aiApiUrl
-	apiKey := b.aiApiKey
+	apiURL := b.getEffectiveAiUrlLocked()
+	apiKey := b.getEffectiveAiKeyLocked()
 	model := b.aiModel
 	project := b.activeProject
+	orgID := ""
+	if b.cfg != nil {
+		orgID = b.cfg.Org
+	}
 	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 	b.mu.Unlock()
 
@@ -1186,107 +1325,267 @@ func (b *AgentBridge) executeAiRequest(prompt string) (string, error) {
 		model = "gemini-3.8-flash-high"
 	}
 
-	targetURL := apiURL
-	if !strings.Contains(targetURL, "/chat/completions") && !strings.Contains(targetURL, "/generateContent") {
-		targetURL = strings.TrimRight(targetURL, "/") + "/chat/completions"
+	// Export credentials and settings into environment for shuffle-shared/ai.go
+	if apiKey != "" {
+		os.Setenv("AI_API_KEY", apiKey)
+	}
+	if apiURL != "" {
+		os.Setenv("AI_API_URL", apiURL)
+	}
+	if model != "" {
+		os.Setenv("AI_MODEL", model)
+		os.Setenv("SHUFFLE_AI_MODEL", model)
+	}
+	if b.cfg != nil && b.cfg.IsStandalone {
+		os.Setenv("STANDALONE", "true")
 	}
 
-	type chatMessage struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type chatPayload struct {
-		Model    string        `json:"model"`
-		Messages []chatMessage `json:"messages"`
+	maskedKey := "none"
+	if len(apiKey) > 8 {
+		maskedKey = apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+	} else if apiKey != "" {
+		maskedKey = "***"
 	}
 
-	sysPrompt := fmt.Sprintf("You are Shuffle AI agent assistant. Active workspace: %s.", project)
-	payloadObj := chatPayload{
-		Model: model,
-		Messages: []chatMessage{
-			{Role: "system", Content: sysPrompt},
-			{Role: "user", Content: prompt},
+	workflowID := fmt.Sprintf("wf-%d", time.Now().UnixNano())
+	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
+
+	startNode := shuffle.Action{
+		ID:             actionID,
+		Name:           "AgentStarter",
+		AppName:        "Shuffle Agent",
+		AppID:          "Shuffle Agent",
+		SourceWorkflow: workflowID,
+		Parameters: []shuffle.WorkflowAppActionParameter{
+			{
+				Name:  "input",
+				Value: prompt,
+			},
 		},
 	}
 
-	reqBytes, err := json.Marshal(payloadObj)
+	exec := shuffle.WorkflowExecution{
+		Workflow: shuffle.Workflow{
+			ID: workflowID,
+			Actions: []shuffle.Action{
+				startNode,
+			},
+			OrgId: orgID,
+			Start: startNode.ID,
+		},
+		Type:              "AGENT",
+		Start:             startNode.ID,
+		Status:            "EXECUTING",
+		WorkflowId:        workflowID,
+		ExecutionId:       execID,
+		ExecutionOrg:      orgID,
+		StartedAt:         time.Now().Unix(),
+		ExecutionArgument: prompt,
+	}
+
+	log.Printf("[INFO][%s] AI Agent: Invoking shuffle.HandleAiAgentExecutionStart (workflow=%s, node=%s, caller=orborus, model=%s, url=%s, key=%s)",
+		execID, workflowID, actionID, model, apiURL, maskedKey)
+
+	_, agentErr := shuffle.HandleAiAgentExecutionStart(exec, startNode, false, "orborus")
+	if agentErr == nil {
+		if freshExec, fetchErr := shuffle.GetWorkflowExecution(context.Background(), execID); fetchErr == nil && freshExec != nil && len(freshExec.Results) > 0 {
+			res := freshExec.Results[len(freshExec.Results)-1].Result
+			if len(res) > 0 {
+				log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart completed successfully (output chars: %d)", execID, len(res))
+				return res, nil
+			}
+		}
+	}
+
+	if agentErr != nil {
+		log.Printf("[WARNING][%s] shuffle.HandleAiAgentExecutionStart returned error: %v. Falling back to direct shuffle.RunAiQuery", execID, agentErr)
+	} else {
+		log.Printf("[DEBUG][%s] shuffle.HandleAiAgentExecutionStart finished without stored result. Delegating to direct shuffle.RunAiQuery", execID)
+	}
+
+	sysPrompt := fmt.Sprintf("You are Shuffle AI agent assistant. Active workspace: %s.", project)
+	callInfo := shuffle.AiCallInfo{
+		Caller:      "orborus",
+		OrgID:       orgID,
+		ExecutionId: execID,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	respStr, err := shuffle.RunAiQuery(ctx, callInfo, sysPrompt, prompt)
 	if err != nil {
-		return "", fmt.Errorf("failed to encode AI request: %w", err)
+		log.Printf("[ERROR][%s] shuffle-shared/ai.go RunAiQuery returned error: %v", execID, err)
+		return respStr, err
 	}
 
 	if isDebug {
-		maskedKey := "none"
-		if len(apiKey) > 8 {
-			maskedKey = apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
-		} else if apiKey != "" {
-			maskedKey = "***"
-		}
-		log.Printf("[DEBUG] Sending AI request to %s (Model: %s, Key: %s, Payload: %s)", targetURL, model, maskedKey, string(reqBytes))
+		log.Printf("[DEBUG][%s] shuffle-shared/ai.go RunAiQuery completed successfully (output chars: %d)", execID, len(respStr))
 	}
 
-	client := &http.Client{Timeout: 90 * time.Second}
-	httpReq, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(reqBytes))
-	if err != nil {
-		return "", fmt.Errorf("failed creating HTTP request: %w", err)
-	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
-	if apiKey != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
-	}
-
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		if isDebug {
-			log.Printf("[DEBUG] AI request connection error: %v", err)
-		}
-		return "", fmt.Errorf("AI request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed reading AI response: %w", err)
-	}
-
-	if isDebug {
-		log.Printf("[DEBUG] AI response status: %d (Body bytes: %d, Content: %s)", resp.StatusCode, len(bodyBytes), string(bodyBytes))
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return string(bodyBytes), fmt.Errorf("AI endpoint returned HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var completionResp struct {
-		Choices []struct {
-			Message struct {
-				Role    string `json:"role"`
-				Content string `json:"content"`
-			} `json:"message"`
-			Text string `json:"text"`
-		} `json:"choices"`
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-			} `json:"content"`
-		} `json:"candidates"`
-	}
-
-	if err := json.Unmarshal(bodyBytes, &completionResp); err == nil {
-		if len(completionResp.Choices) > 0 {
-			if completionResp.Choices[0].Message.Content != "" {
-				return completionResp.Choices[0].Message.Content, nil
-			}
-			if completionResp.Choices[0].Text != "" {
-				return completionResp.Choices[0].Text, nil
-			}
-		}
-		if len(completionResp.Candidates) > 0 && len(completionResp.Candidates[0].Content.Parts) > 0 {
-			return completionResp.Candidates[0].Content.Parts[0].Text, nil
-		}
-	}
-
-	return string(bodyBytes), nil
+	return respStr, nil
 }
+
+// HandleAction dispatches incoming actions from the WebKit/UI bridge
+func (b *AgentBridge) HandleAction(action string, payload string) string {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] Recovered from panic in AgentBridge.HandleAction: %v", r)
+		}
+	}()
+
+	isDebug := strings.EqualFold(os.Getenv("DEBUG"), "true") || os.Getenv("DEBUG") == "1" ||
+		(b != nil && b.GetConfig() != nil && b.GetConfig().Debug)
+	if isDebug {
+		log.Printf("[DEBUG] HandleAction: %s (payload: %s)", action, payload)
+	}
+
+	switch action {
+	case "getInitialState":
+		return b.GetInitialState()
+
+	case "listProjects":
+		return b.ListProjects()
+
+	case "selectProject":
+		return b.SelectProject(payload)
+
+	case "setPermissionPolicy":
+		return b.SetPermissionPolicy(payload)
+
+	case "runPrompt":
+		var req struct {
+			Prompt         string `json:"prompt"`
+			Bypass         bool   `json:"bypass"`
+			ConversationID string `json:"conversation_id"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err != nil {
+			req.Prompt = payload
+		}
+		return b.RunPrompt(req.Prompt, req.Bypass, req.ConversationID)
+
+	case "respondApproval":
+		var req struct {
+			ID            string `json:"id"`
+			Approved      bool   `json:"approved"`
+			Option        int    `json:"option"`
+			CommandPrefix string `json:"command_prefix"`
+			Scope         string `json:"scope"`
+			ScopeID       string `json:"scope_id"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			if req.Option > 0 {
+				return b.RespondApprovalWithOptions(req.ID, req.Option, req.CommandPrefix, req.Scope, req.ScopeID)
+			}
+			return b.RespondApproval(req.ID, req.Approved)
+		}
+		return `{"error": "invalid payload"}`
+
+	case "respondApprovalWithOptions":
+		var req struct {
+			ID            string `json:"id"`
+			Option        int    `json:"option"`
+			CommandPrefix string `json:"command_prefix"`
+			Scope         string `json:"scope"`
+			ScopeID       string `json:"scope_id"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			return b.RespondApprovalWithOptions(req.ID, req.Option, req.CommandPrefix, req.Scope, req.ScopeID)
+		}
+		return `{"error": "invalid payload"}`
+
+	case "getApprovalRules":
+		return b.GetApprovalRules()
+
+	case "addApprovalRule":
+		return b.AddApprovalRule(payload)
+
+	case "revokeApprovalRule":
+		return b.RevokeApprovalRule(payload)
+
+	case "clearApprovalRules":
+		return b.ClearApprovalRules()
+
+	case "setPinnedConversations":
+		return b.SetPinnedConversations(payload)
+
+	case "takeScreenshot":
+		return b.TakeScreenshot()
+
+	case "inspectUI":
+		return b.InspectUI()
+
+	case "requestOSPermission":
+		if payload == "accessibility" {
+			osctrl.PromptAccessibility()
+		} else if payload == "screen" {
+			osctrl.PromptScreenRecording()
+		}
+		return `{"status": "ok"}`
+
+	case "updateAuth":
+		return b.UpdateAuth(payload)
+
+	case "startOAuthLogin":
+		return b.StartOAuthLogin(payload)
+
+	case "setOAuthToken":
+		var req struct {
+			Token string `json:"token"`
+			Org   string `json:"org"`
+			Env   string `json:"env"`
+		}
+		_ = json.Unmarshal([]byte(payload), &req)
+		return b.SetOAuthToken(req.Token, req.Org, req.Env)
+
+	case "setAiConfig":
+		var req struct {
+			URL              string `json:"url"`
+			Key              string `json:"key"`
+			Model            string `json:"model"`
+			PermissionPolicy string `json:"permission_policy"`
+		}
+		_ = json.Unmarshal([]byte(payload), &req)
+		if req.PermissionPolicy != "" {
+			b.SetPermissionPolicy(req.PermissionPolicy)
+		}
+		return b.SetAiConfig(req.URL, req.Key, req.Model)
+
+	case "chooseDirectory":
+		path, err := webview.ChooseFolder("Select Project Directory", "Select")
+		if err == nil && path != "" {
+			resp, _ := json.Marshal(map[string]interface{}{"status": "ok", "path": path})
+			return string(resp)
+		}
+		return `{"status": "cancelled", "path": ""}`
+
+	case "chooseFile":
+		path, err := webview.ChooseFile("Select File to Attach", "Select")
+		if err == nil && path != "" {
+			resp, _ := json.Marshal(map[string]interface{}{"status": "ok", "path": path})
+			return string(resp)
+		}
+		return `{"status": "cancelled", "path": ""}`
+
+	case "clearHistory":
+		return b.ClearHistory()
+
+	case "saveAllSettings":
+		return b.SaveAllSettings(payload)
+
+	case "setProjectPermissions":
+		var req struct {
+			Project     string            `json:"project"`
+			Permissions ProjectPermission `json:"permissions"`
+		}
+		if err := json.Unmarshal([]byte(payload), &req); err == nil {
+			return b.SetProjectPermissions(req.Project, req.Permissions)
+		}
+		return `{"error": "invalid payload"}`
+
+	default:
+		log.Printf("[WARN] Unknown bridge action: %s", action)
+		return `{"error": "unknown action"}`
+	}
+}
+
