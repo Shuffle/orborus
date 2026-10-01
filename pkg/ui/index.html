@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shuffle Agent</title>
 <style>
+  
+/* --- variables.css --- */
   :root {
     --bg-app: #09090b;
     --bg-sidebar: #111113;
@@ -85,6 +87,8 @@
     -webkit-user-select: text !important;
   }
 
+
+/* --- base.css --- */
   /* ---------------- Unified Window Topbar / Titlebar ---------------- */
   .app-titlebar {
     height: 38px;
@@ -143,6 +147,8 @@
     height: calc(100vh - 38px);
   }
 
+
+/* --- sidebar.css --- */
   /* ---------------- Left Sidebar ---------------- */
   .sidebar {
     width: 270px;
@@ -654,6 +660,8 @@
     background: var(--bg-hover);
   }
 
+
+/* --- chat.css --- */
   /* ---------------- Main Content Workspace ---------------- */
   .main-workspace {
     flex: 1;
@@ -1697,6 +1705,8 @@
     to { transform: rotate(360deg); }
   }
 
+
+/* --- modals.css --- */
   /* ---------------- Auth / Login Modal ---------------- */
   .modal-overlay {
     position: fixed;
@@ -2506,6 +2516,7 @@
   .app-toast.visible {
     display: flex;
   }
+
 </style>
 </head>
 <body>
@@ -3449,6 +3460,9 @@
   <div id="app-toast" class="app-toast"></div>
 
 <script>
+  
+// --- state.js ---
+// --- Core State & Configuration ---
 var currentApprovalId = null;
 var currentApprovalCmd = "";
 var currentApprovalCmdPrefix = "";
@@ -3534,415 +3548,8 @@ function setChatMode(enabled) {
   }
 }
 
-function extractRunningTasksFromDecisions(decisions) {
-  if (!Array.isArray(decisions) || decisions.length === 0) return [];
-  const tasks = [];
-  decisions.forEach(d => {
-    if (!d) return;
-    const rd = d.run_details || {};
-    const st = String(rd.status || d.status || "").toUpperCase();
-    const runs = String(d.runs || "").toLowerCase();
-    if (st === "RUNNING" || st === "WAITING" || runs === "background") {
-      const taskName = d.action || d.tool || rd.action_name || (d.fields && d.fields[0] ? d.fields[0].value : "") || "Background Task";
-      tasks.push({
-        id: rd.id || ("task-" + (d.i || Math.random())),
-        name: taskName,
-        status: st || "RUNNING"
-      });
-    }
-  });
-  return tasks;
-}
 
-function renderRunningTasks() {
-  const panel = document.getElementById("running-tasks-panel");
-  const countLabel = document.getElementById("running-tasks-count-label");
-  const listEl = document.getElementById("running-tasks-list");
-  if (!panel || !countLabel || !listEl) return;
-
-  if (!activeRunningTasks || activeRunningTasks.length === 0) {
-    panel.style.display = "none";
-    listEl.innerHTML = "";
-    return;
-  }
-
-  panel.style.display = "flex";
-  const count = activeRunningTasks.length;
-  countLabel.innerText = `${count} task${count === 1 ? "" : "s"} running`;
-
-  listEl.innerHTML = "";
-  activeRunningTasks.forEach(task => {
-    const item = document.createElement("div");
-    item.className = "running-task-item";
-    item.innerHTML = `
-      <svg class="running-task-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <circle cx="12" cy="12" r="9" stroke-dasharray="28 28"/>
-      </svg>
-      <span class="running-task-cmd">${escapeHtml(task.name || task.cmd || "Task")}</span>
-    `;
-    listEl.appendChild(item);
-  });
-}
-
-function toggleRunningTasks() {
-  const panel = document.getElementById("running-tasks-panel");
-  if (panel) {
-    panel.classList.toggle("collapsed");
-  }
-}
-
-function renderModelDropdown() {
-  const menu = document.getElementById("model-dropdown-menu");
-  if (!menu) return;
-  menu.innerHTML = "";
-  AVAILABLE_AI_MODELS.forEach(m => {
-    const item = document.createElement("div");
-    item.className = "model-option-item" + (m.key === activeAiModel ? " selected" : "");
-    item.onclick = (e) => {
-      e.stopPropagation();
-      selectAiModel(m.key, m.label);
-    };
-    item.innerHTML = `
-      <div class="model-option-title">
-        <span>${escapeHtml(m.label)}</span>
-        ${m.key === activeAiModel ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f85f38" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ""}
-      </div>
-      <div class="model-option-desc">${escapeHtml(m.desc)}</div>
-    `;
-    menu.appendChild(item);
-  });
-}
-
-function toggleModelDropdown(event) {
-  if (event) event.stopPropagation();
-  const menu = document.getElementById("model-dropdown-menu");
-  if (!menu) return;
-  renderModelDropdown();
-  menu.classList.toggle("visible");
-}
-
-function selectAiModel(key, label) {
-  if (key === "custom") {
-    openSettingsModal("models", "model");
-    const menu = document.getElementById("model-dropdown-menu");
-    if (menu) menu.classList.remove("visible");
-    return;
-  }
-
-  activeAiModel = key;
-  if (typeof window !== "undefined") {
-    window.activeAiModel = key;
-  }
-  localStorage.setItem("orborus_ai_model", key);
-
-  if (key.includes("high")) {
-    activeReasoningEffort = "high";
-  } else {
-    activeReasoningEffort = "medium";
-  }
-  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
-
-  const nameEl = document.getElementById("lbl-active-model-name");
-  if (nameEl) nameEl.innerText = label;
-
-  const selectFooter = document.getElementById("select-footer-model");
-  if (selectFooter) {
-    let found = false;
-    for (let i = 0; i < selectFooter.options.length; i++) {
-      if (selectFooter.options[i].value === key) {
-        selectFooter.selectedIndex = i;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      selectFooter.value = "custom";
-    }
-  }
-
-  const selectSettings = document.getElementById("select-ai-model");
-  if (selectSettings) {
-    for (let i = 0; i < selectSettings.options.length; i++) {
-      if (selectSettings.options[i].value === key) {
-        selectSettings.selectedIndex = i;
-        break;
-      }
-    }
-  }
-
-  const menu = document.getElementById("model-dropdown-menu");
-  if (menu) menu.classList.remove("visible");
-
-  if (typeof window.setAiConfig === "function") {
-    try {
-      window.setAiConfig(currentAiUrl, currentAiKey, activeAiModel, activeReasoningEffort);
-    } catch (e) {
-      console.warn("setAiConfig failed:", e);
-    }
-  }
-  showToast(`Switched model to ${label}`);
-}
-
-document.addEventListener("click", (e) => {
-  const menu = document.getElementById("model-dropdown-menu");
-  const btn = document.getElementById("btn-model-picker");
-  if (menu && menu.classList.contains("visible")) {
-    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-      menu.classList.remove("visible");
-    }
-  }
-});
-
-function toggleVoiceInput() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    showToast("Voice input not supported in this environment");
-    return;
-  }
-  const btnMic = document.getElementById("btn-mic");
-  if (isListeningVoice) {
-    if (speechRecognitionInstance) {
-      try { speechRecognitionInstance.stop(); } catch (e) {}
-    }
-    isListeningVoice = false;
-    if (btnMic) btnMic.style.color = "";
-    showToast("Voice input stopped");
-    return;
-  }
-
-  try {
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => {
-      isListeningVoice = true;
-      if (btnMic) btnMic.style.color = "#f85f38";
-      showToast("Listening...");
-    };
-
-    recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      const input = document.getElementById("prompt-input");
-      if (input && transcript) {
-        input.value = (input.value ? input.value + " " : "") + transcript;
-        handleInput(input);
-      }
-    };
-
-    recognition.onend = () => {
-      isListeningVoice = false;
-      if (btnMic) btnMic.style.color = "";
-    };
-
-    recognition.onerror = (e) => {
-      isListeningVoice = false;
-      if (btnMic) btnMic.style.color = "";
-      console.warn("Speech recognition error:", e);
-    };
-
-    speechRecognitionInstance = recognition;
-    recognition.start();
-  } catch (err) {
-    console.warn("SpeechRecognition start failed:", err);
-    showToast("Could not access microphone");
-  }
-}
-
-function stopExecution() {
-  if (window.currentAbortController) {
-    try { window.currentAbortController.abort(); } catch (e) {}
-  }
-  activeRunningTasks = [];
-  renderRunningTasks();
-  const btnStop = document.getElementById("btn-stop-execution");
-  const btnSend = document.getElementById("btn-send");
-  if (btnStop) btnStop.style.display = "none";
-  if (btnSend) btnSend.style.display = "flex";
-
-  const stepsContainer = document.getElementById("activity-steps-container");
-  if (stepsContainer) {
-    const stopRow = document.createElement("div");
-    stopRow.className = "activity-step-row";
-    stopRow.innerHTML = `
-      <div class="activity-step-header" style="color:#ef4444;">
-        <div class="activity-step-left">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-          <span class="activity-step-title">Execution stopped by user</span>
-        </div>
-      </div>
-    `;
-    stepsContainer.appendChild(stopRow);
-  }
-  showToast("Execution stopped");
-}
-
-function formatStepTitleHtml(step) {
-  const rawTitle = (step.title || step.name || "").trim();
-  if (!rawTitle) return "Task";
-
-  // Check for Analyzed file pattern: Analyzed </> filename #Llines
-  const isFileStep = step.type === "file" || rawTitle.toLowerCase().startsWith("analyzed") || rawTitle.toLowerCase().startsWith("read file") || /\.(go|html|js|ts|py|json|md)\b/.test(rawTitle);
-
-  if (isFileStep) {
-    const clean = rawTitle.replace(/^Analyzed\s+(?:<\/>\s*)?/i, "").replace(/^(?:Read\s+file|View)\s+/i, "");
-    const parts = clean.split(/\s+#L|\s+#/);
-    const filePath = parts[0] ? parts[0].trim() : "file";
-    const lineRange = parts[1] ? `#L${parts[1].trim()}` : (step.detail && step.detail.match(/#L[\d\-]+/i) ? step.detail.match(/#L[\d\-]+/i)[0] : "");
-    return `Analyzed <span class="badge-code-tag">&lt;/&gt;</span> <span class="step-filepath">${escapeHtml(filePath)}</span> ${lineRange ? `<span class="step-line-range">${escapeHtml(lineRange)}</span>` : ""}`;
-  }
-
-  // Check for thought pattern: "Thought for 3s"
-  if (step.type === "thought" || rawTitle.toLowerCase().startsWith("thought")) {
-    const durMatch = rawTitle.match(/thought(?:\s+for\s+([\w\d\.]+))?/i);
-    const dur = (durMatch && durMatch[1]) || step.duration || "2s";
-    return `Thought for ${escapeHtml(dur)}`;
-  }
-
-  // Check for command pattern: "Ran git status"
-  if (step.type === "cmd" || rawTitle.toLowerCase().startsWith("ran ") || rawTitle.toLowerCase().startsWith("run ")) {
-    return escapeHtml(rawTitle);
-  }
-
-  return escapeHtml(rawTitle);
-}
-
-function computeStepsSummary(steps) {
-  if (!steps || !steps.length) return "Completed execution";
-  let fileCount = 0;
-  let taskCount = 0;
-  let cmdCount = 0;
-
-  steps.forEach(s => {
-    const text = (s.name || s.title || "").toLowerCase();
-    const isFile = s.type === "file" || text.includes("analyzed") || text.includes("read_file") || text.includes("view_file") || /\.(go|html|js|ts|py|json|md)\b/.test(text);
-    const isCmd = s.type === "cmd" || text.startsWith("ran ") || text.startsWith("run ");
-    const isTask = text.includes("task") || text.includes("grep") || text.includes("search") || text.includes("worker") || s.type === "task";
-
-    if (isFile) fileCount++;
-    else if (isCmd) cmdCount++;
-    else if (isTask) taskCount++;
-  });
-
-  const parts = [];
-  if (fileCount > 0) parts.push(`Exploring ${fileCount} file${fileCount > 1 ? "s" : ""}`);
-  if (taskCount > 0) parts.push(`${taskCount} task${taskCount > 1 ? "s" : ""}`);
-  if (cmdCount > 0) parts.push(`running ${cmdCount} command${cmdCount > 1 ? "s" : ""}`);
-
-  if (parts.length > 0) {
-    return parts.join(", ");
-  }
-  return `${steps.length} step${steps.length > 1 ? "s" : ""} completed`;
-}
-
-function toggleTurnSteps(turnId) {
-  const container = document.getElementById("turn-steps-" + turnId);
-  const banner = document.getElementById("summary-banner-" + turnId);
-  if (container) {
-    container.classList.toggle("collapsed");
-  }
-  if (banner) {
-    banner.classList.toggle("collapsed");
-  }
-}
-
-function toggleActiveSteps() {
-  const container = document.getElementById("activity-steps-container");
-  const banner = document.getElementById("activity-summary-banner");
-  if (container) {
-    container.classList.toggle("collapsed");
-  }
-  if (banner) {
-    banner.classList.toggle("collapsed");
-  }
-}
-
-async function loadStoredConversations() {
-  // 1. Try loading from disk via Go backend bridge
-  try {
-    if (window.listConversations) {
-      const raw = await window.listConversations();
-      const diskConvs = JSON.parse(raw);
-      if (Array.isArray(diskConvs) && diskConvs.length > 0) {
-        appConversations = diskConvs;
-      }
-    }
-  } catch (err) {
-    console.warn("Backend listConversations failed, falling back to localStorage:", err);
-  }
-
-  // 2. Fall back / merge with localStorage
-  try {
-    const rawConvs = localStorage.getItem("orborus_conversations");
-    if (rawConvs) {
-      const parsed = JSON.parse(rawConvs);
-      if (Array.isArray(parsed)) {
-        const validLocal = parsed.filter(c => c && c.id && !c.id.startsWith("conv-demo-"));
-        if (appConversations.length === 0) {
-          appConversations = validLocal;
-        } else {
-          // Merge by ID if not in disk list
-          const existingIds = new Set(appConversations.map(c => c.id));
-          validLocal.forEach(c => {
-            if (!existingIds.has(c.id)) {
-              appConversations.push(c);
-            }
-          });
-        }
-      }
-    }
-    const rawPinned = localStorage.getItem("orborus_pinned_conversations");
-    if (rawPinned) {
-      const parsed = JSON.parse(rawPinned);
-      if (Array.isArray(parsed)) {
-        pinnedConversationIds = new Set(parsed.filter(id => typeof id === "string" && !id.startsWith("conv-demo-")));
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to load stored conversations from localStorage:", err);
-  }
-}
-
-async function saveStoredConversations() {
-  try {
-    localStorage.setItem("orborus_conversations", JSON.stringify(appConversations));
-    localStorage.setItem("orborus_pinned_conversations", JSON.stringify(Array.from(pinnedConversationIds)));
-  } catch (err) {
-    console.warn("Failed to save conversations to storage:", err);
-  }
-
-  // Also sync active conversation to disk via bridge if present
-  if (activeConversationId && window.saveConversation) {
-    const cur = appConversations.find(c => c.id === activeConversationId);
-    if (cur) {
-      try {
-        await window.saveConversation(cur);
-      } catch (e) {
-        console.warn("Failed to save conversation to disk:", e);
-      }
-    }
-  }
-}
-
-function windowControl(action) {
-  if (window.windowAction) {
-    window.windowAction(action);
-  } else {
-    console.log("[WINDOW] Action:", action);
-  }
-}
-
-// Global Cmd+A / Ctrl+A handler for textareas, inputs, and text content
-document.addEventListener("keydown", function(e) {
-  if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) {
-    const active = document.activeElement;
-    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-      active.select();
-    }
-  }
-});
-
+// --- State Hydration & Backend Sync ---
 function hydrateOptimisticState() {
   // 1. Synchronously restore configuration from localStorage
   currentAiUrl = localStorage.getItem("orborus_ai_url") || "";
@@ -4151,6 +3758,649 @@ async function init() {
   syncBackendState();
 }
 
+
+// --- titlebar.js ---
+// --- Window Controls & Global Shortcuts ---
+function windowControl(action) {
+  if (window.windowAction) {
+    window.windowAction(action);
+  } else {
+    console.log("[WINDOW] Action:", action);
+  }
+}
+
+// Global Cmd+A / Ctrl+A handler for textareas, inputs, and text content
+document.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) {
+    const active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.select();
+    }
+  }
+});
+
+
+// --- Window Dragging, Modals & Native File Dialogs ---
+function toggleSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  const isCollapsed = sidebar.classList.toggle("collapsed");
+  const toggleBtn = document.getElementById("btn-toggle-sidebar");
+  if (toggleBtn) {
+    toggleBtn.setAttribute("title", isCollapsed ? "Expand Sidebar" : "Contract Sidebar");
+  }
+}
+
+function reportTitlebarNoDragWidth() {
+  const leftEl = document.querySelector(".titlebar-left");
+  if (leftEl) {
+    const rect = leftEl.getBoundingClientRect();
+    const width = Math.ceil(rect.right);
+    if (window.setTitlebarNoDragWidth) {
+      window.setTitlebarNoDragWidth(width);
+    }
+  }
+}
+
+function checkModalActive() {
+  const hasModal = !!document.querySelector(".modal-overlay.visible");
+  if (window.setModalActive) {
+    window.setModalActive(hasModal);
+  }
+}
+
+function setupWindowDragging() {
+  window.addEventListener("resize", reportTitlebarNoDragWidth);
+  setTimeout(reportTitlebarNoDragWidth, 200);
+  setTimeout(reportTitlebarNoDragWidth, 1000);
+
+  const modalObserver = new MutationObserver(checkModalActive);
+  modalObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["class"] });
+
+  window.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return; // Left click only
+    const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
+    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
+
+    if (isTopHeader && !isNoDrag) {
+      if (typeof window.startWindowDrag === "function") {
+        window.startWindowDrag();
+      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.windowDrag) {
+        window.webkit.messageHandlers.windowDrag.postMessage("");
+      } else if (typeof window.windowAction === "function") {
+        window.windowAction("drag");
+      }
+    }
+  }, true);
+
+  window.addEventListener("dblclick", (e) => {
+    if (e.button !== 0) return;
+    const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
+    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
+
+    if (isTopHeader && !isNoDrag) {
+      if (typeof window.windowAction === "function") {
+        window.windowAction("maximize");
+      }
+    }
+  }, true);
+}
+
+function openCustomDirModal() {
+  toggleProjectDropdown(null, false);
+  const input = document.getElementById("input-custom-dir-path");
+  if (input) {
+    input.value = (activeProjectPath && activeProjectPath !== ".") ? activeProjectPath : "";
+  }
+  const modal = document.getElementById("custom-dir-modal");
+  if (modal) {
+    modal.classList.add("visible");
+    setTimeout(() => {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 50);
+  }
+}
+
+function chooseCustomDirectory() {
+  openCustomDirModal();
+}
+
+function closeCustomDirModal() {
+  const modal = document.getElementById("custom-dir-modal");
+  if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
+}
+
+async function browseNativeDirectory() {
+  try {
+    if (window.chooseDirectory) {
+      const raw = await window.chooseDirectory();
+      let selectedPath = "";
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.status === "ok" && parsed.path) {
+            selectedPath = parsed.path;
+          }
+        } catch (e) {
+          selectedPath = raw;
+        }
+      } else if (raw && raw.path) {
+        selectedPath = raw.path;
+      }
+      if (selectedPath && selectedPath.trim()) {
+        const input = document.getElementById("input-custom-dir-path");
+        if (input) input.value = selectedPath.trim();
+        await submitCustomDir();
+        return;
+      }
+    } else {
+      showToast("Native directory browser not supported in web mode");
+    }
+  } catch (err) {
+    console.error("Browse directory error:", err);
+  }
+}
+
+async function submitCustomDir() {
+  const input = document.getElementById("input-custom-dir-path");
+  const path = input ? input.value.trim() : "";
+  if (path) {
+    await selectProject(path);
+    showToast("Project opened: " + path.split("/").filter(Boolean).pop());
+    closeCustomDirModal();
+  }
+}
+
+async function addFileContext() {
+  try {
+    if (window.chooseFile) {
+      const raw = await window.chooseFile();
+      let selectedFile = "";
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.status === "ok" && parsed.path) {
+            selectedFile = parsed.path;
+          }
+        } catch (e) {
+          selectedFile = raw;
+        }
+      } else if (raw && raw.path) {
+        selectedFile = raw.path;
+      }
+      if (selectedFile && selectedFile.trim()) {
+        insertFileContext(selectedFile.trim());
+        showToast("File added to prompt");
+        return;
+      }
+    }
+  } catch (err) {
+    console.log("chooseFile fallback to modal:", err);
+  }
+  const modal = document.getElementById("file-context-modal");
+  if (modal) modal.classList.add("visible");
+}
+
+function closeFileContextModal() {
+  const modal = document.getElementById("file-context-modal");
+  if (modal) modal.classList.remove("visible");
+  if (typeof checkModalActive === "function") checkModalActive();
+}
+
+function submitFileContext() {
+  const input = document.getElementById("input-file-context-path");
+  const path = input ? input.value.trim() : "";
+  if (path) {
+    insertFileContext(path);
+    showToast("File context added");
+  }
+  closeFileContextModal();
+}
+
+function insertFileContext(filePath) {
+  const textarea = document.getElementById("prompt-input");
+  if (!textarea) return;
+  let refPath = filePath;
+  if (activeProjectPath && activeProjectPath !== "." && filePath.startsWith(activeProjectPath)) {
+    refPath = filePath.slice(activeProjectPath.length).replace(/^\/+/, "");
+  }
+  const mention = `@${refPath} `;
+  const start = textarea.selectionStart || textarea.value.length;
+  const end = textarea.selectionEnd || textarea.value.length;
+  const current = textarea.value;
+  textarea.value = current.substring(0, start) + mention + current.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + mention.length;
+  textarea.focus();
+  handleInput(textarea);
+}
+
+
+// --- sidebar.js ---
+// --- Stored Conversations Storage ---
+async function loadStoredConversations() {
+  // 1. Try loading from disk via Go backend bridge
+  try {
+    if (window.listConversations) {
+      const raw = await window.listConversations();
+      const diskConvs = JSON.parse(raw);
+      if (Array.isArray(diskConvs) && diskConvs.length > 0) {
+        appConversations = diskConvs;
+      }
+    }
+  } catch (err) {
+    console.warn("Backend listConversations failed, falling back to localStorage:", err);
+  }
+
+  // 2. Fall back / merge with localStorage
+  try {
+    const rawConvs = localStorage.getItem("orborus_conversations");
+    if (rawConvs) {
+      const parsed = JSON.parse(rawConvs);
+      if (Array.isArray(parsed)) {
+        const validLocal = parsed.filter(c => c && c.id && !c.id.startsWith("conv-demo-"));
+        if (appConversations.length === 0) {
+          appConversations = validLocal;
+        } else {
+          // Merge by ID if not in disk list
+          const existingIds = new Set(appConversations.map(c => c.id));
+          validLocal.forEach(c => {
+            if (!existingIds.has(c.id)) {
+              appConversations.push(c);
+            }
+          });
+        }
+      }
+    }
+    const rawPinned = localStorage.getItem("orborus_pinned_conversations");
+    if (rawPinned) {
+      const parsed = JSON.parse(rawPinned);
+      if (Array.isArray(parsed)) {
+        pinnedConversationIds = new Set(parsed.filter(id => typeof id === "string" && !id.startsWith("conv-demo-")));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load stored conversations from localStorage:", err);
+  }
+}
+
+async function saveStoredConversations() {
+  try {
+    localStorage.setItem("orborus_conversations", JSON.stringify(appConversations));
+    localStorage.setItem("orborus_pinned_conversations", JSON.stringify(Array.from(pinnedConversationIds)));
+  } catch (err) {
+    console.warn("Failed to save conversations to storage:", err);
+  }
+
+  // Also sync active conversation to disk via bridge if present
+  if (activeConversationId && window.saveConversation) {
+    const cur = appConversations.find(c => c.id === activeConversationId);
+    if (cur) {
+      try {
+        await window.saveConversation(cur);
+      } catch (e) {
+        console.warn("Failed to save conversation to disk:", e);
+      }
+    }
+  }
+}
+
+
+// --- Repository Scanner, Project Tree & Conversation Selection ---
+async function scanRepositories() {
+  const btn = document.getElementById("btn-scan-repos");
+  if (btn) btn.classList.add("spinning");
+
+  try {
+    if (window.listProjects) {
+      const raw = await window.listProjects();
+      const projects = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (Array.isArray(projects)) {
+        allProjects = projects;
+      }
+      renderProjectTree();
+      renderSettingsProjectsList();
+    } else {
+      renderProjectTree();
+      renderSettingsProjectsList();
+    }
+  } catch (err) {
+    console.error("Scan error:", err);
+    renderProjectTree();
+  } finally {
+    if (btn) btn.classList.remove("spinning");
+    const scanLoading = document.getElementById("sidebar-scan-loading");
+    if (scanLoading) scanLoading.remove();
+  }
+}
+
+function toggleProjectsFilter() {
+  const box = document.getElementById("project-filter-box");
+  const input = document.getElementById("sidebar-project-filter");
+  if (!box) return;
+  isProjectsFilterOpen = !isProjectsFilterOpen;
+  box.classList.toggle("visible", isProjectsFilterOpen);
+  if (isProjectsFilterOpen && input) {
+    input.focus();
+    input.select();
+  } else if (!isProjectsFilterOpen) {
+    projectFilterQuery = "";
+    if (input) input.value = "";
+    renderProjectTree();
+  }
+}
+
+function filterProjectTree(query) {
+  projectFilterQuery = (query || "").toLowerCase().trim();
+  renderProjectTree();
+}
+
+function toggleProjectCollapse(projectPath, event) {
+  if (event) event.stopPropagation();
+  collapsedProjects[projectPath] = !collapsedProjects[projectPath];
+  renderProjectTree();
+}
+
+async function togglePinConversation(convId, event) {
+  if (event) event.stopPropagation();
+  if (pinnedConversationIds.has(convId)) {
+    pinnedConversationIds.delete(convId);
+    showToast("Unpinned conversation");
+  } else {
+    pinnedConversationIds.add(convId);
+    showToast("Pinned conversation to top");
+  }
+
+  // Update in-memory conv objects
+  const conv = appConversations.find(c => c.id === convId);
+  if (conv) conv.pinned = pinnedConversationIds.has(convId);
+
+  // Optimistic UI update immediately
+  renderProjectTree();
+  saveStoredConversations();
+
+  // Persist to backend in background
+  if (window.setPinnedConversations) {
+    try {
+      window.setPinnedConversations(JSON.stringify(Array.from(pinnedConversationIds))).catch(() => {});
+    } catch (e) {
+      console.warn("setPinnedConversations error:", e);
+    }
+  }
+}
+
+async function selectConversation(convId) {
+  activeConversationId = convId;
+  localStorage.setItem("orborus_active_conv_id", convId);
+
+  // 1. Optimistic instant switch (0ms latency)
+  const cachedConv = appConversations.find(c => c.id === convId);
+  if (cachedConv) {
+    const projPath = cachedConv.projectId || cachedConv.project_id;
+    const projName = cachedConv.projectName || cachedConv.project_name;
+    if (projPath && projPath !== activeProjectPath) {
+      setActiveProject(projPath, projName);
+    }
+  }
+  renderProjectTree();
+  renderActiveConversation();
+
+  // 2. Fetch full conversation transcript from backend disk in background
+  if (window.getConversation) {
+    try {
+      const raw = await window.getConversation(convId);
+      const diskConv = JSON.parse(raw);
+      if (diskConv && diskConv.id && !diskConv.error) {
+        if (!Array.isArray(appConversations)) appConversations = [];
+        const idx = appConversations.findIndex(c => c.id === convId);
+        if (idx !== -1) {
+          appConversations[idx] = diskConv;
+        } else {
+          appConversations.unshift(diskConv);
+        }
+        if (activeConversationId === convId) {
+          renderActiveConversation();
+        }
+        saveStoredConversations();
+      }
+    } catch (e) {
+      console.warn("Failed to fetch fresh conversation from disk:", e);
+    }
+  }
+}
+
+function renderProjectTree() {
+  const treeContainer = document.getElementById("sidebar-project-tree");
+  const dropdownContainer = document.getElementById("project-items");
+  const repoCount = document.getElementById("repo-count");
+
+  // Keep dropdown updated
+  if (dropdownContainer) {
+    dropdownContainer.innerHTML = "";
+    allProjects.forEach(p => {
+      const name = p.Name || p.Path.split("/").filter(Boolean).pop() || "Project";
+      const isCur = p.Path === activeProjectPath;
+      const dropItem = document.createElement("div");
+      dropItem.className = "dropdown-item" + (isCur ? " active" : "");
+      dropItem.innerHTML = `
+        <span class="dropdown-item-name">${escapeHtml(name)}</span>
+        <span class="dropdown-item-path">${escapeHtml(p.Path)}</span>
+      `;
+      dropItem.onclick = () => {
+        selectProject(p.Path, name);
+        toggleProjectDropdown(null, false);
+      };
+      dropdownContainer.appendChild(dropItem);
+    });
+  }
+
+  if (!treeContainer) return;
+  treeContainer.innerHTML = "";
+
+  // Combine projects from allProjects and known projects from appConversations
+  const projectMap = new Map();
+
+  // If an active project is set, ensure it is included
+  if (activeProjectPath && activeProjectPath !== ".") {
+    const activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") ||
+      activeProjectPath.split("/").filter(Boolean).pop() || "Active Workspace";
+    projectMap.set(activeProjectPath, {
+      Name: activeName,
+      Path: activeProjectPath
+    });
+  }
+
+  allProjects.forEach(p => {
+    projectMap.set(p.Path, p);
+  });
+
+  appConversations.forEach(c => {
+    if (c.projectId && !projectMap.has(c.projectId)) {
+      projectMap.set(c.projectId, {
+        Name: c.projectName || c.projectId.split("/").filter(Boolean).pop(),
+        Path: c.projectId
+      });
+    }
+  });
+
+  const projectsList = Array.from(projectMap.values());
+  if (repoCount) {
+    repoCount.innerText = projectsList.length + " found";
+  }
+
+  if (projectsList.length === 0) {
+    treeContainer.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">No repositories found.</div>`;
+    return;
+  }
+
+  projectsList.forEach(proj => {
+    const projName = proj.Name || proj.Path.split("/").filter(Boolean).pop() || "Project";
+    const isCollapsed = !!collapsedProjects[proj.Path];
+
+    // Find conversations for this project
+    let convs = appConversations.filter(c => c.projectId === proj.Path);
+    if (convs.length === 0 && (proj.Path === activeProjectPath || proj.Path === ".")) {
+      convs = appConversations.filter(c => !c.projectId || c.projectId === "." || c.projectId === activeProjectPath);
+    }
+
+    // Apply search filter if active
+    if (projectFilterQuery) {
+      const matchProj = projName.toLowerCase().includes(projectFilterQuery) || proj.Path.toLowerCase().includes(projectFilterQuery);
+      const matchingConvs = convs.filter(c => (c.title || "").toLowerCase().includes(projectFilterQuery) || (c.prompt || "").toLowerCase().includes(projectFilterQuery));
+      if (!matchProj && matchingConvs.length === 0) {
+        return; // filter out
+      }
+      if (!matchProj && matchingConvs.length > 0) {
+        convs = matchingConvs;
+      }
+    }
+
+    // Sort conversations: pinned first, then by title or id
+    const sortedConvs = [...convs].sort((a, b) => {
+      const aPinned = pinnedConversationIds.has(a.id);
+      const bPinned = pinnedConversationIds.has(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+
+    // Project container element
+    const projGroup = document.createElement("div");
+    projGroup.className = "project-group" + (isCollapsed ? " collapsed" : "");
+
+    // Folder header row
+    folderRow.onclick = async (e) => {
+      if (proj.Path !== activeProjectPath) {
+        await selectProject(proj.Path, projName);
+        collapsedProjects[proj.Path] = false;
+        renderProjectTree();
+      } else {
+        toggleProjectCollapse(proj.Path, e);
+      }
+    };
+
+    folderRow.innerHTML = `
+      <div class="project-folder-left">
+        <svg class="project-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+        <svg class="project-folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="project-folder-title">${escapeHtml(projName)}</span>
+      </div>
+      <span class="project-conv-count">${sortedConvs.length}</span>
+    `;
+    projGroup.appendChild(folderRow);
+
+    // Conversations sub-list
+    const convsList = document.createElement("div");
+    convsList.className = "project-conversations-list";
+    if (isCollapsed) {
+      convsList.style.display = "none";
+    }
+
+    if (sortedConvs.length === 0) {
+      const emptyRow = document.createElement("div");
+      emptyRow.style.padding = "6px 20px 6px 34px";
+      emptyRow.style.fontSize = "11.5px";
+      emptyRow.style.color = "var(--text-muted)";
+      emptyRow.innerText = "No conversations";
+      convsList.appendChild(emptyRow);
+    } else {
+      sortedConvs.forEach(conv => {
+        const isCur = conv.id === activeConversationId;
+        const isPinned = pinnedConversationIds.has(conv.id);
+
+        const convRow = document.createElement("div");
+        convRow.className = "conversation-row" + (isCur ? " active" : "") + (isPinned ? " pinned" : "");
+        convRow.onclick = () => selectConversation(conv.id);
+
+        convRow.innerHTML = `
+          <div class="conversation-row-left">
+            <span class="conversation-dot"></span>
+            <span class="conversation-title" title="${escapeHtml(conv.title)}">${escapeHtml(conv.title)}</span>
+          </div>
+          <button class="btn-pin-toggle ${isPinned ? "active" : ""}" title="${isPinned ? "Unpin conversation" : "Pin conversation to top"}" onclick="togglePinConversation('${conv.id}', event)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v8M5 10l7 2 7-2M7 10v6l5 4 5-4v-6"/>
+            </svg>
+          </button>
+        `;
+        convsList.appendChild(convRow);
+      });
+    }
+
+    projGroup.appendChild(convsList);
+    treeContainer.appendChild(projGroup);
+  });
+}
+
+function toggleProjectDropdown(event, forceState) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById("project-dropdown-menu");
+  if (!menu) return;
+  const isCurrentlyOpen = menu.classList.contains("visible");
+  const target = typeof forceState === "boolean" ? forceState : !isCurrentlyOpen;
+  closeAllDropdowns(["project-dropdown-menu"]);
+  menu.classList.toggle("visible", target);
+  if (menu.classList.contains("visible")) {
+    const search = document.getElementById("project-search");
+    if (search) {
+      search.value = "";
+      filterProjects("");
+      search.focus();
+    }
+  }
+}
+
+async function selectProject(path, displayName) {
+  if (!path) return;
+  let name = displayName;
+  if (!name) {
+    const parts = path.split("/").filter(Boolean);
+    name = parts.length > 0 ? parts[parts.length - 1] : "Project";
+  }
+  if (!Array.isArray(allProjects)) allProjects = [];
+  const existing = allProjects.find(p => p.Path === path);
+  if (!existing) {
+    allProjects.unshift({ Name: name, Path: path });
+  }
+
+  // 1. Optimistic UI update immediately
+  setActiveProject(path, name);
+  renderProjects(allProjects);
+  renderProjectTree();
+  localStorage.setItem("orborus_active_project", path);
+
+  // 2. Notify backend in background
+  if (window.selectProject) {
+    try {
+      window.selectProject(path).catch(() => {});
+    } catch (err) {
+      console.warn("window.selectProject error:", err);
+    }
+  }
+}
+
+function setActiveProject(path, displayName) {
+  activeProjectPath = path;
+  localStorage.setItem("orborus_active_project", path);
+  let name = displayName;
+  if (!name) {
+    const parts = path.split("/").filter(Boolean);
+    name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+  }
+  const el = document.getElementById("active-project-name");
+  if (el) el.innerText = name;
+}
+
+
+// --- settings.js ---
+// --- Auth State, Settings Modal, AI Model Configuration & Skills Management ---
 function isAuthErrorString(txt) {
   if (!txt) return false;
   const lower = String(txt).toLowerCase();
@@ -5315,681 +5565,9 @@ async function loginWithOAuth() {
   }
 }
 
-async function scanRepositories() {
-  const btn = document.getElementById("btn-scan-repos");
-  if (btn) btn.classList.add("spinning");
 
-  try {
-    if (window.listProjects) {
-      const raw = await window.listProjects();
-      const projects = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (Array.isArray(projects)) {
-        allProjects = projects;
-      }
-      renderProjectTree();
-      renderSettingsProjectsList();
-    } else {
-      renderProjectTree();
-      renderSettingsProjectsList();
-    }
-  } catch (err) {
-    console.error("Scan error:", err);
-    renderProjectTree();
-  } finally {
-    if (btn) btn.classList.remove("spinning");
-    const scanLoading = document.getElementById("sidebar-scan-loading");
-    if (scanLoading) scanLoading.remove();
-  }
-}
-
-function toggleProjectsFilter() {
-  const box = document.getElementById("project-filter-box");
-  const input = document.getElementById("sidebar-project-filter");
-  if (!box) return;
-  isProjectsFilterOpen = !isProjectsFilterOpen;
-  box.classList.toggle("visible", isProjectsFilterOpen);
-  if (isProjectsFilterOpen && input) {
-    input.focus();
-    input.select();
-  } else if (!isProjectsFilterOpen) {
-    projectFilterQuery = "";
-    if (input) input.value = "";
-    renderProjectTree();
-  }
-}
-
-function filterProjectTree(query) {
-  projectFilterQuery = (query || "").toLowerCase().trim();
-  renderProjectTree();
-}
-
-function toggleProjectCollapse(projectPath, event) {
-  if (event) event.stopPropagation();
-  collapsedProjects[projectPath] = !collapsedProjects[projectPath];
-  renderProjectTree();
-}
-
-async function togglePinConversation(convId, event) {
-  if (event) event.stopPropagation();
-  if (pinnedConversationIds.has(convId)) {
-    pinnedConversationIds.delete(convId);
-    showToast("Unpinned conversation");
-  } else {
-    pinnedConversationIds.add(convId);
-    showToast("Pinned conversation to top");
-  }
-
-  // Update in-memory conv objects
-  const conv = appConversations.find(c => c.id === convId);
-  if (conv) conv.pinned = pinnedConversationIds.has(convId);
-
-  // Optimistic UI update immediately
-  renderProjectTree();
-  saveStoredConversations();
-
-  // Persist to backend in background
-  if (window.setPinnedConversations) {
-    try {
-      window.setPinnedConversations(JSON.stringify(Array.from(pinnedConversationIds))).catch(() => {});
-    } catch (e) {
-      console.warn("setPinnedConversations error:", e);
-    }
-  }
-}
-
-async function selectConversation(convId) {
-  activeConversationId = convId;
-  localStorage.setItem("orborus_active_conv_id", convId);
-
-  // 1. Optimistic instant switch (0ms latency)
-  const cachedConv = appConversations.find(c => c.id === convId);
-  if (cachedConv) {
-    const projPath = cachedConv.projectId || cachedConv.project_id;
-    const projName = cachedConv.projectName || cachedConv.project_name;
-    if (projPath && projPath !== activeProjectPath) {
-      setActiveProject(projPath, projName);
-    }
-  }
-  renderProjectTree();
-  renderActiveConversation();
-
-  // 2. Fetch full conversation transcript from backend disk in background
-  if (window.getConversation) {
-    try {
-      const raw = await window.getConversation(convId);
-      const diskConv = JSON.parse(raw);
-      if (diskConv && diskConv.id && !diskConv.error) {
-        if (!Array.isArray(appConversations)) appConversations = [];
-        const idx = appConversations.findIndex(c => c.id === convId);
-        if (idx !== -1) {
-          appConversations[idx] = diskConv;
-        } else {
-          appConversations.unshift(diskConv);
-        }
-        if (activeConversationId === convId) {
-          renderActiveConversation();
-        }
-        saveStoredConversations();
-      }
-    } catch (e) {
-      console.warn("Failed to fetch fresh conversation from disk:", e);
-    }
-  }
-}
-
-function renderProjectTree() {
-  const treeContainer = document.getElementById("sidebar-project-tree");
-  const dropdownContainer = document.getElementById("project-items");
-  const repoCount = document.getElementById("repo-count");
-
-  // Keep dropdown updated
-  if (dropdownContainer) {
-    dropdownContainer.innerHTML = "";
-    allProjects.forEach(p => {
-      const name = p.Name || p.Path.split("/").filter(Boolean).pop() || "Project";
-      const isCur = p.Path === activeProjectPath;
-      const dropItem = document.createElement("div");
-      dropItem.className = "dropdown-item" + (isCur ? " active" : "");
-      dropItem.innerHTML = `
-        <span class="dropdown-item-name">${escapeHtml(name)}</span>
-        <span class="dropdown-item-path">${escapeHtml(p.Path)}</span>
-      `;
-      dropItem.onclick = () => {
-        selectProject(p.Path, name);
-        toggleProjectDropdown(null, false);
-      };
-      dropdownContainer.appendChild(dropItem);
-    });
-  }
-
-  if (!treeContainer) return;
-  treeContainer.innerHTML = "";
-
-  // Combine projects from allProjects and known projects from appConversations
-  const projectMap = new Map();
-
-  // If an active project is set, ensure it is included
-  if (activeProjectPath && activeProjectPath !== ".") {
-    const activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") ||
-      activeProjectPath.split("/").filter(Boolean).pop() || "Active Workspace";
-    projectMap.set(activeProjectPath, {
-      Name: activeName,
-      Path: activeProjectPath
-    });
-  }
-
-  allProjects.forEach(p => {
-    projectMap.set(p.Path, p);
-  });
-
-  appConversations.forEach(c => {
-    if (c.projectId && !projectMap.has(c.projectId)) {
-      projectMap.set(c.projectId, {
-        Name: c.projectName || c.projectId.split("/").filter(Boolean).pop(),
-        Path: c.projectId
-      });
-    }
-  });
-
-  const projectsList = Array.from(projectMap.values());
-  if (repoCount) {
-    repoCount.innerText = projectsList.length + " found";
-  }
-
-  if (projectsList.length === 0) {
-    treeContainer.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">No repositories found.</div>`;
-    return;
-  }
-
-  projectsList.forEach(proj => {
-    const projName = proj.Name || proj.Path.split("/").filter(Boolean).pop() || "Project";
-    const isCollapsed = !!collapsedProjects[proj.Path];
-
-    // Find conversations for this project
-    let convs = appConversations.filter(c => c.projectId === proj.Path);
-    if (convs.length === 0 && (proj.Path === activeProjectPath || proj.Path === ".")) {
-      convs = appConversations.filter(c => !c.projectId || c.projectId === "." || c.projectId === activeProjectPath);
-    }
-
-    // Apply search filter if active
-    if (projectFilterQuery) {
-      const matchProj = projName.toLowerCase().includes(projectFilterQuery) || proj.Path.toLowerCase().includes(projectFilterQuery);
-      const matchingConvs = convs.filter(c => (c.title || "").toLowerCase().includes(projectFilterQuery) || (c.prompt || "").toLowerCase().includes(projectFilterQuery));
-      if (!matchProj && matchingConvs.length === 0) {
-        return; // filter out
-      }
-      if (!matchProj && matchingConvs.length > 0) {
-        convs = matchingConvs;
-      }
-    }
-
-    // Sort conversations: pinned first, then by title or id
-    const sortedConvs = [...convs].sort((a, b) => {
-      const aPinned = pinnedConversationIds.has(a.id);
-      const bPinned = pinnedConversationIds.has(b.id);
-      if (aPinned && !bPinned) return -1;
-      if (!aPinned && bPinned) return 1;
-      return 0;
-    });
-
-    // Project container element
-    const projGroup = document.createElement("div");
-    projGroup.className = "project-group" + (isCollapsed ? " collapsed" : "");
-
-    // Folder header row
-    folderRow.onclick = async (e) => {
-      if (proj.Path !== activeProjectPath) {
-        await selectProject(proj.Path, projName);
-        collapsedProjects[proj.Path] = false;
-        renderProjectTree();
-      } else {
-        toggleProjectCollapse(proj.Path, e);
-      }
-    };
-
-    folderRow.innerHTML = `
-      <div class="project-folder-left">
-        <svg class="project-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-        <svg class="project-folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span class="project-folder-title">${escapeHtml(projName)}</span>
-      </div>
-      <span class="project-conv-count">${sortedConvs.length}</span>
-    `;
-    projGroup.appendChild(folderRow);
-
-    // Conversations sub-list
-    const convsList = document.createElement("div");
-    convsList.className = "project-conversations-list";
-    if (isCollapsed) {
-      convsList.style.display = "none";
-    }
-
-    if (sortedConvs.length === 0) {
-      const emptyRow = document.createElement("div");
-      emptyRow.style.padding = "6px 20px 6px 34px";
-      emptyRow.style.fontSize = "11.5px";
-      emptyRow.style.color = "var(--text-muted)";
-      emptyRow.innerText = "No conversations";
-      convsList.appendChild(emptyRow);
-    } else {
-      sortedConvs.forEach(conv => {
-        const isCur = conv.id === activeConversationId;
-        const isPinned = pinnedConversationIds.has(conv.id);
-
-        const convRow = document.createElement("div");
-        convRow.className = "conversation-row" + (isCur ? " active" : "") + (isPinned ? " pinned" : "");
-        convRow.onclick = () => selectConversation(conv.id);
-
-        convRow.innerHTML = `
-          <div class="conversation-row-left">
-            <span class="conversation-dot"></span>
-            <span class="conversation-title" title="${escapeHtml(conv.title)}">${escapeHtml(conv.title)}</span>
-          </div>
-          <button class="btn-pin-toggle ${isPinned ? "active" : ""}" title="${isPinned ? "Unpin conversation" : "Pin conversation to top"}" onclick="togglePinConversation('${conv.id}', event)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v8M5 10l7 2 7-2M7 10v6l5 4 5-4v-6"/>
-            </svg>
-          </button>
-        `;
-        convsList.appendChild(convRow);
-      });
-    }
-
-    projGroup.appendChild(convsList);
-    treeContainer.appendChild(projGroup);
-  });
-}
-
-function toggleProjectDropdown(event, forceState) {
-  if (event) event.stopPropagation();
-  const menu = document.getElementById("project-dropdown-menu");
-  if (!menu) return;
-  const isCurrentlyOpen = menu.classList.contains("visible");
-  const target = typeof forceState === "boolean" ? forceState : !isCurrentlyOpen;
-  closeAllDropdowns(["project-dropdown-menu"]);
-  menu.classList.toggle("visible", target);
-  if (menu.classList.contains("visible")) {
-    const search = document.getElementById("project-search");
-    if (search) {
-      search.value = "";
-      filterProjects("");
-      search.focus();
-    }
-  }
-}
-
-async function selectProject(path, displayName) {
-  if (!path) return;
-  let name = displayName;
-  if (!name) {
-    const parts = path.split("/").filter(Boolean);
-    name = parts.length > 0 ? parts[parts.length - 1] : "Project";
-  }
-  if (!Array.isArray(allProjects)) allProjects = [];
-  const existing = allProjects.find(p => p.Path === path);
-  if (!existing) {
-    allProjects.unshift({ Name: name, Path: path });
-  }
-
-  // 1. Optimistic UI update immediately
-  setActiveProject(path, name);
-  renderProjects(allProjects);
-  renderProjectTree();
-  localStorage.setItem("orborus_active_project", path);
-
-  // 2. Notify backend in background
-  if (window.selectProject) {
-    try {
-      window.selectProject(path).catch(() => {});
-    } catch (err) {
-      console.warn("window.selectProject error:", err);
-    }
-  }
-}
-
-function setActiveProject(path, displayName) {
-  activeProjectPath = path;
-  localStorage.setItem("orborus_active_project", path);
-  let name = displayName;
-  if (!name) {
-    const parts = path.split("/").filter(Boolean);
-    name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
-  }
-  const el = document.getElementById("active-project-name");
-  if (el) el.innerText = name;
-}
-
-function toggleSidebar() {
-  const sidebar = document.querySelector(".sidebar");
-  if (!sidebar) return;
-  const isCollapsed = sidebar.classList.toggle("collapsed");
-  const toggleBtn = document.getElementById("btn-toggle-sidebar");
-  if (toggleBtn) {
-    toggleBtn.setAttribute("title", isCollapsed ? "Expand Sidebar" : "Contract Sidebar");
-  }
-}
-
-function reportTitlebarNoDragWidth() {
-  const leftEl = document.querySelector(".titlebar-left");
-  if (leftEl) {
-    const rect = leftEl.getBoundingClientRect();
-    const width = Math.ceil(rect.right);
-    if (window.setTitlebarNoDragWidth) {
-      window.setTitlebarNoDragWidth(width);
-    }
-  }
-}
-
-function checkModalActive() {
-  const hasModal = !!document.querySelector(".modal-overlay.visible");
-  if (window.setModalActive) {
-    window.setModalActive(hasModal);
-  }
-}
-
-function setupWindowDragging() {
-  window.addEventListener("resize", reportTitlebarNoDragWidth);
-  setTimeout(reportTitlebarNoDragWidth, 200);
-  setTimeout(reportTitlebarNoDragWidth, 1000);
-
-  const modalObserver = new MutationObserver(checkModalActive);
-  modalObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["class"] });
-
-  window.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return; // Left click only
-    const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
-    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
-
-    if (isTopHeader && !isNoDrag) {
-      if (typeof window.startWindowDrag === "function") {
-        window.startWindowDrag();
-      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.windowDrag) {
-        window.webkit.messageHandlers.windowDrag.postMessage("");
-      } else if (typeof window.windowAction === "function") {
-        window.windowAction("drag");
-      }
-    }
-  }, true);
-
-  window.addEventListener("dblclick", (e) => {
-    if (e.button !== 0) return;
-    const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
-    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
-
-    if (isTopHeader && !isNoDrag) {
-      if (typeof window.windowAction === "function") {
-        window.windowAction("maximize");
-      }
-    }
-  }, true);
-}
-
-function openCustomDirModal() {
-  toggleProjectDropdown(null, false);
-  const input = document.getElementById("input-custom-dir-path");
-  if (input) {
-    input.value = (activeProjectPath && activeProjectPath !== ".") ? activeProjectPath : "";
-  }
-  const modal = document.getElementById("custom-dir-modal");
-  if (modal) {
-    modal.classList.add("visible");
-    setTimeout(() => {
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    }, 50);
-  }
-}
-
-function chooseCustomDirectory() {
-  openCustomDirModal();
-}
-
-function closeCustomDirModal() {
-  const modal = document.getElementById("custom-dir-modal");
-  if (modal) modal.classList.remove("visible");
-  if (typeof checkModalActive === "function") checkModalActive();
-}
-
-async function browseNativeDirectory() {
-  try {
-    if (window.chooseDirectory) {
-      const raw = await window.chooseDirectory();
-      let selectedPath = "";
-      if (typeof raw === "string") {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.status === "ok" && parsed.path) {
-            selectedPath = parsed.path;
-          }
-        } catch (e) {
-          selectedPath = raw;
-        }
-      } else if (raw && raw.path) {
-        selectedPath = raw.path;
-      }
-      if (selectedPath && selectedPath.trim()) {
-        const input = document.getElementById("input-custom-dir-path");
-        if (input) input.value = selectedPath.trim();
-        await submitCustomDir();
-        return;
-      }
-    } else {
-      showToast("Native directory browser not supported in web mode");
-    }
-  } catch (err) {
-    console.error("Browse directory error:", err);
-  }
-}
-
-async function submitCustomDir() {
-  const input = document.getElementById("input-custom-dir-path");
-  const path = input ? input.value.trim() : "";
-  if (path) {
-    await selectProject(path);
-    showToast("Project opened: " + path.split("/").filter(Boolean).pop());
-    closeCustomDirModal();
-  }
-}
-
-async function addFileContext() {
-  try {
-    if (window.chooseFile) {
-      const raw = await window.chooseFile();
-      let selectedFile = "";
-      if (typeof raw === "string") {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.status === "ok" && parsed.path) {
-            selectedFile = parsed.path;
-          }
-        } catch (e) {
-          selectedFile = raw;
-        }
-      } else if (raw && raw.path) {
-        selectedFile = raw.path;
-      }
-      if (selectedFile && selectedFile.trim()) {
-        insertFileContext(selectedFile.trim());
-        showToast("File added to prompt");
-        return;
-      }
-    }
-  } catch (err) {
-    console.log("chooseFile fallback to modal:", err);
-  }
-  const modal = document.getElementById("file-context-modal");
-  if (modal) modal.classList.add("visible");
-}
-
-function closeFileContextModal() {
-  const modal = document.getElementById("file-context-modal");
-  if (modal) modal.classList.remove("visible");
-  if (typeof checkModalActive === "function") checkModalActive();
-}
-
-function submitFileContext() {
-  const input = document.getElementById("input-file-context-path");
-  const path = input ? input.value.trim() : "";
-  if (path) {
-    insertFileContext(path);
-    showToast("File context added");
-  }
-  closeFileContextModal();
-}
-
-function insertFileContext(filePath) {
-  const textarea = document.getElementById("prompt-input");
-  if (!textarea) return;
-  let refPath = filePath;
-  if (activeProjectPath && activeProjectPath !== "." && filePath.startsWith(activeProjectPath)) {
-    refPath = filePath.slice(activeProjectPath.length).replace(/^\/+/, "");
-  }
-  const mention = `@${refPath} `;
-  const start = textarea.selectionStart || textarea.value.length;
-  const end = textarea.selectionEnd || textarea.value.length;
-  const current = textarea.value;
-  textarea.value = current.substring(0, start) + mention + current.substring(end);
-  textarea.selectionStart = textarea.selectionEnd = start + mention.length;
-  textarea.focus();
-  handleInput(textarea);
-}
-
-// ----------------- Model & Reasoning State -----------------
-const AVAILABLE_MODELS = [
-  { id: "gemini-3.8-flash", name: "Gemini-3.8-Flash", note: "Default" },
-  { id: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash High", note: "High Reasoning" },
-  { id: "gemini-3.8-pro", name: "Gemini 3.8 Pro", note: "Reasoning" },
-  { id: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", note: "Anthropic" },
-  { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", note: "Anthropic" },
-  { id: "gpt-4o", name: "GPT-4o", note: "OpenAI" },
-  { id: "ollama", name: "Ollama", note: "Local LLM" },
-];
-
-function selectModel(modelId) {
-  activeAiModel = modelId;
-  localStorage.setItem("orborus_ai_model", modelId);
-  const sel = document.getElementById("select-ai-model");
-  if (sel) sel.value = modelId;
-  const footerModelSelect = document.getElementById("select-footer-model");
-  const customInput = document.getElementById("input-custom-model");
-  if (footerModelSelect) {
-    if (modelId === "gemini-3.8-flash") {
-      footerModelSelect.value = "gemini-3.8-flash";
-      if (customInput) customInput.style.display = "none";
-    } else {
-      footerModelSelect.value = "custom";
-      if (customInput) {
-        customInput.style.display = "inline-block";
-        customInput.value = modelId;
-      }
-    }
-  }
-}
-
-function initFooterControls() {
-  const footerModelSelect = document.getElementById("select-footer-model");
-  const customInput = document.getElementById("input-custom-model");
-  const footerReasoningSelect = document.getElementById("select-footer-reasoning");
-
-  // Reasoning setup
-  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
-  if (footerReasoningSelect) {
-    footerReasoningSelect.value = activeReasoningEffort;
-  }
-
-  // Model setup
-  const savedModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
-  activeAiModel = savedModel;
-
-  if (!savedModel || savedModel === "gemini-3.8-flash") {
-    activeAiModel = "gemini-3.8-flash";
-    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
-    if (footerModelSelect) footerModelSelect.value = "gemini-3.8-flash";
-    if (customInput) customInput.style.display = "none";
-  } else {
-    if (footerModelSelect) footerModelSelect.value = "custom";
-    if (customInput) {
-      customInput.style.display = "inline-block";
-      customInput.value = savedModel;
-    }
-  }
-}
-
-function handleFooterModelChange(val) {
-  const customInput = document.getElementById("input-custom-model");
-  if (val === "custom") {
-    if (customInput) {
-      customInput.style.display = "inline-block";
-      const savedCustom = localStorage.getItem("orborus_custom_model") || "";
-      if (savedCustom) {
-        customInput.value = savedCustom;
-        activeAiModel = savedCustom;
-      } else if (activeAiModel && activeAiModel !== "gemini-3.8-flash") {
-        customInput.value = activeAiModel;
-      } else {
-        customInput.value = "";
-      }
-      customInput.focus();
-      if (customInput.value.trim()) {
-        syncModelSettings(customInput.value.trim());
-      }
-    }
-  } else {
-    if (customInput) {
-      customInput.style.display = "none";
-    }
-    activeAiModel = "gemini-3.8-flash";
-    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
-    syncModelSettings("gemini-3.8-flash");
-  }
-}
-
-function handleCustomModelInput(val) {
-  const trimmed = val.trim();
-  if (trimmed) {
-    activeAiModel = trimmed;
-    localStorage.setItem("orborus_ai_model", trimmed);
-    localStorage.setItem("orborus_custom_model", trimmed);
-    syncModelSettings(trimmed);
-  }
-}
-
-function handleFooterReasoningChange(val) {
-  activeReasoningEffort = val || "medium";
-  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
-  if (window.isDebug) {
-    console.log("[DEBUG] Reasoning effort changed to:", activeReasoningEffort);
-  }
-}
-
-function syncModelSettings(model) {
-  const modelSelect = document.getElementById("select-ai-model");
-  if (modelSelect) {
-    let found = false;
-    for (let i = 0; i < modelSelect.options.length; i++) {
-      if (modelSelect.options[i].value === model) {
-        modelSelect.value = model;
-        found = true;
-        break;
-      }
-    }
-    if (!found && model) {
-      const opt = document.createElement("option");
-      opt.value = model;
-      opt.innerText = `${model} (Custom)`;
-      modelSelect.appendChild(opt);
-      modelSelect.value = model;
-    }
-  }
-  updateEnvDisplayInModal();
-}
-
+// --- history.js ---
+// --- Conversation History Modal & Prompt Reuse ---
 // ----------------- Conversation History -----------------
 function toggleHistoryModal() {
   const modal = document.getElementById("history-modal");
@@ -6142,6 +5720,467 @@ async function clearAllHistory() {
   showToast("Conversation history cleared");
 }
 
+
+// --- chat.js ---
+// --- Running Tasks & Activity Steps Formatting ---
+function extractRunningTasksFromDecisions(decisions) {
+  if (!Array.isArray(decisions) || decisions.length === 0) return [];
+  const tasks = [];
+  decisions.forEach(d => {
+    if (!d) return;
+    const rd = d.run_details || {};
+    const st = String(rd.status || d.status || "").toUpperCase();
+    const runs = String(d.runs || "").toLowerCase();
+    if (st === "RUNNING" || st === "WAITING" || runs === "background") {
+      const taskName = d.action || d.tool || rd.action_name || (d.fields && d.fields[0] ? d.fields[0].value : "") || "Background Task";
+      tasks.push({
+        id: rd.id || ("task-" + (d.i || Math.random())),
+        name: taskName,
+        status: st || "RUNNING"
+      });
+    }
+  });
+  return tasks;
+}
+
+function renderRunningTasks() {
+  const panel = document.getElementById("running-tasks-panel");
+  const countLabel = document.getElementById("running-tasks-count-label");
+  const listEl = document.getElementById("running-tasks-list");
+  if (!panel || !countLabel || !listEl) return;
+
+  if (!activeRunningTasks || activeRunningTasks.length === 0) {
+    panel.style.display = "none";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  panel.style.display = "flex";
+  const count = activeRunningTasks.length;
+  countLabel.innerText = `${count} task${count === 1 ? "" : "s"} running`;
+
+  listEl.innerHTML = "";
+  activeRunningTasks.forEach(task => {
+    const item = document.createElement("div");
+    item.className = "running-task-item";
+    item.innerHTML = `
+      <svg class="running-task-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="9" stroke-dasharray="28 28"/>
+      </svg>
+      <span class="running-task-cmd">${escapeHtml(task.name || task.cmd || "Task")}</span>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function toggleRunningTasks() {
+  const panel = document.getElementById("running-tasks-panel");
+  if (panel) {
+    panel.classList.toggle("collapsed");
+  }
+}
+
+function renderModelDropdown() {
+  const menu = document.getElementById("model-dropdown-menu");
+  if (!menu) return;
+  menu.innerHTML = "";
+  AVAILABLE_AI_MODELS.forEach(m => {
+    const item = document.createElement("div");
+    item.className = "model-option-item" + (m.key === activeAiModel ? " selected" : "");
+    item.onclick = (e) => {
+      e.stopPropagation();
+      selectAiModel(m.key, m.label);
+    };
+    item.innerHTML = `
+      <div class="model-option-title">
+        <span>${escapeHtml(m.label)}</span>
+        ${m.key === activeAiModel ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f85f38" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ""}
+      </div>
+      <div class="model-option-desc">${escapeHtml(m.desc)}</div>
+    `;
+    menu.appendChild(item);
+  });
+}
+
+function toggleModelDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById("model-dropdown-menu");
+  if (!menu) return;
+  renderModelDropdown();
+  menu.classList.toggle("visible");
+}
+
+function selectAiModel(key, label) {
+  if (key === "custom") {
+    openSettingsModal("models", "model");
+    const menu = document.getElementById("model-dropdown-menu");
+    if (menu) menu.classList.remove("visible");
+    return;
+  }
+
+  activeAiModel = key;
+  if (typeof window !== "undefined") {
+    window.activeAiModel = key;
+  }
+  localStorage.setItem("orborus_ai_model", key);
+
+  if (key.includes("high")) {
+    activeReasoningEffort = "high";
+  } else {
+    activeReasoningEffort = "medium";
+  }
+  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+
+  const nameEl = document.getElementById("lbl-active-model-name");
+  if (nameEl) nameEl.innerText = label;
+
+  const selectFooter = document.getElementById("select-footer-model");
+  if (selectFooter) {
+    let found = false;
+    for (let i = 0; i < selectFooter.options.length; i++) {
+      if (selectFooter.options[i].value === key) {
+        selectFooter.selectedIndex = i;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      selectFooter.value = "custom";
+    }
+  }
+
+  const selectSettings = document.getElementById("select-ai-model");
+  if (selectSettings) {
+    for (let i = 0; i < selectSettings.options.length; i++) {
+      if (selectSettings.options[i].value === key) {
+        selectSettings.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  const menu = document.getElementById("model-dropdown-menu");
+  if (menu) menu.classList.remove("visible");
+
+  if (typeof window.setAiConfig === "function") {
+    try {
+      window.setAiConfig(currentAiUrl, currentAiKey, activeAiModel, activeReasoningEffort);
+    } catch (e) {
+      console.warn("setAiConfig failed:", e);
+    }
+  }
+  showToast(`Switched model to ${label}`);
+}
+
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("model-dropdown-menu");
+  const btn = document.getElementById("btn-model-picker");
+  if (menu && menu.classList.contains("visible")) {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.remove("visible");
+    }
+  }
+});
+
+function toggleVoiceInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast("Voice input not supported in this environment");
+    return;
+  }
+  const btnMic = document.getElementById("btn-mic");
+  if (isListeningVoice) {
+    if (speechRecognitionInstance) {
+      try { speechRecognitionInstance.stop(); } catch (e) {}
+    }
+    isListeningVoice = false;
+    if (btnMic) btnMic.style.color = "";
+    showToast("Voice input stopped");
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isListeningVoice = true;
+      if (btnMic) btnMic.style.color = "#f85f38";
+      showToast("Listening...");
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      const input = document.getElementById("prompt-input");
+      if (input && transcript) {
+        input.value = (input.value ? input.value + " " : "") + transcript;
+        handleInput(input);
+      }
+    };
+
+    recognition.onend = () => {
+      isListeningVoice = false;
+      if (btnMic) btnMic.style.color = "";
+    };
+
+    recognition.onerror = (e) => {
+      isListeningVoice = false;
+      if (btnMic) btnMic.style.color = "";
+      console.warn("Speech recognition error:", e);
+    };
+
+    speechRecognitionInstance = recognition;
+    recognition.start();
+  } catch (err) {
+    console.warn("SpeechRecognition start failed:", err);
+    showToast("Could not access microphone");
+  }
+}
+
+function stopExecution() {
+  if (window.currentAbortController) {
+    try { window.currentAbortController.abort(); } catch (e) {}
+  }
+  activeRunningTasks = [];
+  renderRunningTasks();
+  const btnStop = document.getElementById("btn-stop-execution");
+  const btnSend = document.getElementById("btn-send");
+  if (btnStop) btnStop.style.display = "none";
+  if (btnSend) btnSend.style.display = "flex";
+
+  const stepsContainer = document.getElementById("activity-steps-container");
+  if (stepsContainer) {
+    const stopRow = document.createElement("div");
+    stopRow.className = "activity-step-row";
+    stopRow.innerHTML = `
+      <div class="activity-step-header" style="color:#ef4444;">
+        <div class="activity-step-left">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+          <span class="activity-step-title">Execution stopped by user</span>
+        </div>
+      </div>
+    `;
+    stepsContainer.appendChild(stopRow);
+  }
+  showToast("Execution stopped");
+}
+
+function formatStepTitleHtml(step) {
+  const rawTitle = (step.title || step.name || "").trim();
+  if (!rawTitle) return "Task";
+
+  // Check for Analyzed file pattern: Analyzed </> filename #Llines
+  const isFileStep = step.type === "file" || rawTitle.toLowerCase().startsWith("analyzed") || rawTitle.toLowerCase().startsWith("read file") || /\.(go|html|js|ts|py|json|md)\b/.test(rawTitle);
+
+  if (isFileStep) {
+    const clean = rawTitle.replace(/^Analyzed\s+(?:<\/>\s*)?/i, "").replace(/^(?:Read\s+file|View)\s+/i, "");
+    const parts = clean.split(/\s+#L|\s+#/);
+    const filePath = parts[0] ? parts[0].trim() : "file";
+    const lineRange = parts[1] ? `#L${parts[1].trim()}` : (step.detail && step.detail.match(/#L[\d\-]+/i) ? step.detail.match(/#L[\d\-]+/i)[0] : "");
+    return `Analyzed <span class="badge-code-tag">&lt;/&gt;</span> <span class="step-filepath">${escapeHtml(filePath)}</span> ${lineRange ? `<span class="step-line-range">${escapeHtml(lineRange)}</span>` : ""}`;
+  }
+
+  // Check for thought pattern: "Thought for 3s"
+  if (step.type === "thought" || rawTitle.toLowerCase().startsWith("thought")) {
+    const durMatch = rawTitle.match(/thought(?:\s+for\s+([\w\d\.]+))?/i);
+    const dur = (durMatch && durMatch[1]) || step.duration || "2s";
+    return `Thought for ${escapeHtml(dur)}`;
+  }
+
+  // Check for command pattern: "Ran git status"
+  if (step.type === "cmd" || rawTitle.toLowerCase().startsWith("ran ") || rawTitle.toLowerCase().startsWith("run ")) {
+    return escapeHtml(rawTitle);
+  }
+
+  return escapeHtml(rawTitle);
+}
+
+function computeStepsSummary(steps) {
+  if (!steps || !steps.length) return "Completed execution";
+  let fileCount = 0;
+  let taskCount = 0;
+  let cmdCount = 0;
+
+  steps.forEach(s => {
+    const text = (s.name || s.title || "").toLowerCase();
+    const isFile = s.type === "file" || text.includes("analyzed") || text.includes("read_file") || text.includes("view_file") || /\.(go|html|js|ts|py|json|md)\b/.test(text);
+    const isCmd = s.type === "cmd" || text.startsWith("ran ") || text.startsWith("run ");
+    const isTask = text.includes("task") || text.includes("grep") || text.includes("search") || text.includes("worker") || s.type === "task";
+
+    if (isFile) fileCount++;
+    else if (isCmd) cmdCount++;
+    else if (isTask) taskCount++;
+  });
+
+  const parts = [];
+  if (fileCount > 0) parts.push(`Exploring ${fileCount} file${fileCount > 1 ? "s" : ""}`);
+  if (taskCount > 0) parts.push(`${taskCount} task${taskCount > 1 ? "s" : ""}`);
+  if (cmdCount > 0) parts.push(`running ${cmdCount} command${cmdCount > 1 ? "s" : ""}`);
+
+  if (parts.length > 0) {
+    return parts.join(", ");
+  }
+  return `${steps.length} step${steps.length > 1 ? "s" : ""} completed`;
+}
+
+function toggleTurnSteps(turnId) {
+  const container = document.getElementById("turn-steps-" + turnId);
+  const banner = document.getElementById("summary-banner-" + turnId);
+  if (container) {
+    container.classList.toggle("collapsed");
+  }
+  if (banner) {
+    banner.classList.toggle("collapsed");
+  }
+}
+
+function toggleActiveSteps() {
+  const container = document.getElementById("activity-steps-container");
+  const banner = document.getElementById("activity-summary-banner");
+  if (container) {
+    container.classList.toggle("collapsed");
+  }
+  if (banner) {
+    banner.classList.toggle("collapsed");
+  }
+}
+
+
+// --- Footer Model & Reasoning Controls ---
+// ----------------- Model & Reasoning State -----------------
+const AVAILABLE_MODELS = [
+  { id: "gemini-3.8-flash", name: "Gemini-3.8-Flash", note: "Default" },
+  { id: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash High", note: "High Reasoning" },
+  { id: "gemini-3.8-pro", name: "Gemini 3.8 Pro", note: "Reasoning" },
+  { id: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", note: "Anthropic" },
+  { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", note: "Anthropic" },
+  { id: "gpt-4o", name: "GPT-4o", note: "OpenAI" },
+  { id: "ollama", name: "Ollama", note: "Local LLM" },
+];
+
+function selectModel(modelId) {
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const sel = document.getElementById("select-ai-model");
+  if (sel) sel.value = modelId;
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  if (footerModelSelect) {
+    if (modelId === "gemini-3.8-flash") {
+      footerModelSelect.value = "gemini-3.8-flash";
+      if (customInput) customInput.style.display = "none";
+    } else {
+      footerModelSelect.value = "custom";
+      if (customInput) {
+        customInput.style.display = "inline-block";
+        customInput.value = modelId;
+      }
+    }
+  }
+}
+
+function initFooterControls() {
+  const footerModelSelect = document.getElementById("select-footer-model");
+  const customInput = document.getElementById("input-custom-model");
+  const footerReasoningSelect = document.getElementById("select-footer-reasoning");
+
+  // Reasoning setup
+  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "medium";
+  if (footerReasoningSelect) {
+    footerReasoningSelect.value = activeReasoningEffort;
+  }
+
+  // Model setup
+  const savedModel = localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+  activeAiModel = savedModel;
+
+  if (!savedModel || savedModel === "gemini-3.8-flash") {
+    activeAiModel = "gemini-3.8-flash";
+    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
+    if (footerModelSelect) footerModelSelect.value = "gemini-3.8-flash";
+    if (customInput) customInput.style.display = "none";
+  } else {
+    if (footerModelSelect) footerModelSelect.value = "custom";
+    if (customInput) {
+      customInput.style.display = "inline-block";
+      customInput.value = savedModel;
+    }
+  }
+}
+
+function handleFooterModelChange(val) {
+  const customInput = document.getElementById("input-custom-model");
+  if (val === "custom") {
+    if (customInput) {
+      customInput.style.display = "inline-block";
+      const savedCustom = localStorage.getItem("orborus_custom_model") || "";
+      if (savedCustom) {
+        customInput.value = savedCustom;
+        activeAiModel = savedCustom;
+      } else if (activeAiModel && activeAiModel !== "gemini-3.8-flash") {
+        customInput.value = activeAiModel;
+      } else {
+        customInput.value = "";
+      }
+      customInput.focus();
+      if (customInput.value.trim()) {
+        syncModelSettings(customInput.value.trim());
+      }
+    }
+  } else {
+    if (customInput) {
+      customInput.style.display = "none";
+    }
+    activeAiModel = "gemini-3.8-flash";
+    localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
+    syncModelSettings("gemini-3.8-flash");
+  }
+}
+
+function handleCustomModelInput(val) {
+  const trimmed = val.trim();
+  if (trimmed) {
+    activeAiModel = trimmed;
+    localStorage.setItem("orborus_ai_model", trimmed);
+    localStorage.setItem("orborus_custom_model", trimmed);
+    syncModelSettings(trimmed);
+  }
+}
+
+function handleFooterReasoningChange(val) {
+  activeReasoningEffort = val || "medium";
+  localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  if (window.isDebug) {
+    console.log("[DEBUG] Reasoning effort changed to:", activeReasoningEffort);
+  }
+}
+
+function syncModelSettings(model) {
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) {
+    let found = false;
+    for (let i = 0; i < modelSelect.options.length; i++) {
+      if (modelSelect.options[i].value === model) {
+        modelSelect.value = model;
+        found = true;
+        break;
+      }
+    }
+    if (!found && model) {
+      const opt = document.createElement("option");
+      opt.value = model;
+      opt.innerText = `${model} (Custom)`;
+      modelSelect.appendChild(opt);
+      modelSelect.value = model;
+    }
+  }
+  updateEnvDisplayInModal();
+}
+
+
+// --- Prompt Execution, Turn Rendering, Stream & Activity Steps ---
 // ----------------- Session & Execution -----------------
 function startNewSession() {
   activeConversationId = null;
@@ -6245,14 +6284,18 @@ async function submitPrompt() {
     summaryBanner.style.display = "none";
   }
 
-  // 1. Create immediate optimistic turn in running state
+  // 1. Create immediate optimistic turn in running state with initial progress steps
   const turnId = "turn-" + Date.now();
   const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const selectedModel = activeAiModel || "gemini-3.8-flash";
   const optimisticTurn = {
     id: turnId,
     prompt: prompt,
     timestamp: timeStr,
-    steps: [],
+    steps: [
+      { id: "step-init", name: "Agent Initialized", duration: "<1s", detail: "Workspace context and rules loaded.", type: "thought" },
+      { id: "step-exec", name: "Querying AI Model", duration: "Active", detail: "Direct query in progress with " + selectedModel + "...", type: "cmd" }
+    ],
     output: "",
     status: "running",
     duration: "0s"
@@ -6336,11 +6379,21 @@ async function submitPrompt() {
       ai_api_url: effectiveUrl
     });
 
+    console.log("[Shuffle Agent] Submitting prompt to backend:", {
+      prompt: prompt,
+      model: activeAiModel || "gemini-3.8-flash",
+      reasoning: activeReasoningEffort || "medium",
+      conversation_id: activeConversationId,
+      has_key: Boolean(effectiveKey),
+      has_url: Boolean(effectiveUrl)
+    });
+
     if (typeof window.bridgeCall === "function") {
       raw = await window.bridgeCall("runPrompt", promptPayload);
     } else if (typeof window.runPrompt === "function") {
       raw = await window.runPrompt(prompt, false, activeConversationId || "");
     } else {
+      console.warn("[Shuffle Agent] Native bridge not found; running local fallback mock");
       await new Promise(r => setTimeout(r, 400));
       raw = JSON.stringify({
         prompt: prompt,
@@ -6352,6 +6405,7 @@ async function submitPrompt() {
       });
     }
 
+    console.log("[Shuffle Agent] Bridge response received:", raw);
     clearInterval(liveTimer);
 
     let res = null;
@@ -6432,9 +6486,13 @@ async function submitPrompt() {
     optimisticTurn.error = res.error || (isError ? res.output : "");
     optimisticTurn.error_type = res.error_type || "";
     optimisticTurn.fix_help = res.fix_help || "";
-    optimisticTurn.debug_info = res.debug_info || {};
     if (res.steps && Array.isArray(res.steps) && res.steps.length > 0) {
       optimisticTurn.steps = res.steps;
+    } else {
+      optimisticTurn.steps = [
+        { id: "step-init", name: "Agent Initialized", duration: "<1s", detail: "Workspace context and rules loaded.", type: "thought" },
+        { id: "step-exec", name: isError ? "Query Failed" : "Query Completed", duration: optimisticTurn.duration, detail: isError ? (res.error || "Execution failed") : ("Finished direct query with " + (res.debug_info?.model || selectedModel)), type: "cmd" }
+      ];
     }
 
     const rawDecisions = res.decisions || (res.workflow_execution && res.workflow_execution.decisions) || [];
@@ -7016,6 +7074,9 @@ function toggleStep(stepId) {
   }
 }
 
+
+// --- approvals.js ---
+// --- Approvals Card, Radio Options & Remembered Rules Management ---
 function showApprovalCard(data) {
   const card = document.getElementById("approval-card");
   if (!card) return;
@@ -7275,6 +7336,9 @@ async function addManualApprovalRule() {
   showToast(`Added rule: '${cmd}'`);
 }
 
+
+// --- app.js ---
+// --- App Bootstrap, Keyboard Shortcuts & Overlay Handlers ---
 function escapeHtml(text) {
   if (text === null || text === undefined) return "";
   return String(text)
@@ -7386,7 +7450,7 @@ window.addEventListener("keydown", function(e) {
   }
 }, true);
 
-window.addEventListener("DOMContentLoaded", () => {
+function bootApp() {
   setupWindowDragging();
   init();
   initFooterControls();
@@ -7396,7 +7460,14 @@ window.addEventListener("DOMContentLoaded", () => {
     const sel = document.getElementById("select-ai-model");
     if (sel) sel.value = savedModel;
   }
-});
+}
+
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", bootApp);
+} else {
+  bootApp();
+}
+
 </script>
 </body>
 </html>

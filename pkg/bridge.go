@@ -1103,10 +1103,10 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 	var workflowExec *shuffle.WorkflowExecution
 
 	if shouldRunAi {
-		log.Printf("[INFO] RunPrompt routing decision: dispatching prompt %q to shuffle.HandleAiAgentExecutionStart (model=%s, reasoning=%s, url=%s, execID=%s)", prompt, activeModel, activeReasoning, activeUrl, execID)
+		log.Printf("[INFO] RunPrompt routing decision: executing AI request directly via shuffle.RunAiQuery (model=%s, reasoning=%s, url=%s, execID=%s)", activeModel, activeReasoning, activeUrl, execID)
 		output, workflowExec, err = b.executeAiRequest(prompt, execID, activeModel, activeReasoning)
 		debugInfo = map[string]interface{}{
-			"mode":      "shuffle_agent_start",
+			"mode":      "shuffle_agent_direct",
 			"target":    activeUrl,
 			"model":     activeModel,
 			"reasoning": activeReasoning,
@@ -1114,7 +1114,7 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 			"has_url":   activeUrl != "",
 			"has_key":   effectiveKey != "",
 			"is_auth":   b.oauthLoggedIn,
-			"engine":    "shuffle.HandleAiAgentExecutionStart",
+			"engine":    "shuffle.RunAiQuery",
 		}
 	} else {
 		log.Printf("[INFO] RunPrompt routing decision: explicit shell command %q dispatched to osctrl direct execution in %s", prompt, project)
@@ -1495,7 +1495,7 @@ func (b *AgentBridge) executeDirect(cmd string) (string, error) {
 	return osctrl.RunCommandString(fullCmd, 30*time.Second, nil)
 }
 
-// executeAiRequest sends prompt to shuffle-shared/ai.go HandleAiAgentExecutionStart and RunAiQuery
+// executeAiRequest directly executes the AI prompt using shuffle-shared/ai.go RunAiQuery
 func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoning ...string) (string, *shuffle.WorkflowExecution, error) {
 	b.mu.Lock()
 	apiURL := b.getEffectiveAiUrlLocked()
@@ -1518,6 +1518,15 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	}
 	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 	b.mu.Unlock()
+
+	// Default endpoint resolution for Gemini or OpenAI if URL is not explicitly configured
+	if apiURL == "" {
+		if strings.HasPrefix(strings.ToLower(model), "gemini") {
+			apiURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+		} else {
+			apiURL = "https://api.openai.com/v1"
+		}
+	}
 
 	// Export credentials and settings into environment for shuffle-shared/ai.go
 	if apiKey != "" {
@@ -1558,140 +1567,25 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 		maskedKey = "***"
 	}
 
-	// Load and optimize workspace rules (GEMINI.md, AGENTS.md, etc.) and skills
-	projCtx := GetRuleLoaderManager().LoadProjectContext(project)
-	rulesSummary := projCtx.FormatRulesSummary()
-	skillsSummary := projCtx.FormatSkillsSummary()
-
-	effectiveInput := prompt
-	if rulesSummary != "" || skillsSummary != "" {
-		effectiveInput = fmt.Sprintf("%s\n\n[WORKSPACE RULES & SKILLS CONTEXT]\nWorkspace: %s\n%s%s", prompt, project, rulesSummary, skillsSummary)
-		log.Printf("[INFO][%s] Injected workspace rules (%d) and skills (%d) into agent execution",
-			execID, len(projCtx.Rules), len(projCtx.Skills))
-	}
-
-	startParams := []shuffle.WorkflowAppActionParameter{
-		{
-			Name:  "input",
-			Value: effectiveInput,
-		},
-		{
-			Name:  "reasoning",
-			Value: reasoning,
-		},
-	}
-	if rulesSummary != "" {
-		startParams = append(startParams, shuffle.WorkflowAppActionParameter{
-			Name:  "rules",
-			Value: rulesSummary,
-		})
-	}
-	if skillsSummary != "" {
-		startParams = append(startParams, shuffle.WorkflowAppActionParameter{
-			Name:  "skills",
-			Value: skillsSummary,
-		})
-	}
-
-	workflowID := fmt.Sprintf("wf-%d", time.Now().UnixNano())
-	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
-
-	startNode := shuffle.Action{
-		ID:             actionID,
-		Name:           "AgentStarter",
-		AppName:        "Shuffle Agent",
-		AppID:          "Shuffle Agent",
-		SourceWorkflow: workflowID,
-		Parameters:     startParams,
-	}
-
-	exec := shuffle.WorkflowExecution{
-		Workflow: shuffle.Workflow{
-			ID: workflowID,
-			Actions: []shuffle.Action{
-				startNode,
-			},
-			OrgId: orgID,
-			Start: startNode.ID,
-		},
-		Type:              "AGENT",
-		Start:             startNode.ID,
-		Status:            "EXECUTING",
-		WorkflowId:        workflowID,
-		ExecutionId:       execID,
-		ExecutionOrg:      orgID,
-		Authorization: func() string {
-			if apiKey != "" {
-				return apiKey
-			}
-			if b.cfg != nil && b.cfg.Auth != "" {
-				return b.cfg.Auth
-			}
-			return fmt.Sprintf("auth-%d", time.Now().UnixNano())
-		}(),
-		StartedAt:         time.Now().Unix(),
-		ExecutionArgument: effectiveInput,
-	}
-
-	log.Printf("[INFO][%s] AI Agent: Invoking shuffle.HandleAiAgentExecutionStart (workflow=%s, node=%s, caller=orborus, model=%s, url=%s, key=%s)",
-		execID, workflowID, actionID, model, apiURL, maskedKey)
-
-	var freshExec *shuffle.WorkflowExecution
-	var agentErr error
-
-	_ = os.Setenv("SHUFFLE_DISABLE_AGENT_SELFREQUEST", "true")
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[ERROR][%s] Recovered from panic in shuffle.HandleAiAgentExecutionStart: %v", execID, r)
-				agentErr = fmt.Errorf("AI agent runtime error: %v", r)
-			}
-		}()
-		_, agentErr = shuffle.HandleAiAgentExecutionStart(exec, startNode, false, "orborus")
-	}()
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[WARNING][%s] Recovered from panic in shuffle.GetWorkflowExecution: %v", execID, r)
-			}
-		}()
-		if fe, fetchErr := shuffle.GetWorkflowExecution(context.Background(), execID); fetchErr == nil && fe != nil {
-			freshExec = fe
-		}
-	}()
-
-	if freshExec != nil && len(freshExec.Results) > 0 {
-		res := freshExec.Results[len(freshExec.Results)-1].Result
-		if len(res) > 0 {
-			if agentErr == nil {
-				log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart completed successfully (output chars: %d)", execID, len(res))
-				return res, freshExec, nil
-			}
-			log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart produced output with error: %v", execID, agentErr)
-			return res, freshExec, agentErr
-		}
-	}
-
-	if agentErr != nil {
-		agentErrStr := agentErr.Error()
-		if strings.Contains(agentErrStr, "No LLM apikey") || strings.Contains(agentErrStr, "missing_credentials") || strings.Contains(agentErrStr, "custom AI app authentication") {
-			exec.Status = "FAILURE"
-			exec.Result = agentErrStr
-			log.Printf("[INFO][%s] shuffle.HandleAiAgentExecutionStart reported auth requirement: %s", execID, agentErrStr)
-			return agentErrStr, &exec, agentErr
-		}
-		log.Printf("[WARNING][%s] shuffle.HandleAiAgentExecutionStart returned error: %v. Falling back to direct shuffle.RunAiQuery", execID, agentErr)
-	} else {
-		log.Printf("[DEBUG][%s] shuffle.HandleAiAgentExecutionStart finished without stored result. Delegating to direct shuffle.RunAiQuery", execID)
-	}
+	log.Printf("[INFO][%s] AI Agent: Executing direct prompt query with shuffle.RunAiQuery (model=%s, reasoning=%s, url=%s, key=%s, prompt_len=%d)",
+		execID, model, reasoning, apiURL, maskedKey, len(prompt))
 
 	sysPrompt := BuildInjectedSystemPrompt(project)
 	callInfo := shuffle.AiCallInfo{
 		Caller:      "orborus",
 		OrgID:       orgID,
 		ExecutionId: execID,
+	}
+
+	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
+	exec := shuffle.WorkflowExecution{
+		Type:              "AGENT",
+		Start:             actionID,
+		Status:            "EXECUTING",
+		ExecutionId:       execID,
+		ExecutionOrg:      orgID,
+		StartedAt:         time.Now().Unix(),
+		ExecutionArgument: prompt,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -1702,7 +1596,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	if err != nil {
 		exec.Status = "FAILURE"
 		exec.Result = err.Error()
-		log.Printf("[ERROR][%s] shuffle-shared/ai.go RunAiQuery returned error: %v", execID, err)
+		log.Printf("[ERROR][%s] AI Agent: shuffle.RunAiQuery returned error: %v", execID, err)
 		return respStr, &exec, err
 	}
 
@@ -1720,7 +1614,9 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	})
 
 	if isDebug {
-		log.Printf("[DEBUG][%s] shuffle-shared/ai.go RunAiQuery completed successfully (output chars: %d)", execID, len(respStr))
+		log.Printf("[DEBUG][%s] AI Agent: shuffle.RunAiQuery completed successfully (output chars: %d)", execID, len(respStr))
+	} else {
+		log.Printf("[INFO][%s] AI Agent: shuffle.RunAiQuery completed successfully (output chars: %d)", execID, len(respStr))
 	}
 
 	return respStr, &exec, nil
@@ -1794,7 +1690,9 @@ func (b *AgentBridge) HandleAction(action string, payload string) (res string) {
 			}
 			b.mu.Unlock()
 		}
-		return b.RunPromptWithOpts(req.Prompt, req.Bypass, req.ConversationID, req.Model, req.Reasoning)
+		res = b.RunPromptWithOpts(req.Prompt, req.Bypass, req.ConversationID, req.Model, req.Reasoning)
+		log.Printf("[INFO] AgentBridge.HandleAction \"runPrompt\" completed for convID=%q (response bytes: %d)", req.ConversationID, len(res))
+		return res
 
 	case "respondApproval":
 		var req struct {

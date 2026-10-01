@@ -1,0 +1,57 @@
+  /* ---------------- Unified Window Topbar / Titlebar ---------------- */
+  .app-titlebar {
+    height: 38px;
+    min-height: 38px;
+    width: 100%;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    -webkit-app-region: drag;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    z-index: 100;
+  }
+
+  .titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    -webkit-app-region: drag;
+    cursor: default;
+  }
+
+  .titlebar-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    -webkit-app-region: drag;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 12px;
+    cursor: default;
+  }
+
+  .titlebar-left button,
+  .titlebar-left .traffic-lights,
+  .titlebar-left .window-nav-icons,
+  .titlebar-center button,
+  .titlebar-center a,
+  .no-drag {
+    -webkit-app-region: no-drag !important;
+  }
+
+  .app-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    height: calc(100vh - 38px);
+  }

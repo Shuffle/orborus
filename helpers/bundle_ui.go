@@ -1,51 +1,30 @@
-package pkg
+package main
 
 import (
-	_ "embed"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-//go:embed ui/index.html
-var EmbeddedAgentHTML string
+func main() {
+	srcDir := "pkg/ui/src"
+	destFile := "pkg/ui/index.html"
 
-// GetAgentHTML returns the UI HTML.
-// In development mode (if pkg/ui/src/index.html exists), it dynamically compiles
-// the modular CSS and JS from disk on the fly, enabling instant iteration without rebuilding Go.
-// In production or packaged releases, it returns the compiled EmbeddedAgentHTML.
-func GetAgentHTML() string {
-	candidateDirs := []string{
-		"pkg/ui/src",
-		"ui/src",
+	assembled, err := AssembleUI(srcDir)
+	if err != nil {
+		log.Fatalf("AssembleUI failed: %v", err)
 	}
 
-	for _, dir := range candidateDirs {
-		if fi, err := os.Stat(filepath.Join(dir, "index.html")); err == nil && !fi.IsDir() {
-			if html, err := AssembleUI(dir); err == nil && len(html) > 0 {
-				return html
-			}
-		}
+	if err := os.WriteFile(destFile, []byte(assembled), 0644); err != nil {
+		log.Fatalf("Failed to write %s: %v", destFile, err)
 	}
 
-	// Also check if pkg/ui/index.html exists directly on disk
-	candidateFiles := []string{
-		"pkg/ui/index.html",
-		"ui/index.html",
-	}
-	for _, f := range candidateFiles {
-		if fi, err := os.Stat(f); err == nil && !fi.IsDir() {
-			if content, err := os.ReadFile(f); err == nil && len(content) > 0 {
-				return string(content)
-			}
-		}
-	}
-
-	return EmbeddedAgentHTML
+	fmt.Printf("Successfully bundled %s into %s (%d bytes)\n", srcDir, destFile, len(assembled))
 }
 
-// AssembleUI combines index.html, modular css/*.css, and modular js/*.js
+// AssembleUI combines src/index.html, src/css/*.css, and src/js/*.js
 func AssembleUI(srcDir string) (string, error) {
 	skeletonRaw, err := os.ReadFile(filepath.Join(srcDir, "index.html"))
 	if err != nil {

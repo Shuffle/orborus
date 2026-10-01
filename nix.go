@@ -82,7 +82,7 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 		Title:       "Shuffle Agent",
 		Width:       950,
 		Height:      700,
-		HTML:        pkg.EmbeddedAgentHTML,
+		HTML:        pkg.GetAgentHTML(),
 		IconPNG:     iconBytes,
 		ProcessName: "Shuffle Agent",
 		BridgeHandler: func(action, payload string) string {

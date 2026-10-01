@@ -1,0 +1,79 @@
+  :root {
+    --bg-app: #09090b;
+    --bg-sidebar: #111113;
+    --bg-card: #18181b;
+    --bg-hover: #222226;
+    --bg-active: #27272a;
+    --bg-code: #131316;
+    --border: #27272a;
+    --border-hover: #3f3f46;
+    --border-subtle: #1e1e22;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #0284c7;
+    --accent-blue-hover: #0369a1;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  ::selection {
+    background: rgba(248, 95, 56, 0.35);
+    color: #ffffff;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-focus);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Prevent text selection on interactive chrome elements */
+  .app-titlebar,
+  .sidebar,
+  .sidebar-nav-list,
+  .nav-item,
+  .traffic-lights,
+  .window-controls-row,
+  .window-controls-windows,
+  .status-card,
+  button {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Explicitly allow selection in all content areas */
+  .main-workspace,
+  .center-container,
+  .execution-stream,
+  .stream-card,
+  .stream-card-body,
+  .approval-card,
+  .approval-cmd,
+  pre, code, input, textarea {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
