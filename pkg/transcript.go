@@ -26,6 +26,23 @@ type ConversationStep struct {
 	Collapsed bool   `json:"collapsed,omitempty"`
 }
 
+// FileChangeDetail represents a single modified, added, or deleted file
+type FileChangeDetail struct {
+	Path      string `json:"path"`
+	Status    string `json:"status"` // "modified", "added", "deleted"
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+	Diff      string `json:"diff,omitempty"`
+}
+
+// ChangedFilesSummary captures changed files and line delta
+type ChangedFilesSummary struct {
+	TotalFiles int                `json:"total_files"`
+	Additions  int                `json:"additions"`
+	Deletions  int                `json:"deletions"`
+	Files      []FileChangeDetail `json:"files,omitempty"`
+}
+
 // ConversationTurn represents one complete user request and the agent's corresponding output & activity
 type ConversationTurn struct {
 	ID                string                     `json:"id"`
@@ -39,6 +56,7 @@ type ConversationTurn struct {
 	ErrorType         string                     `json:"error_type,omitempty"`
 	FixHelp           string                     `json:"fix_help,omitempty"`
 	DebugInfo         map[string]interface{}     `json:"debug_info,omitempty"`
+	ChangedFiles      *ChangedFilesSummary       `json:"changed_files,omitempty"`
 	WorkflowExecution *shuffle.WorkflowExecution `json:"workflow_execution,omitempty"`
 }
 
@@ -51,6 +69,7 @@ type Conversation struct {
 	CreatedAt   string             `json:"created_at"`
 	UpdatedAt   string             `json:"updated_at"`
 	Pinned      bool               `json:"pinned"`
+	Archived    bool               `json:"archived"`
 	Turns       []ConversationTurn `json:"turns"`
 }
 

@@ -3,9 +3,12 @@ package pkg
 import (
 	_ "embed"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"orborus/pkg/uivalidate"
 )
 
 //go:embed ui/index.html
@@ -47,6 +50,14 @@ func GetAgentHTML() string {
 
 // AssembleUI combines index.html, modular css/*.css, and modular js/*.js
 func AssembleUI(srcDir string) (string, error) {
+	// Validate UI integrity to catch syntax errors, unclosed delimiters, and missing button handlers early
+	valErrs := uivalidate.ValidateEntireUI(srcDir)
+	if len(valErrs) > 0 {
+		for _, vErr := range valErrs {
+			log.Printf("[UI-VALIDATION-ERROR] %s", vErr)
+		}
+	}
+
 	skeletonRaw, err := os.ReadFile(filepath.Join(srcDir, "index.html"))
 	if err != nil {
 		return "", err

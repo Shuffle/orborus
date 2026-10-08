@@ -21,7 +21,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   ::selection {
-    background: rgba(248, 95, 56, 0.35);
+    background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
   }
   ::-webkit-scrollbar {

@@ -9,6 +9,18 @@
 </style>
 </head>
 <body>
+  <script>
+    (function() {
+      try {
+        var isMac = (typeof navigator !== 'undefined') && (navigator.platform.indexOf('Mac') > -1 || navigator.userAgent.indexOf('Mac') > -1);
+        if (isMac) {
+          document.write('<style>#win-controls{display:none!important;}#mac-controls{display:flex!important;}</style>');
+        } else {
+          document.write('<style>#mac-controls{display:none!important;}#win-controls{display:none!important;}.titlebar-brand{display:none!important;}</style>');
+        }
+      } catch(e) {}
+    })();
+  </script>
 
   <!-- ================= Unified Top Window Header ================= -->
   <header class="app-titlebar window-drag-area">
@@ -34,17 +46,12 @@
         </div>
       </div>
 
-      <!-- Windows controls fallback -->
-      <div id="win-controls" class="window-controls-windows">
-        <button class="win-btn" title="Minimize" onclick="windowControl('minimize')">
-          <svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"/></svg>
-        </button>
-        <button class="win-btn" title="Maximize" onclick="windowControl('maximize')">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
-        </button>
-        <button class="win-btn win-btn-close" title="Close" onclick="windowControl('close')">
-          <svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-        </button>
+      <!-- Shuffle Tendon App Branding -->
+      <div class="titlebar-brand" style="display:flex; align-items:center; gap:8px; margin-right:4px; user-select:none;">
+        <svg class="shuffle-logo-svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="shuffle-brand-title" style="font-size:12px; font-weight:600; letter-spacing:0.2px; color:var(--text-primary);">Shuffle Tendon</span>
       </div>
 
       <!-- Persistent Sidebar Toggle & Navigation Arrows -->
@@ -64,6 +71,45 @@
         <span id="topbar-project-name" style="color:var(--text-primary); font-weight:600;">Orborus Agent Runner</span>
         <span style="color:var(--text-muted);">/</span>
         <span id="topbar-conv-title" style="color:var(--text-secondary);">New Conversation</span>
+        <button id="btn-archive-active-chat" class="btn-archive-toggle" title="Archive this conversation" style="display:none; margin-left:4px; opacity:0.7;" onclick="archiveConversation(activeConversationId, event)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"/>
+            <rect x="1" y="3" width="22" height="5"/>
+            <line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Window Controls (Windows / Linux) & Right Sidebar Toggle -->
+    <div class="titlebar-right">
+      <div class="window-nav-icons" style="display:flex; align-items:center; gap:4px; margin-right:6px;">
+        <button id="btn-toggle-right-sidebar" class="nav-icon-btn" title="Toggle Right Sidebar" onclick="toggleRightSidebar()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Windows / Linux Window Controls -->
+      <div id="win-controls" class="win-window-controls">
+        <button class="win-control-btn btn-win-min" title="Minimize" onclick="windowControl('minimize')">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+            <line x1="1" y1="5" x2="9" y2="5"/>
+          </svg>
+        </button>
+        <button class="win-control-btn btn-win-max" title="Maximize" onclick="windowControl('maximize')">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="1.5" y="1.5" width="7" height="7"/>
+          </svg>
+        </button>
+        <button class="win-control-btn btn-win-close" title="Close" onclick="windowControl('close')">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+            <line x1="1.5" y1="1.5" x2="8.5" y2="8.5"/>
+            <line x1="8.5" y1="1.5" x2="1.5" y2="8.5"/>
+          </svg>
+        </button>
       </div>
     </div>
   </header>
@@ -101,11 +147,6 @@
         <div class="section-header">
           <span>Projects</span>
           <div class="section-header-actions">
-            <button class="nav-icon-btn" title="Filter Projects" onclick="toggleProjectsFilter()">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-              </svg>
-            </button>
             <button id="btn-scan-repos" class="nav-icon-btn" title="Scan Repositories" onclick="scanRepositories()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"/>
@@ -125,52 +166,20 @@
           <input id="sidebar-project-filter" class="project-filter-input" placeholder="Filter projects and chats..." oninput="filterProjectTree(this.value)">
         </div>
 
-        <div id="sidebar-project-tree" class="project-tree">
-          <div id="sidebar-scan-loading" style="font-size:12px; color:var(--text-muted); padding:6px 10px;">Loading projects...</div>
-        </div>
+        <div id="sidebar-project-tree" class="project-tree"></div>
       </div>
     </div>
 
     <!-- Bottom Left Status & Settings Area -->
-    <div class="sidebar-bottom" style="padding:10px 12px; border-top:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px; background:var(--bg-sidebar);">
-      <!-- Auth Status Card -->
-      <div id="auth-status-card" class="status-card">
-        <div class="status-card-header">
-          <div class="status-title-group">
-            <div id="status-indicator-dot" class="status-dot disconnected"></div>
-            <span id="status-indicator-label" class="status-label">Shuffle OAuth2 Required</span>
-          </div>
+    <div class="sidebar-bottom">
+      <div id="auth-status-row" class="sidebar-status-item" onclick="handleAuthAction()" title="Shuffle Connection & Authentication">
+        <div class="status-title-group">
+          <div id="status-indicator-dot" class="status-dot connected"></div>
+          <span id="status-indicator-label" class="status-label">Shuffle Standalone</span>
         </div>
-
-        <div id="status-subtext" class="status-subtext">
-          Requires Shuffle OAuth2 login to run tasks. Or configure custom AI in Settings.
-        </div>
-
-        <div id="status-details-box" class="status-details">
-          <div>Org: <span id="lbl-org" style="color:var(--text-primary)">-</span></div>
-          <div>Env: <span id="lbl-env" style="color:var(--text-primary)">-</span></div>
-        </div>
-
-        <button id="btn-auth-action" class="status-btn btn-login" onclick="handleAuthAction()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
-          </svg>
-          <span id="lbl-btn-auth">Log in with Shuffle</span>
-        </button>
       </div>
 
-      <button id="btn-sidebar-remembered" class="nav-item" style="padding:6px 10px; width:100%; border:none; background:transparent; border-radius:6px; cursor:pointer;" onclick="openRememberedApprovalsModal()" title="View and revoke remembered command approvals">
-        <div class="nav-item-left">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span>Approvals</span>
-        </div>
-        <span id="remembered-rules-count" class="shortcut-badge" style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3);">0</span>
-      </button>
+
 
       <button id="btn-sidebar-settings" class="sidebar-settings-nav-btn" onclick="openSettingsModal()" title="Settings (Cmd+,)">
         <div class="sidebar-settings-nav-left" style="display:flex; align-items:center; gap:8px;">
@@ -323,6 +332,22 @@
 
         <!-- Centered Chat Input Card Matching Screenshot -->
         <div class="input-card">
+          <!-- Subtle Model Configuration Reminder (Shown when active model is unconfigured) -->
+          <div id="model-config-reminder" class="model-config-reminder" style="display:none;">
+            <div class="reminder-left">
+              <svg class="reminder-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span id="model-config-reminder-text">Gemini 3.8 Flash requires a Shuffle Cloud session or Google API key.</span>
+            </div>
+            <div class="reminder-actions">
+              <button id="btn-model-reminder-action" class="btn-reminder-action" type="button" onclick="handleReminderAction()">Log In</button>
+              <button id="btn-model-reminder-local" class="btn-reminder-secondary" type="button" onclick="handleReminderUseLocal()" style="display:none;">Use Local GPU</button>
+            </div>
+          </div>
+
           <textarea id="prompt-input" class="prompt-textarea" rows="2" placeholder="Ask anything, @ to mention, / for actions" oninput="handleInput(this)" onkeydown="handleKeyDown(event)"></textarea>
           
           <div class="card-toolbar">
@@ -334,15 +359,30 @@
                 </svg>
               </button>
 
-              <!-- Model Selector Matching Screenshot: "+ Gemini 3.8 Flash High ^" -->
+              <!-- Model Selector: Shuffle AI (if enabled), BYOK model(s), Local models -->
               <div class="model-picker-wrapper">
                 <button id="btn-model-picker" class="model-picker-pill" type="button" onclick="toggleModelDropdown(event)" title="Switch AI Model">
-                  <span id="lbl-active-model-name">Gemini 3.8 Flash High</span>
+                  <span id="lbl-active-model-name">Gemini 3.8 Flash</span>
                   <svg class="model-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="18 15 12 9 6 15"/>
                   </svg>
                 </button>
                 <div id="model-dropdown-menu" class="model-dropdown-menu"></div>
+              </div>
+
+              <!-- Reasoning Selector (Defaults to Low) -->
+              <div class="model-picker-wrapper reasoning-picker-wrapper">
+                <button id="btn-reasoning-picker" class="model-picker-pill" type="button" onclick="toggleReasoningDropdown(event)" title="Reasoning Effort">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;">
+                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"/>
+                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"/>
+                  </svg>
+                  <span id="lbl-active-reasoning">Reasoning: Low</span>
+                  <svg class="model-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                  </svg>
+                </button>
+                <div id="reasoning-dropdown-menu" class="model-dropdown-menu reasoning-dropdown-menu"></div>
               </div>
 
               <!-- Backwards compatibility selects hidden -->
@@ -364,16 +404,6 @@
             </div>
 
             <div class="toolbar-right">
-              <!-- Voice Microphone Button Matching Screenshot -->
-              <button class="icon-btn" id="btn-mic" title="Voice Input" onclick="toggleVoiceInput()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              </button>
-
               <!-- Send Button -->
               <button id="btn-send" class="btn-send" title="Run Execution (Enter)" onclick="submitPrompt()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -392,25 +422,176 @@
           </div>
         </div>
 
-        <!-- Card Footer Row with Connection / Auth Status & Settings -->
-        <div class="card-footer-row">
-          <div class="footer-controls-group">
-            <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
-              <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
-              <span id="footer-env-label">Shuffle Standalone</span>
-            </button>
-            <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </button>
-          </div>
+        <!-- Hidden compatibility elements -->
+        <div style="display:none;">
+          <div id="footer-status-dot"></div>
+          <span id="footer-env-label"></span>
+          <button id="btn-footer-auth"></button>
+          <button id="btn-mic"></button>
         </div>
       </div>
 
     </div>
   </main>
+
+  <!-- ================= Right Sidebar / Inspector & Review Drawer ================= -->
+  <aside id="preview-sidebar" class="preview-sidebar" style="display:none;">
+    <!-- Right Sidebar Header -->
+    <div class="preview-sidebar-header">
+      <!-- Left: Mode Switcher Tabs (Overview, Review / Diff, Terminal) -->
+      <div class="rs-tab-group">
+        <button id="btn-rs-tab-overview" class="rs-tab-btn active" title="Overview" onclick="switchRightSidebarTab('overview')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </button>
+        <button id="btn-rs-tab-review" class="rs-tab-btn" title="Review Changes" onclick="switchRightSidebarTab('review')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="12 18 12 12 15 15"/>
+          </svg>
+        </button>
+        <button id="btn-rs-tab-terminal" class="rs-tab-btn" title="Terminals & Logs" onclick="switchRightSidebarTab('terminal')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Center Title/Badge -->
+      <div class="rs-header-center">
+        <span id="preview-title" class="preview-title" style="display:none;">File Preview</span>
+        <span id="preview-badge" class="preview-badge" style="display:none;"></span>
+      </div>
+
+      <!-- Right Action Icons: [+] [Maximize] [Contract] -->
+      <div class="rs-header-actions">
+        <button id="btn-copy-preview" class="nav-icon-btn" title="Copy Content" style="display:none;" onclick="copyPreviewContent()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button id="btn-rs-action-expand" class="nav-icon-btn" title="Expand / Contract Width" onclick="toggleRightSidebarMaximize()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+        <button id="btn-rs-action-collapse" class="nav-icon-btn" title="Contract Right Sidebar" onclick="toggleRightSidebar()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel 1: Overview Dashboard (Matching Image) -->
+    <div id="rs-panel-overview" class="rs-panel active">
+      <!-- Subagents Section -->
+      <div class="rs-section" id="rs-sec-subagents">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-subagents')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Subagents</span>
+            <span class="rs-sec-count" id="rs-count-subagents">0</span>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="rs-section-body" style="display:none;" id="rs-body-subagents">
+          <div class="rs-empty-hint">No active subagents</div>
+        </div>
+      </div>
+
+      <!-- Files Changed Section -->
+      <div class="rs-section expanded" id="rs-sec-files">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-files')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Files Changed</span>
+            <span class="rs-sec-count" id="rs-count-files">0</span>
+            <div class="rs-filter-pill" onclick="event.stopPropagation()">
+              <span>Uncommitted</span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="rs-section-body" id="rs-body-files">
+          <div class="rs-files-list" id="rs-files-list">
+            <!-- Dynamically populated files -->
+          </div>
+          <button class="rs-see-all-btn" id="btn-see-all-files" style="display:none;" onclick="toggleSeeAllFiles()">See all (<span id="rs-see-all-count">0</span>)</button>
+        </div>
+      </div>
+
+      <!-- Artifacts Section -->
+      <div class="rs-section" id="rs-sec-artifacts">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-artifacts')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Artifacts</span>
+            <span class="rs-sec-count" id="rs-count-artifacts">0</span>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="rs-section-body" style="display:none;" id="rs-body-artifacts">
+          <div class="rs-empty-hint">No artifacts generated yet</div>
+        </div>
+      </div>
+
+      <!-- Uploads Section -->
+      <div class="rs-section" id="rs-sec-uploads">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-uploads')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Uploads</span>
+            <span class="rs-sec-count" id="rs-count-uploads">0</span>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="rs-section-body" style="display:none;" id="rs-body-uploads">
+          <div class="rs-empty-hint">No uploads yet</div>
+        </div>
+      </div>
+
+      <!-- Background Tasks Section -->
+      <div class="rs-section" id="rs-sec-tasks">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-tasks')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Background Tasks</span>
+            <span class="rs-sec-count" id="rs-count-tasks">0</span>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="rs-section-body" style="display:none;" id="rs-body-tasks">
+          <div class="rs-empty-hint">No background tasks running</div>
+        </div>
+      </div>
+
+      <!-- Terminals Section -->
+      <div class="rs-section" id="rs-sec-terminals">
+        <div class="rs-section-header" onclick="toggleRightSidebarSection('rs-sec-terminals')">
+          <div class="rs-sec-header-left">
+            <span class="rs-sec-title">Terminals</span>
+            <span class="rs-sec-count" id="rs-count-terminals">0</span>
+          </div>
+          <svg class="rs-sec-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="rs-section-body" style="display:none;" id="rs-body-terminals">
+          <div class="rs-empty-hint">No active terminals</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Review / Diff & File Code Preview -->
+    <div id="rs-panel-review" class="rs-panel">
+      <div id="preview-sidebar-content" class="preview-sidebar-content">
+        <!-- Dynamic Git Diff or Code/Image Preview -->
+      </div>
+    </div>
+
+    <!-- Panel 3: Terminal / Logs Output -->
+    <div id="rs-panel-terminal" class="rs-panel">
+      <div class="rs-terminal-container">
+        <div class="rs-terminal-bar">
+          <span id="rs-terminal-shell-title">powershell.exe (Active Session)</span>
+          <button class="btn-copy-code" onclick="clearTerminalView()">Clear</button>
+        </div>
+        <pre class="rs-terminal-output" id="rs-terminal-output">Ready. Antigravity local runner listening...</pre>
+      </div>
+    </div>
+  </aside>
   </div>
 
   <!-- Settings Modal (Two-Panel Layout: Navigation & Global/Project Permissions) -->
@@ -418,7 +599,7 @@
     <div class="settings-modal-dialog">
       <!-- Settings Left Sidebar -->
       <div class="settings-sidebar">
-        <div class="settings-nav-section-title">Settings</div>
+        <div class="settings-nav-section-title">General</div>
         <div class="settings-nav-items">
           <button id="settings-tab-btn-general" class="settings-nav-item active" onclick="switchSettingsTab('general')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -434,25 +615,52 @@
             </svg>
             <span>General</span>
           </button>
-          <button id="settings-tab-btn-auth" class="settings-nav-item" onclick="switchSettingsTab('auth')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            <span>Authentication</span>
-          </button>
-          <button id="settings-tab-btn-models" class="settings-nav-item" onclick="switchSettingsTab('models')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-            <span>AI &amp; Models</span>
-          </button>
           <button id="settings-tab-btn-skills" class="settings-nav-item" onclick="switchSettingsTab('skills')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
             <span>Skills</span>
+          </button>
+        </div>
+
+        <div class="settings-nav-section-title" style="margin-top:14px;">AI Providers</div>
+        <div class="settings-nav-items">
+          <button id="settings-tab-btn-mode-shuffle" class="settings-nav-item" onclick="switchSettingsTab('mode-shuffle')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>Shuffle (OAuth)</span>
+          </button>
+          <button id="settings-tab-btn-mode-orborus" class="settings-nav-item" onclick="switchSettingsTab('mode-orborus')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+              <line x1="6" y1="6" x2="6.01" y2="6"/>
+              <line x1="6" y1="18" x2="6.01" y2="18"/>
+            </svg>
+            <span>Shuffle (Self-Hosted)</span>
+          </button>
+          <button id="settings-tab-btn-mode-direct" class="settings-nav-item" onclick="switchSettingsTab('mode-direct')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>
+            <span>Direct LLM (BYOK)</span>
+          </button>
+          <button id="settings-tab-btn-mode-local" class="settings-nav-item" onclick="switchSettingsTab('mode-local')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <rect x="9" y="9" width="6" height="6"/>
+              <line x1="9" y1="1" x2="9" y2="4"/>
+              <line x1="15" y1="1" x2="15" y2="4"/>
+              <line x1="9" y1="20" x2="9" y2="23"/>
+              <line x1="15" y1="20" x2="15" y2="23"/>
+              <line x1="20" y1="9" x2="23" y2="9"/>
+              <line x1="20" y1="14" x2="23" y2="14"/>
+              <line x1="1" y1="9" x2="4" y2="9"/>
+              <line x1="1" y1="14" x2="4" y2="14"/>
+            </svg>
+            <span>Local GPU (CUDA)</span>
           </button>
         </div>
 
@@ -555,44 +763,53 @@
             </div>
           </div>
 
-          <!-- VIEW: AUTHENTICATION -->
-          <div id="settings-panel-auth" class="settings-panel">
-            <div class="settings-group-header">Shuffle Cloud &amp; Remote Connection</div>
-            
-            <div style="background:var(--bg-code); border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+          <!-- VIEW: SHUFFLE (OAUTH2) -->
+          <div id="settings-panel-mode-shuffle" class="settings-panel">
+            <div class="settings-group-header">Shuffle Connection (OAuth2 Login) &mdash; Optional</div>
+
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:8px;">
                   <div id="settings-auth-status-dot" class="status-dot disconnected"></div>
                   <span style="font-size:12px; font-weight:600; color:var(--text-primary);">Shuffle OAuth2 Connection</span>
                 </div>
-                <span id="settings-auth-status-text" style="font-size:11px; color:var(--text-muted);">Standalone / Disconnected</span>
+                <span id="settings-auth-status-text" style="font-size:11px; color:var(--text-muted);">Disconnected</span>
               </div>
               <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                Connect this runner to your Shuffle Cloud or self-hosted instance to execute workflows, stream executions, and sync agent states.
+                Optionally connect this runner to your Shuffle account (Cloud or on-prem) to execute workflows, stream agent executions, and use <strong>Shuffle AI (Gemini 3.8 Flash)</strong> without personal LLM keys. This is completely optional &mdash; you can also run standalone with Direct LLM (BYOK) or Local GPU.
               </p>
-              <button type="button" class="status-btn btn-login" style="padding:8px 14px; width:fit-content;" onclick="loginWithOAuth()">
+              <button id="btn-oauth-login" type="button" class="btn-secondary-action" style="width:fit-content;" onclick="loginWithOAuth()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                   <polyline points="10 17 15 12 10 7"/>
                   <line x1="15" y1="12" x2="3" y2="12"/>
                 </svg>
-                <span>Open Shuffle OAuth2 Login</span>
+                <span id="lbl-btn-oauth-login">Open Shuffle OAuth2 Login</span>
               </button>
 
               <div style="display:flex; gap:8px; margin-top:4px;">
                 <input id="input-oauth-token" class="form-input" style="flex:1; font-size:11px;" type="text" placeholder="Or paste OAuth2 / Session Token directly...">
-                <button type="button" class="btn-modal-cancel" style="padding:6px 12px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
+                <button id="btn-submit-oauth-token" type="button" class="btn-secondary-action" style="padding:6px 14px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
               </div>
             </div>
 
-            <div class="settings-group-header">Manual Configuration &amp; Bypass</div>
+            <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI (Optional)</div>
+              When connected to Shuffle, agent requests can automatically route to Shuffle AI with zero personal API key setup. Workflows and conversations sync directly with your Shuffle workspace.
+            </div>
+          </div>
+
+          <!-- VIEW: SHUFFLE SELF-HOSTED (ORG & AUTH) -->
+          <div id="settings-panel-mode-orborus" class="settings-panel">
+            <div class="settings-group-header">Shuffle Self-Hosted Connection (Org &amp; Auth) &mdash; Optional</div>
+
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-              Provide an OrgId, API Auth Key, and Environment to bypass OAuth or connect to custom environments.
+              Provide an Org ID, API Auth Key, and Base URL to connect this runner to a self-hosted Shuffle backend or on-prem cluster. This is completely optional.
             </p>
 
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="input-base-url">Shuffle Base URL</label>
-              <input id="input-base-url" class="form-input" type="text" placeholder="https://shuffler.io">
+              <input id="input-base-url" class="form-input" type="text" placeholder="https://shuffler.io or http://localhost:5001">
             </div>
 
             <div class="form-group" style="margin-bottom:12px;">
@@ -601,7 +818,7 @@
             </div>
 
             <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label" for="input-auth-key">Auth API Key</label>
+              <label class="form-label" for="input-auth-key">Auth API Key / Token</label>
               <input id="input-auth-key" class="form-input" type="password" placeholder="API key or execution token">
             </div>
 
@@ -610,7 +827,15 @@
               <input id="input-env-name" class="form-input" type="text" placeholder="e.g. onprem, cloud, local">
             </div>
 
-            <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitAuth()">Save Credentials</button>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
+              <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitOrborusAuth()">Save Shuffle Credentials</button>
+              <span id="lbl-orborus-saved-status" style="font-size:11px; color:#10b981; display:none;">Saved!</span>
+            </div>
+
+            <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI via Self-Hosted Backend</div>
+              When connected, the runner communicates with the specified Shuffle backend and uses the organization's default Shuffle AI service.
+            </div>
           </div>
 
           <!-- VIEW: PROJECT PERMISSIONS -->
@@ -694,40 +919,141 @@
             </div>
           </div>
 
-          <!-- VIEW: AI & MODELS -->
-          <div id="settings-panel-models" class="settings-panel">
-            <div class="settings-group-header">AI Provider &amp; Credentials</div>
+          <!-- VIEW: DIRECT LLM CONNECTION (BYOK) -->
+          <div id="settings-panel-mode-direct" class="settings-panel">
+            <div class="settings-group-header">Direct LLM Connection (BYOK)</div>
+
+            <!-- Provider Presets -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label" for="select-direct-preset">Provider Quick-Preset</label>
+              <select id="select-direct-preset" class="form-input" style="cursor:pointer;" onchange="applyDirectLlmPreset(this.value)">
+                <option value="">-- Choose Provider Preset --</option>
+                <option value="openai">OpenAI (api.openai.com &bull; GPT-4o)</option>
+                <option value="anthropic">Anthropic (api.anthropic.com &bull; Claude 3.7 Sonnet)</option>
+                <option value="gemini">Google Gemini (generativelanguage.googleapis.com &bull; Gemini 2.5 Flash)</option>
+                <option value="deepseek">DeepSeek (api.deepseek.com &bull; deepseek-chat)</option>
+                <option value="groq">Groq (api.groq.com &bull; llama-3.3-70b)</option>
+                <option value="ollama">Ollama Local (http://localhost:11434/v1 &bull; llama3.2)</option>
+                <option value="openrouter">OpenRouter (openrouter.ai/api/v1 &bull; gpt-4o)</option>
+                <option value="custom">Custom OpenAI-Compatible API</option>
+              </select>
+            </div>
 
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="input-ai-url">AI_API_URL</label>
-              <input id="input-ai-url" class="form-input" type="text" placeholder="https://api.openai.com/v1 or http://localhost:11434/v1" oninput="updateEnvDisplayInModal()">
+              <input id="input-ai-url" class="form-input" type="text" placeholder="https://api.openai.com/v1" oninput="updateEnvDisplayInModal(); populateAiModelSelect();">
             </div>
 
             <div class="form-group" style="margin-bottom:12px;">
               <label class="form-label" for="input-ai-key">AI_API_KEY</label>
-              <input id="input-ai-key" class="form-input" type="password" placeholder="API key or local token" oninput="updateEnvDisplayInModal()">
+              <input id="input-ai-key" class="form-input" type="password" placeholder="sk-... or AIza..." oninput="updateEnvDisplayInModal(); populateAiModelSelect();">
             </div>
 
+            <!-- Active Direct Model: Manually Type or Add -->
             <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label" for="select-ai-model">AI Model</label>
-              <select id="select-ai-model" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
-                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Default)</option>
-                <option value="gemini-3.8-flash-high">Gemini 3.8 Flash High (High Reasoning)</option>
-                <option value="gemini-3.8-pro">Gemini 3.8 Pro (Reasoning)</option>
-                <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic)</option>
-                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
-                <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                <option value="ollama">Ollama (Local LLM)</option>
-                <option value="custom">Custom Model...</option>
-              </select>
-              <input id="input-settings-custom-model" class="form-input" style="margin-top:6px; display:none;" type="text" placeholder="Custom model name (e.g. gemini-2.0-flash)" oninput="updateEnvDisplayInModal()">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label class="form-label" for="input-byok-model-name" style="margin-bottom:0;">Direct Model (Type or Select)</label>
+                <span style="font-size:11px; color:var(--text-muted);">Type any model ID or add below</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <input id="input-byok-model-name" class="form-input" style="flex:1;" type="text" placeholder="e.g. gpt-4o, claude-3-7-sonnet, deepseek-chat, gpt-4o-mini" oninput="handleByokModelInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();addCurrentByokModel();}">
+                <button type="button" class="btn-skills-action" style="white-space:nowrap; padding:0 12px;" onclick="addCurrentByokModel()">+ Add Model</button>
+              </div>
             </div>
 
-            <div style="background:var(--bg-code); border:1px solid var(--border-subtle); border-radius:8px; padding:10px 12px; font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:8px;">
-              <div style="font-weight:600; color:var(--text-secondary);">Active Environment:</div>
+            <!-- Your Saved BYOK Models -->
+            <div class="form-group" style="margin-bottom:10px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Your BYOK Models:</div>
+              <div id="byok-models-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; min-height:28px; align-items:center;">
+                <!-- Dynamically populated tags with click-to-select and (x) to remove -->
+              </div>
+            </div>
+
+            <!-- Popular Quick-Pick Presets -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Popular Model Presets:</div>
+              <div class="byok-preset-chips" style="display:flex; flex-wrap:wrap; gap:6px;">
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o')">gpt-4o</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o-mini')">gpt-4o-mini</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-7-sonnet')">claude-3-7-sonnet</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-5-haiku')">claude-3-5-haiku</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-chat')">deepseek-chat</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-reasoner')">deepseek-reasoner</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gemini-2.5-flash')">gemini-2.5-flash</button>
+              </div>
+            </div>
+
+            <!-- Compatibility select elements (hidden) -->
+            <select id="select-ai-model" style="display:none;"></select>
+            <input id="input-settings-custom-model" type="hidden">
+
+            <div style="font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:12px; margin-bottom:14px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+              <div style="font-weight:500; color:var(--text-secondary);">Direct Environment Status:</div>
               <div>AI_API_URL: <span id="env-display-url" style="color:var(--text-primary)">not set</span></div>
               <div>AI_API_KEY: <span id="env-display-key" style="color:var(--text-primary)">not set</span></div>
-              <div>AI_MODEL: <span id="env-display-model" style="color:var(--text-primary)">gemini-3.8-flash</span></div>
+              <div>AI_MODEL: <span id="env-display-model" style="color:var(--text-primary)">gpt-4o</span></div>
+            </div>
+
+            <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="saveDirectLlmSettings()">Save Direct LLM Configuration</button>
+          </div>
+
+          <!-- VIEW: LOCAL GPU ENGINE (CUDA) -->
+          <div id="settings-panel-mode-local" class="settings-panel">
+            <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Local GPU Engine (CUDA)</span>
+              <span id="local-hardware-pill" class="settings-mode-pill">
+                Local GPU &bull; Direct VRAM
+              </span>
+            </div>
+
+            <!-- Default Save Location / Directory -->
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Default Models Storage Location</span>
+                <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">Folder containing .gguf weights</span>
+              </label>
+              <div style="display:flex; gap:8px;">
+                <input id="input-local-models-dir" class="form-input" style="flex:1; font-family:ui-monospace,Menlo,Monaco,monospace; font-size:12px;" type="text" placeholder="e.g. C:\Users\...\models or models" onchange="onLocalModelsDirChanged(this.value)">
+                <button type="button" class="btn-skills-action" onclick="browseLocalModelsDir()" title="Choose local models folder">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>Browse...</span>
+                </button>
+                <button type="button" class="btn-skills-action" onclick="scanLocalModels()" title="Rescan folder for .gguf models">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                  <span>Scan</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Discovered Local Models List -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="form-label" style="margin-bottom:0;">Available Local Models</label>
+                <span id="local-models-count" style="font-size:11px; color:var(--text-muted);">Scanning...</span>
+              </div>
+              <div id="local-models-list-container" style="display:flex; flex-direction:column; gap:2px; max-height:220px; overflow-y:auto;">
+                <div style="padding:12px 0; text-align:center; color:var(--text-muted); font-size:12px;">No models scanned yet</div>
+              </div>
+            </div>
+
+            <!-- Active Local Model Details -->
+            <div id="active-local-model-card" style="border-top:1px solid rgba(255,255,255,0.05); padding:10px 0; font-size:12px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:500; color:var(--text-secondary);">Active Local Weight:</span>
+                  <span id="active-model-filename" style="font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-primary); font-weight:500; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">gemma-4-26B-A4B-it-UD-Q3_K_M.gguf</span>
+                </div>
+                <div id="active-model-meta" style="font-size:11px; color:var(--text-muted);">
+                  Size: ~12.1 GB &bull; Direct GPU Allocation (0 Host RAM)
+                </div>
+              </div>
+              <div id="active-model-status-pill" class="settings-mode-pill" style="margin-left:0;">
+                ACTIVE
+              </div>
             </div>
           </div>
 
@@ -755,7 +1081,7 @@
             </div>
 
             <!-- Inline Form for Creating / Pasting Skill -->
-            <div id="custom-skill-form-box" style="display:none; background:var(--bg-code); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:8px;">
+            <div id="custom-skill-form-box" style="display:none; border-bottom:1px solid rgba(255,255,255,0.06); padding:10px 0 16px 0; margin-bottom:12px;">
               <div style="font-size:12px; font-weight:600; color:var(--text-primary); margin-bottom:10px;">Define New Skill</div>
               <div class="form-group" style="margin-bottom:10px;">
                 <label class="form-label" for="input-skill-name">Skill Name *</label>
@@ -891,58 +1217,7 @@
     </div>
   </div>
 
-  <!-- Remembered Approvals Modal -->
-  <div id="remembered-approvals-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'remembered-approvals-modal')">
-    <div class="modal-content" style="max-width: 620px;">
-      <div class="modal-header" style="flex-direction:row; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <div class="modal-title">Remembered Approvals</div>
-          <div class="modal-desc">Commands approved to execute automatically without prompting.</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn-history-action" style="color:var(--red);" onclick="clearAllApprovalRules()">Revoke All</button>
-          <button class="nav-icon-btn" title="Close" onclick="closeRememberedApprovalsModal()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      </div>
 
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <input id="input-new-rule-cmd" class="form-input" style="flex:1;" type="text" placeholder="Command prefix (e.g. git status, go test, npm run)">
-        <select id="select-new-rule-scope" class="form-input" style="width:140px; cursor:pointer;">
-          <option value="global">Global</option>
-          <option value="project">Active Project</option>
-          <option value="conversation">Conversation</option>
-        </select>
-        <button class="btn-modal-submit" style="white-space:nowrap; padding:0 14px;" onclick="addManualApprovalRule()">Add Rule</button>
-      </div>
-
-      <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
-        <table class="rules-table">
-          <thead>
-            <tr>
-              <th>Command Prefix</th>
-              <th>Scope</th>
-              <th>Created</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="remembered-rules-tbody">
-            <tr>
-              <td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No remembered approval rules yet.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn-modal-cancel" onclick="closeRememberedApprovalsModal()">Done</button>
-      </div>
-    </div>
-  </div>
 
 
   <!-- Global App Toast Notification -->

@@ -77,7 +77,14 @@ async function scanRepositories() {
       const raw = await window.listProjects();
       const projects = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (Array.isArray(projects)) {
-        allProjects = projects;
+        const existing = new Set(allProjects.map(p => (p.Path || p.path || "").toLowerCase()));
+        projects.forEach(p => {
+          const pPath = (p.Path || p.path || "").toLowerCase();
+          if (pPath && !existing.has(pPath)) {
+            allProjects.push(p);
+            existing.add(pPath);
+          }
+        });
       }
       renderProjectTree();
       renderSettingsProjectsList();
@@ -151,17 +158,33 @@ async function togglePinConversation(convId, event) {
 }
 
 async function selectConversation(convId) {
+  if (!convId) return;
   activeConversationId = convId;
   localStorage.setItem("orborus_active_conv_id", convId);
 
   // 1. Optimistic instant switch (0ms latency)
-  const cachedConv = appConversations.find(c => c.id === convId);
+  let cachedConv = (appConversations || []).find(c => c && c.id === convId);
   if (cachedConv) {
-    const projPath = cachedConv.projectId || cachedConv.project_id;
-    const projName = cachedConv.projectName || cachedConv.project_name;
-    if (projPath && projPath !== activeProjectPath) {
+    const projPath = cachedConv.projectId !== undefined ? cachedConv.projectId : (cachedConv.project_id !== undefined ? cachedConv.project_id : "");
+    const projName = cachedConv.projectName || cachedConv.project_name || (projPath === "" ? "No project" : undefined);
+    if (projPath !== activeProjectPath) {
       setActiveProject(projPath, projName);
     }
+    const convModel = cachedConv.model || cachedConv.ai_model || (typeof getRememberedModelForType === "function" ? getRememberedModelForType(projPath) : null);
+    if (convModel) {
+      const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(convModel) : convModel;
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    const convReasoning = cachedConv.reasoning || (typeof getRememberedReasoningForType === "function" ? getRememberedReasoningForType(projPath) : null);
+    if (convReasoning) {
+      activeReasoningEffort = convReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = convReasoning;
+      localStorage.setItem("orborus_ai_reasoning", convReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
   }
   renderProjectTree();
   renderActiveConversation();
@@ -170,19 +193,35 @@ async function selectConversation(convId) {
   if (window.getConversation) {
     try {
       const raw = await window.getConversation(convId);
-      const diskConv = JSON.parse(raw);
+      const diskConv = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (diskConv && diskConv.id && !diskConv.error) {
         if (!Array.isArray(appConversations)) appConversations = [];
-        const idx = appConversations.findIndex(c => c.id === convId);
+        const idx = appConversations.findIndex(c => c && c.id === convId);
         if (idx !== -1) {
           appConversations[idx] = diskConv;
         } else {
           appConversations.unshift(diskConv);
         }
         if (activeConversationId === convId) {
+          const diskModel = diskConv.model || diskConv.ai_model;
+          if (diskModel) {
+            const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(diskModel) : diskModel;
+            activeAiModel = validatedModel;
+            if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+            localStorage.setItem("orborus_ai_model", validatedModel);
+          }
+          if (diskConv.reasoning) {
+            activeReasoningEffort = diskConv.reasoning;
+            if (typeof window !== "undefined") window.activeReasoningEffort = diskConv.reasoning;
+            localStorage.setItem("orborus_ai_reasoning", diskConv.reasoning);
+          }
+          if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+          if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
           renderActiveConversation();
         }
-        saveStoredConversations();
+        try {
+          localStorage.setItem("orborus_conversations", JSON.stringify(appConversations));
+        } catch (e) {}
       }
     } catch (e) {
       console.warn("Failed to fetch fresh conversation from disk:", e);
@@ -190,17 +229,250 @@ async function selectConversation(convId) {
   }
 }
 
+async function archiveConversation(convId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  if (!convId) return;
+  const conv = (appConversations || []).find(c => c && c.id === convId);
+  if (!conv) return;
+
+  // Mark archived immediately in memory
+  conv.archived = true;
+  conv.is_archived = true;
+  conv.updated_at = new Date().toISOString();
+
+  // If pinned, also remove from pinned
+  if (pinnedConversationIds.has(convId)) {
+    pinnedConversationIds.delete(convId);
+    if (window.setPinnedConversations) {
+      try {
+        window.setPinnedConversations(JSON.stringify(Array.from(pinnedConversationIds))).catch(() => {});
+      } catch (e) {}
+    }
+  }
+
+  // If this was the active conversation, switch to another non-archived chat or start fresh session
+  if (activeConversationId === convId) {
+    const nextConv = (appConversations || []).find(c => c && c.id !== convId && !c.archived && !c.is_archived);
+    if (nextConv) {
+      activeConversationId = nextConv.id;
+      localStorage.setItem("orborus_active_conv_id", nextConv.id);
+      renderActiveConversation();
+    } else {
+      startNewSession();
+    }
+  }
+
+  // Immediately re-render sidebar so it disappears from sidebar without delay
+  renderProjectTree();
+
+  // Save to storage
+  saveStoredConversations();
+
+  // Fast disk sync via dedicated backend endpoint if available, fallback to saveConversation
+  if (window.archiveConversationBackend) {
+    try {
+      await window.archiveConversationBackend(convId);
+    } catch (e) {
+      console.warn("archiveConversationBackend error:", e);
+    }
+  } else if (window.saveConversation) {
+    try {
+      await window.saveConversation(conv);
+    } catch (e) {
+      console.warn("Failed to save archived conversation:", e);
+    }
+  }
+
+  // Update history list if modal is open
+  if (typeof renderHistoryList === "function" && typeof getCombinedHistory === "function") {
+    const allItems = getCombinedHistory();
+    renderHistoryList(allItems);
+  }
+
+  showToast("Conversation archived");
+}
+
+async function unarchiveConversation(convId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  if (!convId) return;
+  const conv = (appConversations || []).find(c => c && c.id === convId);
+  if (!conv) return;
+
+  conv.archived = false;
+  conv.is_archived = false;
+  conv.updated_at = new Date().toISOString();
+
+  saveStoredConversations();
+
+  if (window.unarchiveConversationBackend) {
+    try {
+      await window.unarchiveConversationBackend(convId);
+    } catch (e) {
+      console.warn("unarchiveConversationBackend error:", e);
+    }
+  } else if (window.saveConversation) {
+    try {
+      await window.saveConversation(conv);
+    } catch (e) {
+      console.warn("Failed to save unarchived conversation:", e);
+    }
+  }
+
+  renderProjectTree();
+  if (activeConversationId === convId && typeof renderActiveConversation === "function") {
+    renderActiveConversation();
+  }
+  if (typeof renderHistoryList === "function" && typeof getCombinedHistory === "function") {
+    const allItems = getCombinedHistory();
+    renderHistoryList(allItems);
+  }
+  showToast("Conversation restored to sidebar");
+}
+
+function createConvRowElement(conv) {
+  const isCur = conv.id === activeConversationId;
+  const isPinned = pinnedConversationIds.has(conv.id);
+  const isRunning = (typeof isPromptExecuting !== "undefined" && isPromptExecuting && (conv.id === activeConversationId || conv.id === runningConversationId)) ||
+                    (typeof runningConversationId !== "undefined" && runningConversationId === conv.id);
+
+  const convRow = document.createElement("div");
+  convRow.className = "conversation-row" + (isCur ? " active" : "") + (isPinned ? " pinned" : "") + (isRunning ? " running" : "");
+  convRow.onclick = (e) => {
+    if (e.target && e.target.closest(".conversation-actions")) return;
+    selectConversation(conv.id);
+  };
+
+  convRow.innerHTML = `
+    <div class="conversation-row-left">
+      <span class="conversation-dot"></span>
+      <span class="conversation-title" title="${escapeHtml(conv.title || "Conversation")}">${escapeHtml(conv.title || "Conversation")}</span>
+    </div>
+    <div class="conversation-actions">
+      ${isRunning ? `
+        <div class="conversation-running-wrap" title="Running... click to stop" onclick="event.stopPropagation(); stopExecution();">
+          <span class="conversation-spinner"></span>
+          <button class="conversation-abort-btn" type="button" title="Stop execution" onclick="event.stopPropagation(); stopExecution();">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="5" y="5" width="14" height="14" rx="2"/>
+            </svg>
+          </button>
+        </div>
+      ` : ""}
+      <button class="btn-pin-toggle ${isPinned ? "active" : ""}" title="${isPinned ? "Unpin conversation" : "Pin conversation to top"}" onclick="togglePinConversation('${conv.id}', event)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v8M5 10l7 2 7-2M7 10v6l5 4 5-4v-6"/>
+        </svg>
+      </button>
+      <button class="btn-archive-toggle" title="Archive conversation (moves to Conversation History)" onclick="archiveConversation('${conv.id}', event)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8"/>
+          <rect x="1" y="3" width="22" height="5"/>
+          <line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  return convRow;
+}
+
 function renderProjectTree() {
   const treeContainer = document.getElementById("sidebar-project-tree");
   const dropdownContainer = document.getElementById("project-items");
   const repoCount = document.getElementById("repo-count");
 
+  if (treeContainer) {
+    treeContainer.innerHTML = "";
+  }
+
+  // Only non-archived conversations should ever show up in the sidebar
+  const nonArchivedConvs = (appConversations || []).filter(c => c && !c.archived && !c.is_archived);
+
+  // Helper for sorting conversations: pinned first, then updated_at / created_at desc
+  const sortConvs = (convList) => {
+    return [...convList].sort((a, b) => {
+      const aPinned = pinnedConversationIds.has(a.id);
+      const bPinned = pinnedConversationIds.has(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      const bTime = b.updated_at || b.created_at || "";
+      const aTime = a.updated_at || a.created_at || "";
+      return bTime.localeCompare(aTime);
+    });
+  };
+
+  const normPath = p => (p || "").replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+  const filterQuery = (projectFilterQuery || "").toLowerCase().trim();
+
+  // Combine projects from activeProjectPath, allProjects, and stored conversations
+  const projectMap = new Map();
+
+  if (activeProjectPath && activeProjectPath !== "") {
+    let activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") || "";
+    if (!activeName || activeName === "Orborus Agent Runner" || activeName === "Local Workspace") {
+      activeName = activeProjectPath === "." ? "Active Workspace" : (activeProjectPath.split(/[/\\]/).filter(Boolean).pop() || "Active Workspace");
+    }
+    projectMap.set(normPath(activeProjectPath), {
+      Name: activeName,
+      Path: activeProjectPath
+    });
+  }
+
+  allProjects.forEach(p => {
+    if (p && p.Path) {
+      const key = normPath(p.Path);
+      if (!projectMap.has(key)) {
+        projectMap.set(key, p);
+      }
+    }
+  });
+
+  // Extract and map any projects derived from conversations!
+  (appConversations || []).forEach(c => {
+    if (!c || c.archived || c.is_archived) return;
+    const pId = c.projectId || c.project_id;
+    const pName = c.projectName || c.project_name;
+    if (pId) {
+      const key = normPath(pId);
+      if (!projectMap.has(key)) {
+        projectMap.set(key, {
+          Name: pName || (pId === "." ? "Active Workspace" : (pId.split(/[/\\]/).filter(Boolean).pop() || "Project")),
+          Path: pId
+        });
+      }
+    }
+  });
+
+  const projectsList = Array.from(projectMap.values());
+  if (repoCount) {
+    repoCount.innerText = projectsList.length > 0 ? (projectsList.length + " found") : "";
+  }
+
   // Keep dropdown updated
   if (dropdownContainer) {
     dropdownContainer.innerHTML = "";
-    allProjects.forEach(p => {
-      const name = p.Name || p.Path.split("/").filter(Boolean).pop() || "Project";
-      const isCur = p.Path === activeProjectPath;
+
+    const noProjItem = document.createElement("div");
+    const isNoProjCur = normPath(activeProjectPath) === "";
+    noProjItem.className = "dropdown-item" + (isNoProjCur ? " active" : "");
+    noProjItem.innerHTML = `
+      <span class="dropdown-item-name" style="font-style: italic;">No project</span>
+      <span class="dropdown-item-path">Independent conversation</span>
+    `;
+    noProjItem.onclick = () => {
+      selectProject("", "No project");
+      toggleProjectDropdown(null, false);
+    };
+    dropdownContainer.appendChild(noProjItem);
+
+    projectsList.forEach(p => {
+      const name = p.Name || p.Path.split(/[/\\]/).filter(Boolean).pop() || "Project";
+      const isCur = normPath(p.Path) === normPath(activeProjectPath);
       const dropItem = document.createElement("div");
       dropItem.className = "dropdown-item" + (isCur ? " active" : "");
       dropItem.innerHTML = `
@@ -216,58 +488,66 @@ function renderProjectTree() {
   }
 
   if (!treeContainer) return;
-  treeContainer.innerHTML = "";
 
-  // Combine projects from allProjects and known projects from appConversations
-  const projectMap = new Map();
-
-  // If an active project is set, ensure it is included
-  if (activeProjectPath && activeProjectPath !== ".") {
-    const activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") ||
-      activeProjectPath.split("/").filter(Boolean).pop() || "Active Workspace";
-    projectMap.set(activeProjectPath, {
-      Name: activeName,
-      Path: activeProjectPath
-    });
-  }
-
-  allProjects.forEach(p => {
-    projectMap.set(p.Path, p);
-  });
-
-  appConversations.forEach(c => {
-    if (c.projectId && !projectMap.has(c.projectId)) {
-      projectMap.set(c.projectId, {
-        Name: c.projectName || c.projectId.split("/").filter(Boolean).pop(),
-        Path: c.projectId
-      });
-    }
-  });
-
-  const projectsList = Array.from(projectMap.values());
-  if (repoCount) {
-    repoCount.innerText = projectsList.length + " found";
-  }
-
+  // Case 1: No projects / repositories found at all
   if (projectsList.length === 0) {
-    treeContainer.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 10px;">No repositories found.</div>`;
+    let convsToShow = [...nonArchivedConvs];
+    if (filterQuery) {
+      convsToShow = convsToShow.filter(c => 
+        (c.title || "").toLowerCase().includes(filterQuery) || 
+        (c.prompt || "").toLowerCase().includes(filterQuery)
+      );
+    }
+    const sorted = sortConvs(convsToShow);
+
+    if (sorted.length === 0) {
+      treeContainer.innerHTML = `
+        <div style="font-size:12px; color:var(--text-muted); padding:8px 10px;">
+          ${filterQuery ? "No matching conversations found." : "No active conversations. Start a new chat above!"}
+        </div>
+      `;
+      return;
+    }
+
+    const convsList = document.createElement("div");
+    convsList.className = "project-conversations-list";
+    convsList.style.display = "flex";
+    convsList.style.flexDirection = "column";
+    sorted.forEach(conv => {
+      convsList.appendChild(createConvRowElement(conv));
+    });
+    treeContainer.appendChild(convsList);
     return;
   }
 
-  projectsList.forEach(proj => {
-    const projName = proj.Name || proj.Path.split("/").filter(Boolean).pop() || "Project";
-    const isCollapsed = !!collapsedProjects[proj.Path];
+  // Case 2: One or more projects exist
+  const renderedConvIds = new Set();
 
-    // Find conversations for this project
-    let convs = appConversations.filter(c => c.projectId === proj.Path);
-    if (convs.length === 0 && (proj.Path === activeProjectPath || proj.Path === ".")) {
-      convs = appConversations.filter(c => !c.projectId || c.projectId === "." || c.projectId === activeProjectPath);
+  projectsList.forEach(proj => {
+    const projName = proj.Name || proj.Path.split(/[/\\]/).filter(Boolean).pop() || "Project";
+    const isCollapsed = !!collapsedProjects[proj.Path];
+    const projNorm = normPath(proj.Path);
+    const activeNorm = normPath(activeProjectPath);
+
+    let convs = nonArchivedConvs.filter(c => {
+      const cPath = normPath(c.projectId || c.project_id);
+      return cPath && cPath === projNorm;
+    });
+
+    if (convs.length === 0 && (projNorm === activeNorm || projNorm === ".") && activeNorm !== "") {
+      convs = nonArchivedConvs.filter(c => {
+        const cPath = normPath(c.projectId || c.project_id);
+        return cPath && (cPath === "." || cPath === activeNorm);
+      });
     }
 
     // Apply search filter if active
-    if (projectFilterQuery) {
-      const matchProj = projName.toLowerCase().includes(projectFilterQuery) || proj.Path.toLowerCase().includes(projectFilterQuery);
-      const matchingConvs = convs.filter(c => (c.title || "").toLowerCase().includes(projectFilterQuery) || (c.prompt || "").toLowerCase().includes(projectFilterQuery));
+    if (filterQuery) {
+      const matchProj = projName.toLowerCase().includes(filterQuery) || proj.Path.toLowerCase().includes(filterQuery);
+      const matchingConvs = convs.filter(c => 
+        (c.title || "").toLowerCase().includes(filterQuery) || 
+        (c.prompt || "").toLowerCase().includes(filterQuery)
+      );
       if (!matchProj && matchingConvs.length === 0) {
         return; // filter out
       }
@@ -276,23 +556,17 @@ function renderProjectTree() {
       }
     }
 
-    // Sort conversations: pinned first, then by title or id
-    const sortedConvs = [...convs].sort((a, b) => {
-      const aPinned = pinnedConversationIds.has(a.id);
-      const bPinned = pinnedConversationIds.has(b.id);
-      if (aPinned && !bPinned) return -1;
-      if (!aPinned && bPinned) return 1;
-      return 0;
-    });
+    convs.forEach(c => renderedConvIds.add(c.id));
+    const sortedConvs = sortConvs(convs);
 
-    // Project container element
     const projGroup = document.createElement("div");
     projGroup.className = "project-group" + (isCollapsed ? " collapsed" : "");
 
-    // Folder header row
+    const folderRow = document.createElement("div");
+    folderRow.className = "project-folder-row";
     folderRow.onclick = async (e) => {
       if (proj.Path !== activeProjectPath) {
-        await selectProject(proj.Path, projName);
+        await selectProject(proj.Path, projName, { switchConversation: true });
         collapsedProjects[proj.Path] = false;
         renderProjectTree();
       } else {
@@ -314,7 +588,6 @@ function renderProjectTree() {
     `;
     projGroup.appendChild(folderRow);
 
-    // Conversations sub-list
     const convsList = document.createElement("div");
     convsList.className = "project-conversations-list";
     if (isCollapsed) {
@@ -330,31 +603,52 @@ function renderProjectTree() {
       convsList.appendChild(emptyRow);
     } else {
       sortedConvs.forEach(conv => {
-        const isCur = conv.id === activeConversationId;
-        const isPinned = pinnedConversationIds.has(conv.id);
-
-        const convRow = document.createElement("div");
-        convRow.className = "conversation-row" + (isCur ? " active" : "") + (isPinned ? " pinned" : "");
-        convRow.onclick = () => selectConversation(conv.id);
-
-        convRow.innerHTML = `
-          <div class="conversation-row-left">
-            <span class="conversation-dot"></span>
-            <span class="conversation-title" title="${escapeHtml(conv.title)}">${escapeHtml(conv.title)}</span>
-          </div>
-          <button class="btn-pin-toggle ${isPinned ? "active" : ""}" title="${isPinned ? "Unpin conversation" : "Pin conversation to top"}" onclick="togglePinConversation('${conv.id}', event)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v8M5 10l7 2 7-2M7 10v6l5 4 5-4v-6"/>
-            </svg>
-          </button>
-        `;
-        convsList.appendChild(convRow);
+        convsList.appendChild(createConvRowElement(conv));
       });
     }
 
     projGroup.appendChild(convsList);
     treeContainer.appendChild(projGroup);
   });
+
+  // Render any remaining non-archived conversations that didn't match known projects
+  let unassignedConvs = nonArchivedConvs.filter(c => !renderedConvIds.has(c.id));
+  if (filterQuery) {
+    unassignedConvs = unassignedConvs.filter(c => 
+      (c.title || "").toLowerCase().includes(filterQuery) || 
+      (c.prompt || "").toLowerCase().includes(filterQuery)
+    );
+  }
+  if (unassignedConvs.length > 0) {
+    const sortedUnassigned = sortConvs(unassignedConvs);
+    const unassignedGroup = document.createElement("div");
+    unassignedGroup.className = "project-group";
+    
+    const unassignedHeader = document.createElement("div");
+    unassignedHeader.className = "sidebar-section-divider";
+    unassignedHeader.innerHTML = `<span>Conversations</span><span>${sortedUnassigned.length}</span>`;
+    unassignedGroup.appendChild(unassignedHeader);
+
+    const unassignedList = document.createElement("div");
+    unassignedList.className = "project-conversations-list";
+    sortedUnassigned.forEach(conv => {
+      unassignedList.appendChild(createConvRowElement(conv));
+    });
+    unassignedGroup.appendChild(unassignedList);
+    treeContainer.appendChild(unassignedGroup);
+  }
+}
+
+function renderProjects() {
+  if (typeof renderProjectTree === "function") {
+    renderProjectTree();
+  }
+  if (typeof renderSettingsProjectsList === "function") {
+    renderSettingsProjectsList();
+  }
+}
+if (typeof window !== "undefined") {
+  window.renderProjects = renderProjects;
 }
 
 function toggleProjectDropdown(event, forceState) {
@@ -375,32 +669,133 @@ function toggleProjectDropdown(event, forceState) {
   }
 }
 
-async function selectProject(path, displayName) {
-  if (!path) return;
+function filterProjects(query) {
+  const container = document.getElementById("project-items");
+  if (!container) return;
+  const q = (query || "").toLowerCase().trim();
+  const items = container.querySelectorAll(".dropdown-item");
+  let visibleCount = 0;
+  items.forEach(item => {
+    const text = item.innerText.toLowerCase();
+    const matches = !q || text.includes(q);
+    item.style.display = matches ? "" : "none";
+    if (matches) visibleCount++;
+  });
+  const repoCount = document.getElementById("repo-count");
+  if (repoCount && q) {
+    repoCount.innerText = `${visibleCount} matching`;
+  }
+}
+
+async function selectProject(path, displayName, options = {}) {
+  if (path === undefined || path === null) return;
   let name = displayName;
   if (!name) {
-    const parts = path.split("/").filter(Boolean);
-    name = parts.length > 0 ? parts[parts.length - 1] : "Project";
-  }
-  if (!Array.isArray(allProjects)) allProjects = [];
-  const existing = allProjects.find(p => p.Path === path);
-  if (!existing) {
-    allProjects.unshift({ Name: name, Path: path });
-  }
-
-  // 1. Optimistic UI update immediately
-  setActiveProject(path, name);
-  renderProjects(allProjects);
-  renderProjectTree();
-  localStorage.setItem("orborus_active_project", path);
-
-  // 2. Notify backend in background
-  if (window.selectProject) {
-    try {
-      window.selectProject(path).catch(() => {});
-    } catch (err) {
-      console.warn("window.selectProject error:", err);
+    if (path === "") {
+      name = "No project";
+    } else {
+      const parts = path.split(/[/\\]/).filter(Boolean);
+      name = parts.length > 0 ? parts[parts.length - 1] : "Project";
     }
+  }
+  if (path !== "") {
+    if (!Array.isArray(allProjects)) allProjects = [];
+    const norm = path.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+    const existingIdx = allProjects.findIndex(p => {
+      const pNorm = (p.Path || p.path || "").replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+      return pNorm === norm;
+    });
+    if (existingIdx !== -1) {
+      allProjects[existingIdx].Name = name;
+      const item = allProjects.splice(existingIdx, 1)[0];
+      allProjects.unshift(item);
+    } else {
+      allProjects.unshift({ Name: name, Path: path });
+    }
+  }
+
+  // 1. Optimistic UI update immediately (instant, no redundant renders)
+  setActiveProject(path, name);
+  localStorage.setItem("orborus_active_project", path);
+  renderProjectTree();
+
+  // 2. Only switch conversation context if explicitly requested (e.g. clicking a folder row in sidebar)
+  // When choosing a project from the dropdown above the prompt input, retain the current view context!
+  if (options && options.switchConversation) {
+    const normTarget = (path || "").replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+    const projectConvs = (appConversations || []).filter(c => {
+      if (!c || c.archived || c.is_archived) return false;
+      const pId = (c.projectId || c.project_id || "").replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+      return pId === normTarget;
+    });
+    if (projectConvs.length > 0) {
+      if (typeof selectConversation === "function") {
+        selectConversation(projectConvs[0].id);
+      }
+    } else {
+      if (typeof startNewSession === "function") {
+        startNewSession();
+      }
+    }
+  } else if (activeConversationId) {
+    // If user is inside an existing chat, update the active chat's project tag
+    const curConv = (appConversations || []).find(c => c && c.id === activeConversationId);
+    if (curConv) {
+      curConv.projectId = path;
+      curConv.project_id = path;
+      curConv.projectName = name;
+      curConv.project_name = name;
+      if (typeof saveStoredConversations === "function") {
+        saveStoredConversations();
+      }
+    }
+  } else if (!activeConversationId) {
+    if (typeof getRememberedModelForType === "function" && typeof getBestActiveValidatedModel === "function") {
+      const rememberedModel = getRememberedModelForType(path);
+      const validatedModel = getBestActiveValidatedModel(rememberedModel);
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    if (typeof getRememberedReasoningForType === "function") {
+      const rememberedReasoning = getRememberedReasoningForType(path) || "low";
+      activeReasoningEffort = rememberedReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = rememberedReasoning;
+      localStorage.setItem("orborus_ai_reasoning", rememberedReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
+  }
+
+  // 3. Refresh right sidebar overview & git status only if a project workspace exists
+  if (path !== "" && typeof loadRightSidebarOverview === "function") {
+    loadRightSidebarOverview();
+  }
+
+  // 4. If settings modal is open, immediately select this project in settings
+  if (typeof selectSettingsProject === "function") {
+    const modal = document.getElementById("settings-modal");
+    if (modal && modal.classList.contains("visible")) {
+      selectSettingsProject(path, name);
+    }
+  }
+
+  // 5. Notify backend asynchronously in background without blocking UI
+  const notifyBackend = window.selectProject ? window.selectProject(path) : (typeof callGo === "function" ? callGo("selectProject", path) : null);
+  if (notifyBackend && typeof notifyBackend.then === "function") {
+    notifyBackend.then(raw => {
+      if (raw) {
+        try {
+          const res = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (res && res.projects && Array.isArray(res.projects) && res.projects.length > 0) {
+            allProjects = res.projects;
+            renderProjectTree();
+          }
+        } catch (e) {}
+      }
+    }).catch(err => {
+      console.warn("selectProject backend sync error:", err);
+    });
   }
 }
 
@@ -409,9 +804,31 @@ function setActiveProject(path, displayName) {
   localStorage.setItem("orborus_active_project", path);
   let name = displayName;
   if (!name) {
-    const parts = path.split("/").filter(Boolean);
-    name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+    if (path === "") {
+      name = "No project";
+    } else {
+      const parts = path.split(/[/\\]/).filter(Boolean);
+      name = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+    }
   }
   const el = document.getElementById("active-project-name");
   if (el) el.innerText = name;
+  const topbarProj = document.getElementById("topbar-project-name");
+  if (topbarProj && !activeConversationId) topbarProj.innerText = name;
 }
+
+function renderProjects(projects) {
+  if (Array.isArray(projects)) {
+    allProjects = projects;
+  }
+  renderProjectTree();
+  if (typeof renderSettingsProjectsList === "function") {
+    renderSettingsProjectsList();
+  }
+}
+
+window.renderProjects = renderProjects;
+window.archiveConversation = archiveConversation;
+window.unarchiveConversation = unarchiveConversation;
+window.selectConversation = selectConversation;
+window.togglePinConversation = togglePinConversation;

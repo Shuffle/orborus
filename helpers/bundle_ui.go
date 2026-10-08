@@ -6,11 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"orborus/pkg/uivalidate"
 )
 
 func main() {
 	srcDir := "pkg/ui/src"
 	destFile := "pkg/ui/index.html"
+
+	// 1. Pre-bundle validation: Check syntax, delimiter balance, try/catch, and button handlers
+	valErrors := uivalidate.ValidateEntireUI(srcDir)
+	if len(valErrors) > 0 {
+		fmt.Printf("❌ BUNDLE REJECTED: %d UI validation error(s) detected:\n", len(valErrors))
+		for _, err := range valErrors {
+			fmt.Printf("   • %s\n", err)
+		}
+		os.Exit(1)
+	}
 
 	assembled, err := AssembleUI(srcDir)
 	if err != nil {
@@ -21,7 +33,7 @@ func main() {
 		log.Fatalf("Failed to write %s: %v", destFile, err)
 	}
 
-	fmt.Printf("Successfully bundled %s into %s (%d bytes)\n", srcDir, destFile, len(assembled))
+	fmt.Printf("✅ All syntax & button handlers verified! Successfully bundled %s into %s (%d bytes)\n", srcDir, destFile, len(assembled))
 }
 
 // AssembleUI combines src/index.html, src/css/*.css, and src/js/*.js

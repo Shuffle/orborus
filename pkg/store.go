@@ -26,6 +26,12 @@ type ProjectPermission struct {
 	AllowedCommands         string `json:"allowed_commands,omitempty"`          // comma separated command prefixes
 }
 
+// StoredProject holds a saved workspace directory
+type StoredProject struct {
+	Name string `json:"name,omitempty"`
+	Path string `json:"path"`
+}
+
 // LocalAgentStore holds persisted settings, credentials, and session state
 type LocalAgentStore struct {
 	PermissionPolicy        string                       `json:"permission_policy,omitempty"`
@@ -37,6 +43,7 @@ type LocalAgentStore struct {
 	AiApiUrl                string                       `json:"ai_api_url,omitempty"`
 	AiApiKey                string                       `json:"ai_api_key,omitempty"`
 	ActiveProject           string                       `json:"active_project,omitempty"`
+	Projects                []StoredProject              `json:"projects,omitempty"`
 	BaseURL                 string                       `json:"base_url,omitempty"`
 	OrgID                   string                       `json:"org_id,omitempty"`
 	Environment             string                       `json:"environment,omitempty"`
@@ -46,6 +53,9 @@ type LocalAgentStore struct {
 	ApprovalRules           []ApprovalRule               `json:"approval_rules,omitempty"`
 	PinnedConversations     []string                     `json:"pinned_conversations,omitempty"`
 	InjectedSkills          []SkillDefinition            `json:"injected_skills,omitempty"`
+	LocalModelsDir          string                       `json:"local_models_dir,omitempty"`
+	LocalModelPath          string                       `json:"local_model_path,omitempty"`
+	ActiveExecutionMode     string                       `json:"active_execution_mode,omitempty"`
 }
 
 // GetLocalStorePath returns the path to ~/.shuffle/agent.json

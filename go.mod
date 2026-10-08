@@ -2,11 +2,14 @@ module orborus
 
 go 1.25.6
 
-replace github.com/shuffle/shuffle-shared => ../shuffle-shared
+replace github.com/shuffle/shuffle-shared => c:/Users/Fredr/Documents/antigravity/shuffle-shared
 
 replace github.com/shuffle/osctrl => ../osctrl
 
+replace vllm-client => github.com/Shuffle/tendon v0.0.1
+
 require (
+	vllm-client v0.0.0-00010101000000-000000000000
 	fyne.io/systray v1.12.2
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v28.3.3+incompatible
@@ -17,6 +20,7 @@ require (
 	github.com/shuffle/shuffle-shared v1.3.10
 	k8s.io/api v0.34.2
 	k8s.io/apimachinery v0.34.2
+	k8s.io/client-go v0.34.2
 )
 
 require (
@@ -176,7 +180,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/client-go v0.34.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect

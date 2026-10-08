@@ -51,6 +51,27 @@ func generateRandomHex(byteCount int) string {
 	return hex.EncodeToString(b)
 }
 
+// openBrowser opens the specified URL in the user's default browser cross-platform
+func openBrowser(targetURL string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", targetURL)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", targetURL)
+	default:
+		cmd = exec.Command("xdg-open", targetURL)
+	}
+	if err := cmd.Start(); err != nil {
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/c", "start", "", targetURL)
+			return cmd.Start()
+		}
+		return err
+	}
+	return nil
+}
+
 // StartDynamicOAuth2Flow initializes the dynamic auth flow matching ChatGPT MCP logins
 func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplete func(token, orgID, env string)) (string, error) {
 	verifier, challenge, err := GeneratePKCE()
@@ -197,8 +218,8 @@ func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplet
 	}()
 
 	// Open user's default browser to Shuffle OAuth2 authorize URL
-	if runtime.GOOS == "darwin" {
-		_ = exec.Command("open", fullAuthURL).Start()
+	if err := openBrowser(fullAuthURL); err != nil {
+		log.Printf("[WARN] Failed to open browser automatically: %v", err)
 	}
 
 	return fullAuthURL, nil
