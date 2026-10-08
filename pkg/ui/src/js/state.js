@@ -88,18 +88,11 @@ var AVAILABLE_AI_MODELS = [
     category: "Local Models",
     provider: "local"
   },
-  // Shuffle Cloud AI
+  // Shuffle AI (Optional)
   {
     key: "gemini-3.8-flash",
-    label: "Gemini 3.8 Flash",
-    desc: "Shuffle AI Cloud",
-    category: "Shuffle AI",
-    provider: "shuffle"
-  },
-  {
-    key: "gemini-3.8-pro",
-    label: "Gemini 3.8 Pro",
-    desc: "Shuffle AI Cloud",
+    label: "Default (Gemini 3.8 Flash)",
+    desc: "Shuffle AI (Optional)",
     category: "Shuffle AI",
     provider: "shuffle"
   },
@@ -135,12 +128,93 @@ var AVAILABLE_AI_MODELS = [
   }
 ];
 
+function getCustomByokModels() {
+  try {
+    const raw = localStorage.getItem("orborus_byok_models");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(s => String(s).trim()).filter(Boolean);
+      }
+    }
+  } catch (e) {}
+  const legacy = (localStorage.getItem("orborus_custom_model") || "").trim();
+  if (legacy && legacy !== "custom") return [legacy];
+  return [];
+}
+
+function detectModelProvider(modelId) {
+  const lower = String(modelId || "").toLowerCase();
+  if (lower.startsWith("gpt-") || lower.startsWith("o1") || lower.startsWith("o3") || lower.startsWith("chatgpt")) return "openai";
+  if (lower.startsWith("claude-") || lower.startsWith("anthropic")) return "anthropic";
+  if (lower.startsWith("gemini-")) return "gemini";
+  if (lower.startsWith("deepseek")) return "deepseek";
+  if (lower.startsWith("groq") || lower.startsWith("llama")) return "groq";
+  if (lower.startsWith("mistral") || lower.startsWith("codestral")) return "mistral";
+  if (lower.startsWith("qwen")) return "qwen";
+  return "custom";
+}
+
+function syncAvailableAiModels() {
+  const customModels = getCustomByokModels();
+  AVAILABLE_AI_MODELS = AVAILABLE_AI_MODELS.filter(m => !m.isCustomByok);
+
+  customModels.forEach(modelId => {
+    const exists = AVAILABLE_AI_MODELS.some(m => m.key.toLowerCase() === modelId.toLowerCase());
+    if (!exists) {
+      AVAILABLE_AI_MODELS.push({
+        key: modelId,
+        label: modelId,
+        desc: "BYOK Model",
+        category: "BYOK Models",
+        provider: detectModelProvider(modelId),
+        isCustomByok: true
+      });
+    }
+  });
+}
+
+function addCustomByokModel(modelId) {
+  if (!modelId) return null;
+  const clean = modelId.trim();
+  if (!clean || clean === "custom") return null;
+
+  const list = getCustomByokModels();
+  if (!list.some(m => m.toLowerCase() === clean.toLowerCase())) {
+    list.push(clean);
+    localStorage.setItem("orborus_byok_models", JSON.stringify(list));
+  }
+  localStorage.setItem("orborus_custom_model", clean);
+  syncAvailableAiModels();
+  return clean;
+}
+
+function removeCustomByokModel(modelId) {
+  if (!modelId) return;
+  const clean = modelId.trim().toLowerCase();
+  let list = getCustomByokModels();
+  list = list.filter(m => m.toLowerCase() !== clean);
+  localStorage.setItem("orborus_byok_models", JSON.stringify(list));
+  syncAvailableAiModels();
+
+  if (activeAiModel && activeAiModel.toLowerCase() === clean) {
+    activeAiModel = "gpt-4o";
+    localStorage.setItem("orborus_ai_model", "gpt-4o");
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  }
+}
+
+// Initial sync on load
+syncAvailableAiModels();
+
 function getModelConfigStatus(modelKey) {
   const curKey = (modelKey || activeAiModel || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash").trim();
   const effectiveKey = (currentAiKey || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_key")) || "").trim();
   const effectiveUrl = (currentAiUrl || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_url")) || "").trim().toLowerCase();
   const hasShuffleAuth = !!(isLoggedIn || (typeof window !== "undefined" && window.isLoggedIn));
   const hasLocalGPU = (typeof window !== "undefined" && window.localExecutorAvailable !== false);
+  const hasGenericKey = effectiveKey.length > 0;
+  const hasGenericUrl = effectiveUrl.length > 0 && !effectiveUrl.startsWith("local://");
 
   // 1. Local GPU Models
   if (curKey === "tendon-local" || curKey.startsWith("tendon") || curKey.startsWith("local") || curKey.includes("gemma")) {
@@ -169,26 +243,14 @@ function getModelConfigStatus(modelKey) {
     }
   }
 
-  // 2. Shuffle AI Models (Gemini 3.8 Flash, Gemini 3.8 Pro)
-  const isShuffleModel = curKey === "gemini-3.8-flash" || curKey === "gemini-3.8-flash-high" || curKey === "gemini-3.8-pro";
-  if (isShuffleModel) {
-    const hasGoogleKey = (effectiveKey.startsWith("AIza") || effectiveKey.length >= 35) || effectiveUrl.includes("googleapis.com");
+  // 2. Shuffle AI Models (Optional Shuffle Gemini 3.8 Flash via OAuth or Backend)
+  const isShuffleCategory = curKey === "gemini-3.8-flash" || curKey === "gemini-3.8-flash-high" || curKey === "gemini-3.8-pro" || curKey === "default";
+  if (isShuffleCategory && (activeExecutionMode === "shuffle" || activeExecutionMode === "orborus" || (!hasGenericKey && !hasGenericUrl))) {
     if (hasShuffleAuth) {
       return {
         configured: true,
         category: "Shuffle AI",
         badge: "Connected",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasGoogleKey) {
-      return {
-        configured: true,
-        category: "Shuffle AI",
-        badge: "Google Key",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -201,33 +263,22 @@ function getModelConfigStatus(modelKey) {
         category: "Shuffle AI",
         badge: "Login needed",
         badgeType: "unconfigured",
-        reason: "Requires Shuffle login or Google API key",
+        reason: "Requires optional Shuffle login",
         actionText: "Log In to Shuffle",
         actionType: "auth",
-        setupTip: "Prompts will fail: Not logged in. Log in to Shuffle or provide a Google API key in Settings."
+        setupTip: "Optional Shuffle integration: log in to Shuffle in Settings or choose BYOK / Local GPU."
       };
     }
   }
 
-  // 3. OpenAI Models
+  // 3. OpenAI Models (BYOK)
   if (curKey === "gpt-4o" || curKey.startsWith("gpt-") || curKey.startsWith("o1") || curKey.startsWith("o3")) {
-    const hasOpenAiKey = (effectiveKey.startsWith("sk-") && !effectiveKey.startsWith("sk-ant-")) || effectiveUrl.includes("openai.com");
-    if (hasOpenAiKey) {
+    const hasOpenAiKey = (effectiveKey.startsWith("sk-") && !effectiveKey.startsWith("sk-ant-")) || effectiveUrl.includes("openai.com") || hasGenericKey;
+    if (hasOpenAiKey || hasGenericUrl) {
       return {
         configured: true,
         category: "BYOK Models",
         badge: "API Key",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasShuffleAuth) {
-      return {
-        configured: true,
-        category: "BYOK Models",
-        badge: "Shuffle Cloud",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -240,33 +291,22 @@ function getModelConfigStatus(modelKey) {
         category: "BYOK Models",
         badge: "Key needed",
         badgeType: "unconfigured",
-        reason: "Requires OpenAI API key in Settings",
+        reason: "Requires OpenAI API key in BYOK Settings",
         actionText: "Set OpenAI Key",
         actionType: "byok",
-        setupTip: "Prompts will fail: OpenAI API key is missing. Add your API key in Settings > AI & Models."
+        setupTip: "OpenAI API key is missing. Add your API key in Settings > Direct LLM (BYOK)."
       };
     }
   }
 
-  // 4. Anthropic Models
+  // 4. Anthropic Models (BYOK)
   if (curKey.startsWith("claude-") || curKey.startsWith("anthropic")) {
-    const hasClaudeKey = effectiveKey.startsWith("sk-ant-") || effectiveUrl.includes("anthropic.com");
-    if (hasClaudeKey) {
+    const hasClaudeKey = effectiveKey.startsWith("sk-ant-") || effectiveUrl.includes("anthropic.com") || hasGenericKey;
+    if (hasClaudeKey || hasGenericUrl) {
       return {
         configured: true,
         category: "BYOK Models",
         badge: "API Key",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasShuffleAuth) {
-      return {
-        configured: true,
-        category: "BYOK Models",
-        badge: "Shuffle Cloud",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -279,22 +319,48 @@ function getModelConfigStatus(modelKey) {
         category: "BYOK Models",
         badge: "Key needed",
         badgeType: "unconfigured",
-        reason: "Requires Anthropic API key in Settings",
+        reason: "Requires Anthropic API key in BYOK Settings",
         actionText: "Set Anthropic Key",
         actionType: "byok",
-        setupTip: "Prompts will fail: Anthropic API key is missing. Add your API key in Settings > AI & Models."
+        setupTip: "Anthropic API key is missing. Add your API key in Settings > Direct LLM (BYOK)."
       };
     }
   }
 
-  // 5. Custom Model / Unknown
-  const savedCustom = (typeof localStorage !== "undefined" && localStorage.getItem("orborus_custom_model") || "").trim();
-  const hasCustomConfig = (effectiveUrl !== "" && !effectiveUrl.startsWith("local://")) || (effectiveKey !== "");
-  if (hasCustomConfig || (curKey && curKey !== "custom" && savedCustom === curKey && effectiveKey !== "")) {
+  // 5. Gemini Models as BYOK (using user Google API key or custom endpoint)
+  if (curKey.startsWith("gemini")) {
+    const hasGoogleKey = (effectiveKey.startsWith("AIza") || effectiveKey.startsWith("AI-")) || effectiveUrl.includes("googleapis.com") || hasGenericKey;
+    if (hasGoogleKey || hasGenericUrl) {
+      return {
+        configured: true,
+        category: "BYOK Models",
+        badge: "API Key",
+        badgeType: "ready",
+        reason: "",
+        actionText: "",
+        actionType: "",
+        setupTip: ""
+      };
+    } else {
+      return {
+        configured: false,
+        category: "BYOK Models",
+        badge: "Key needed",
+        badgeType: "unconfigured",
+        reason: "Requires Gemini API key in BYOK Settings",
+        actionText: "Set Gemini Key",
+        actionType: "byok",
+        setupTip: "Gemini API key is missing. Add your key in Settings > Direct LLM (BYOK)."
+      };
+    }
+  }
+
+  // 6. User-added custom / other BYOK Models (e.g. DeepSeek, Groq, Mistral, Ollama)
+  if (hasGenericKey || hasGenericUrl) {
     return {
       configured: true,
       category: "BYOK Models",
-      badge: "Configured",
+      badge: "API Key",
       badgeType: "ready",
       reason: "",
       actionText: "",
@@ -306,12 +372,12 @@ function getModelConfigStatus(modelKey) {
   return {
     configured: false,
     category: "BYOK Models",
-    badge: "Setup needed",
+    badge: "Key needed",
     badgeType: "unconfigured",
-    reason: "No endpoint or API key configured",
-    actionText: "Configure Model",
+    reason: "Requires API key or endpoint in BYOK Settings",
+    actionText: "Configure BYOK",
     actionType: "byok",
-    setupTip: "Custom model requires an API URL and Key in Settings > AI & Models."
+    setupTip: "Add an API URL and Key in Settings > Direct LLM (BYOK)."
   };
 }
 
@@ -326,9 +392,93 @@ function checkModelAvailability(modelKey) {
   };
 }
 
+function isModelActiveAndValidated(modelKey) {
+  if (!modelKey) return false;
+  const status = getModelConfigStatus(modelKey);
+  return !!(status && status.configured);
+}
+
+function getBestActiveValidatedModel(preferredModel) {
+  if (preferredModel && isModelActiveAndValidated(preferredModel)) {
+    return preferredModel;
+  }
+  if (activeAiModel && isModelActiveAndValidated(activeAiModel)) {
+    return activeAiModel;
+  }
+  const globalLast = typeof localStorage !== "undefined" ? localStorage.getItem("orborus_last_model") : null;
+  if (globalLast && isModelActiveAndValidated(globalLast)) {
+    return globalLast;
+  }
+  const candidates = [
+    "tendon-local",
+    "gemini-3.8-flash",
+    "gpt-4o",
+    "claude-3-7-sonnet",
+    "gemini-3.8-pro"
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    if (isModelActiveAndValidated(candidates[i])) {
+      return candidates[i];
+    }
+  }
+  return preferredModel || activeAiModel || "gemini-3.8-flash";
+}
+
+function getChatTypeKey(projectPath) {
+  const p = (projectPath !== undefined ? projectPath : (typeof activeProjectPath !== "undefined" ? activeProjectPath : "")) || "";
+  const clean = p.trim();
+  if (!clean || clean === "__NONE__" || clean.toLowerCase() === "none" || clean.toLowerCase() === "no project") {
+    return "__no_project__";
+  }
+  return "proj_" + clean.replace(/\\/g, "/").toLowerCase();
+}
+
+function getRememberedModelForType(projectPath) {
+  const key = getChatTypeKey(projectPath);
+  try {
+    const stored = localStorage.getItem("orborus_model_by_type_" + key);
+    if (stored) return stored;
+  } catch (e) {}
+  return (typeof localStorage !== "undefined" && localStorage.getItem("orborus_last_model")) || "";
+}
+
+function saveRememberedModelForType(projectPath, model) {
+  if (!model) return;
+  const key = getChatTypeKey(projectPath);
+  try {
+    localStorage.setItem("orborus_model_by_type_" + key, model);
+    localStorage.setItem("orborus_last_model", model);
+    localStorage.setItem("orborus_ai_model", model);
+  } catch (e) {}
+}
+
+function getRememberedReasoningForType(projectPath) {
+  const key = getChatTypeKey(projectPath);
+  try {
+    const stored = localStorage.getItem("orborus_reasoning_by_type_" + key);
+    if (stored) return stored;
+  } catch (e) {}
+  return (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_reasoning")) || "low";
+}
+
+function saveRememberedReasoningForType(projectPath, reasoning) {
+  if (!reasoning) return;
+  const key = getChatTypeKey(projectPath);
+  try {
+    localStorage.setItem("orborus_reasoning_by_type_" + key, reasoning);
+    localStorage.setItem("orborus_ai_reasoning", reasoning);
+  } catch (e) {}
+}
+
 if (typeof window !== "undefined") {
   window.getModelConfigStatus = getModelConfigStatus;
   window.checkModelAvailability = checkModelAvailability;
+  window.isModelActiveAndValidated = isModelActiveAndValidated;
+  window.getBestActiveValidatedModel = getBestActiveValidatedModel;
+  window.getRememberedModelForType = getRememberedModelForType;
+  window.saveRememberedModelForType = saveRememberedModelForType;
+  window.getRememberedReasoningForType = getRememberedReasoningForType;
+  window.saveRememberedReasoningForType = saveRememberedReasoningForType;
 }
 
 function setChatMode(enabled) {
@@ -356,15 +506,27 @@ function hydrateOptimisticState() {
   // 1. Synchronously restore configuration from localStorage
   currentAiUrl = localStorage.getItem("orborus_ai_url") || "";
   currentAiKey = localStorage.getItem("orborus_ai_key") || "";
-  activeAiModel = (typeof window !== "undefined" && window.activeAiModel) || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+
+  const storedProject = localStorage.getItem("orborus_active_project");
+  if (storedProject !== null) {
+    activeProjectPath = storedProject;
+  }
+
+  const rememberedModel = getRememberedModelForType(activeProjectPath);
+  const preferred = (typeof window !== "undefined" && window.activeAiModel) || rememberedModel || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+  activeAiModel = getBestActiveValidatedModel(preferred);
   if (typeof window !== "undefined") {
     window.activeAiModel = activeAiModel;
   }
+  localStorage.setItem("orborus_ai_model", activeAiModel);
+
   const isPredefined = AVAILABLE_AI_MODELS.some(m => m.key === activeAiModel && m.key !== "custom");
   if (!isPredefined && activeAiModel !== "custom" && !localStorage.getItem("orborus_custom_model")) {
     localStorage.setItem("orborus_custom_model", activeAiModel);
   }
-  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "low";
+
+  const rememberedReasoning = getRememberedReasoningForType(activeProjectPath);
+  activeReasoningEffort = rememberedReasoning || localStorage.getItem("orborus_ai_reasoning") || "low";
   currentPermissionPolicy = localStorage.getItem("orborus_permission_policy") || "ask_all";
   currentTerminalExecutionPolicy = localStorage.getItem("orborus_terminal_execution_policy") || "sandbox";
   currentFileAccessPolicy = localStorage.getItem("orborus_file_access_policy") || "ask";
@@ -519,15 +681,16 @@ async function syncBackendState() {
       currentAiUrl = state.ai_api_url;
       localStorage.setItem("orborus_ai_url", state.ai_api_url);
     }
-    if (state.ai_model) {
-      activeAiModel = state.ai_model;
-      localStorage.setItem("orborus_ai_model", state.ai_model);
-      if (typeof window !== "undefined") window.activeAiModel = state.ai_model;
-    }
-    if ((!state.ai_api_key && !currentAiKey) && (state.local_executor_available || state.local_gpu_found)) {
-      activeAiModel = "tendon-local";
-      localStorage.setItem("orborus_ai_model", "tendon-local");
-      if (typeof window !== "undefined") window.activeAiModel = "tendon-local";
+    // Resolve model prioritizing active & validated model
+    const candidateModel = (activeConversationId && Array.isArray(appConversations) && appConversations.find(c => c && c.id === activeConversationId)?.model)
+      || getRememberedModelForType(activeProjectPath)
+      || state.ai_model
+      || activeAiModel;
+    const validatedModel = getBestActiveValidatedModel(candidateModel);
+    if (validatedModel) {
+      activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
     }
 
     // If frontend has credentials in localStorage that backend lacks, push to backend

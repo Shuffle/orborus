@@ -308,13 +308,19 @@ function openSettingsModal(initialTab, focusField) {
     if (targetTab === "models" || targetTab === "mode-direct" || targetTab === "direct") {
       setTimeout(() => {
         if (focusField === "model") {
-          const customModelInput = document.getElementById("input-settings-custom-model");
-          const modelSelect = document.getElementById("select-ai-model");
-          if (customModelInput && (modelSelect && modelSelect.value === "custom" || customModelInput.style.display !== "none")) {
-            customModelInput.style.display = "block";
-            customModelInput.focus();
-          } else if (modelSelect) {
-            modelSelect.focus();
+          const byokInput = document.getElementById("input-byok-model-name");
+          if (byokInput) {
+            byokInput.focus();
+            byokInput.select();
+          } else {
+            const customModelInput = document.getElementById("input-settings-custom-model");
+            const modelSelect = document.getElementById("select-ai-model");
+            if (customModelInput && (modelSelect && modelSelect.value === "custom" || customModelInput.style.display !== "none")) {
+              customModelInput.style.display = "block";
+              customModelInput.focus();
+            } else if (modelSelect) {
+              modelSelect.focus();
+            }
           }
         } else if (focusField === "url") {
           const urlInput = document.getElementById("input-ai-url");
@@ -396,29 +402,25 @@ function switchSettingsTab(tabName) {
   const descEl = document.getElementById("settings-view-desc");
 
   if (tabName === "modes-overview") {
-    const btn = document.getElementById("settings-tab-btn-modes-overview");
-    if (btn) btn.classList.add("active");
-    const panel = document.getElementById("settings-panel-modes-overview");
-    if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "AI Execution & Connection Modes";
-    if (descEl) descEl.innerText = "Overview of all 4 connection modes, live statuses, and 1-click active engine swapping.";
-    updateModesDisplay();
+    switchSettingsTab("mode-shuffle");
+    return;
   } else if (tabName === "mode-shuffle" || tabName === "auth") {
     activeSettingsTab = "mode-shuffle";
     const btn = document.getElementById("settings-tab-btn-mode-shuffle") || document.getElementById("settings-tab-btn-auth");
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-shuffle") || document.getElementById("settings-panel-auth");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "1. Shuffle Cloud (OAuth2)";
-    if (descEl) descEl.innerText = "Sign in via browser OAuth2. Managed Shuffle AI (Gemini 3.8 Flash / Pro) default with zero key setup.";
+    if (titleEl) titleEl.innerText = "Shuffle (OAuth2 Login) — Optional";
+    if (descEl) descEl.innerText = "Optional: Connect to Shuffle via OAuth2 for managed Shuffle AI and workflow sync.";
     updateModesDisplay();
   } else if (tabName === "mode-orborus") {
+    activeSettingsTab = "mode-orborus";
     const btn = document.getElementById("settings-tab-btn-mode-orborus");
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-orborus");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "2. Orborus Connection (Self-Hosted Runner)";
-    if (descEl) descEl.innerText = "Connect to Shuffle server/cluster via Org ID, Auth Key, and Environment (Shuffle AI default).";
+    if (titleEl) titleEl.innerText = "Shuffle (Self-Hosted / Org ID) — Optional";
+    if (descEl) descEl.innerText = "Optional: Connect to a self-hosted Shuffle server/cluster via Org ID, Auth Key, and Base URL.";
     updateModesDisplay();
   } else if (tabName === "mode-direct" || tabName === "direct" || tabName === "models") {
     activeSettingsTab = "mode-direct";
@@ -426,7 +428,7 @@ function switchSettingsTab(tabName) {
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-direct") || document.getElementById("settings-panel-models");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "3. Direct LLM Connection (BYOK)";
+    if (titleEl) titleEl.innerText = "Direct LLM Connection (BYOK)";
     if (descEl) descEl.innerText = "Bring your own API key for OpenAI, Anthropic Claude, or Google Gemini.";
     updateEnvDisplayInModal();
     updateModesDisplay();
@@ -436,7 +438,7 @@ function switchSettingsTab(tabName) {
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-local");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "4. Local LLM (Native Tendon CUDA Engine)";
+    if (titleEl) titleEl.innerText = "Local GPU Engine (CUDA)";
     if (descEl) descEl.innerText = "Offline execution on your RTX 3080 Ti (12GB VRAM). Direct VRAM, 0 host RAM overhead.";
     loadLocalModelsSettings();
     updateModesDisplay();
@@ -462,164 +464,22 @@ function switchSettingsTab(tabName) {
 
 // --- 4 Execution Modes Control & Telemetry ---
 function updateModesDisplay() {
-  const activeMode = (typeof window !== "undefined" && window.activeExecutionMode) || localStorage.getItem("orborus_active_execution_mode") || "local";
-  
-  // 1. Sidebar badge
-  const navBadge = document.getElementById("nav-active-mode-badge");
-  if (navBadge) {
-    navBadge.className = "settings-mode-pill " + activeMode;
-    const labels = { shuffle: "Cloud", orborus: "Runner", direct: "Direct", local: "Local" };
-    navBadge.innerText = labels[activeMode] || activeMode;
-  }
-
-  // 2. Overview header pill
-  const overviewPill = document.getElementById("overview-active-pill");
-  if (overviewPill) {
-    overviewPill.className = "settings-mode-pill " + activeMode;
-    const modeNames = {
-      shuffle: "1. Shuffle Cloud Active",
-      orborus: "2. Orborus Backend Active",
-      direct: "3. Direct LLM Active",
-      local: "4. Local GPU Active"
-    };
-    overviewPill.innerText = modeNames[activeMode] || (activeMode.toUpperCase() + " Active");
-  }
-
-  // 3. Overview cards active highlights
-  const cards = {
-    shuffle: document.getElementById("card-mode-shuffle"),
-    orborus: document.getElementById("card-mode-orborus"),
-    direct: document.getElementById("card-mode-direct"),
-    local: document.getElementById("card-mode-local")
-  };
-  Object.keys(cards).forEach(m => {
-    if (cards[m]) {
-      cards[m].classList.toggle("active", m === activeMode);
-    }
-  });
-
-  // 4. Overview activate buttons
-  const overviewBtns = {
-    shuffle: document.getElementById("btn-overview-activate-shuffle"),
-    orborus: document.getElementById("btn-overview-activate-orborus"),
-    direct: document.getElementById("btn-overview-activate-direct"),
-    local: document.getElementById("btn-overview-activate-local")
-  };
-  Object.keys(overviewBtns).forEach(m => {
-    const btn = overviewBtns[m];
-    if (btn) {
-      if (m === activeMode) {
-        btn.classList.add("active");
-        btn.innerHTML = "✓ Active";
-      } else {
-        btn.classList.remove("active");
-        const nums = { shuffle: "1", orborus: "2", direct: "3", local: "4" };
-        btn.innerText = "Activate Mode " + nums[m];
-      }
-    }
-  });
-
-  // 5. Overview cards live metadata & status badges
-  // Mode 1: Shuffle Cloud
-  const badge1 = document.getElementById("badge-overview-shuffle");
-  const metaUser = document.getElementById("meta-user-shuffle");
-  if (isLoggedIn) {
-    if (badge1) {
-      badge1.className = "mode-card-badge " + (activeMode === "shuffle" ? "badge-active" : "badge-ready");
-      badge1.innerText = activeMode === "shuffle" ? "Active (OAuth)" : "Connected";
-    }
-    if (metaUser) metaUser.innerText = "Logged In (OAuth)";
-  } else {
-    if (badge1) {
-      badge1.className = "mode-card-badge " + (activeMode === "shuffle" ? "badge-active" : "badge-idle");
-      badge1.innerText = activeMode === "shuffle" ? "Active (Not Logged In)" : "Disconnected";
-    }
-    if (metaUser) metaUser.innerText = "Not Logged In";
-  }
-
-  // Mode 2: Orborus connection
   const orgInput = document.getElementById("input-org-id");
-  const authInput = document.getElementById("input-auth-key");
   const envInput = document.getElementById("input-env-name");
-  const hasOrborusCreds = (orgInput && orgInput.value.trim()) || (typeof window !== "undefined" && window.backendOrg);
-  const badge2 = document.getElementById("badge-overview-orborus");
   const metaOrg = document.getElementById("meta-org-orborus");
   const metaEnv = document.getElementById("meta-env-orborus");
   if (metaOrg && orgInput && orgInput.value.trim()) metaOrg.innerText = orgInput.value.trim();
   if (metaEnv && envInput && envInput.value.trim()) metaEnv.innerText = envInput.value.trim();
-  if (badge2) {
-    if (hasOrborusCreds) {
-      badge2.className = "mode-card-badge " + (activeMode === "orborus" ? "badge-active" : "badge-ready");
-      badge2.innerText = activeMode === "orborus" ? "Active (Orborus)" : "Configured";
-    } else {
-      badge2.className = "mode-card-badge " + (activeMode === "orborus" ? "badge-active" : "badge-idle");
-      badge2.innerText = activeMode === "orborus" ? "Active (Default)" : "Not Configured";
-    }
-  }
 
-  // Mode 3: Direct LLM
-  const badge3 = document.getElementById("badge-overview-direct");
   const metaModelDirect = document.getElementById("meta-model-direct");
   const metaKeyDirect = document.getElementById("meta-key-direct");
   const hasDirectKey = !!(currentAiKey || localStorage.getItem("orborus_ai_key"));
   if (metaModelDirect) metaModelDirect.innerText = activeAiModel || "gpt-4o";
   if (metaKeyDirect) metaKeyDirect.innerText = hasDirectKey ? "Configured" : "Not configured";
-  if (badge3) {
-    if (hasDirectKey) {
-      badge3.className = "mode-card-badge " + (activeMode === "direct" ? "badge-active" : "badge-ready");
-      badge3.innerText = activeMode === "direct" ? "Active (BYOK)" : "Ready";
-    } else {
-      badge3.className = "mode-card-badge " + (activeMode === "direct" ? "badge-active" : "badge-idle");
-      badge3.innerText = activeMode === "direct" ? "Active (No Key)" : "No Key Set";
-    }
-  }
 
-  // Mode 4: Local LLM (GPU)
-  const badge4 = document.getElementById("badge-overview-local");
   const metaWeightLocal = document.getElementById("meta-weight-local");
   const activeWeight = (window.localModelPath ? window.localModelPath.split(/[\\/]/).pop() : "No model loaded");
   if (metaWeightLocal) metaWeightLocal.innerText = activeWeight;
-  if (badge4) {
-    badge4.className = "mode-card-badge " + (activeMode === "local" ? "badge-active" : "badge-ready");
-    badge4.innerText = activeMode === "local" ? "Active GPU" : "Ready";
-  }
-
-  // 6. Mode tab banners inside individual panels
-  const banners = {
-    shuffle: {
-      banner: document.getElementById("banner-mode-shuffle"),
-      btn: document.getElementById("btn-banner-activate-shuffle")
-    },
-    orborus: {
-      banner: document.getElementById("banner-mode-orborus"),
-      btn: document.getElementById("btn-banner-activate-orborus")
-    },
-    direct: {
-      banner: document.getElementById("banner-mode-direct"),
-      btn: document.getElementById("btn-banner-activate-direct")
-    },
-    local: {
-      banner: document.getElementById("banner-mode-local"),
-      btn: document.getElementById("btn-banner-activate-local")
-    }
-  };
-
-  const numMap = { shuffle: "1", orborus: "2", direct: "3", local: "4" };
-  Object.keys(banners).forEach(m => {
-    const item = banners[m];
-    if (item.banner) {
-      item.banner.classList.toggle("inactive", m !== activeMode);
-    }
-    if (item.btn) {
-      if (m === activeMode) {
-        item.btn.classList.add("active");
-        item.innerHTML = "✓ Currently Active";
-      } else {
-        item.btn.classList.remove("active");
-        item.innerText = "Activate Mode " + numMap[m];
-      }
-    }
-  });
 }
 
 async function activateExecutionMode(mode) {
@@ -628,85 +488,222 @@ async function activateExecutionMode(mode) {
   window.activeExecutionMode = cleanMode;
   localStorage.setItem("orborus_active_execution_mode", cleanMode);
 
-  if (cleanMode === "local") {
-    activeAiModel = "tendon-local";
-    window.activeAiModel = "tendon-local";
-    localStorage.setItem("orborus_ai_model", "tendon-local");
-  } else if (cleanMode === "shuffle" || cleanMode === "orborus") {
-    if (!activeAiModel || activeAiModel === "tendon-local") {
-      activeAiModel = "gemini-3.8-flash";
-      window.activeAiModel = "gemini-3.8-flash";
-      localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
-    }
-  } else if (cleanMode === "direct") {
-    if (!activeAiModel || activeAiModel === "tendon-local" || activeAiModel.startsWith("gemini-")) {
-      const selectModel = document.getElementById("select-ai-model");
-      if (selectModel && selectModel.value && selectModel.value !== "tendon-local") {
-        activeAiModel = selectModel.value;
-      } else {
-        activeAiModel = "gpt-4o";
-      }
-      window.activeAiModel = activeAiModel;
-      localStorage.setItem("orborus_ai_model", activeAiModel);
-    }
-  }
-
-  // Notify backend bridge
   if (typeof window.bridgeCall === "function") {
     try {
       await window.bridgeCall("setActiveExecutionMode", JSON.stringify({ mode: cleanMode }));
-    } catch (e) {
-      console.warn("bridgeCall setActiveExecutionMode error:", e);
-    }
+    } catch (e) {}
   }
 
   updateModesDisplay();
   if (typeof updateActiveModelLabel === "function") {
     updateActiveModelLabel();
   }
-  if (typeof renderModelDropdown === "function") {
-    renderModelDropdown();
-  }
-
-  const modeNames = {
-    shuffle: "Mode 1: Shuffle Cloud (OAuth)",
-    orborus: "Mode 2: Orborus Backend Connection",
-    direct: "Mode 3: Direct LLM (BYOK)",
-    local: "Mode 4: Local GPU Engine (RTX 3080 Ti)"
-  };
-  showToast("Active mode switched to: " + (modeNames[cleanMode] || cleanMode));
 }
 
 function applyDirectLlmPreset(preset) {
   const urlInput = document.getElementById("input-ai-url");
+  const modelInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   if (!preset) return;
+  let targetUrl = "";
+  let targetModel = "";
+
   if (preset === "openai") {
-    if (urlInput) urlInput.value = "https://api.openai.com/v1";
-    if (modelSelect) modelSelect.value = "gpt-4o";
+    targetUrl = "https://api.openai.com/v1";
+    targetModel = "gpt-4o";
   } else if (preset === "anthropic") {
-    if (urlInput) urlInput.value = "https://api.anthropic.com/v1";
-    if (modelSelect) modelSelect.value = "claude-3-7-sonnet";
+    targetUrl = "https://api.anthropic.com/v1";
+    targetModel = "claude-3-7-sonnet";
   } else if (preset === "gemini") {
-    if (urlInput) urlInput.value = "https://generativelanguage.googleapis.com/v1beta";
-    if (modelSelect) modelSelect.value = "gemini-3.8-flash";
+    targetUrl = "https://generativelanguage.googleapis.com/v1beta";
+    targetModel = "gemini-2.5-flash";
+  } else if (preset === "deepseek") {
+    targetUrl = "https://api.deepseek.com/v1";
+    targetModel = "deepseek-chat";
+  } else if (preset === "groq") {
+    targetUrl = "https://api.groq.com/openai/v1";
+    targetModel = "llama-3.3-70b-versatile";
+  } else if (preset === "ollama") {
+    targetUrl = "http://localhost:11434/v1";
+    targetModel = "llama3.2";
+  } else if (preset === "openrouter") {
+    targetUrl = "https://openrouter.ai/api/v1";
+    targetModel = "openai/gpt-4o";
   } else if (preset === "custom") {
-    if (urlInput && !urlInput.value) urlInput.value = "http://localhost:8000/v1";
-    if (modelSelect) modelSelect.value = "custom";
+    targetUrl = "http://localhost:8000/v1";
+    targetModel = modelInput && modelInput.value.trim() ? modelInput.value.trim() : "custom-model";
   }
+
+  if (targetUrl && urlInput) urlInput.value = targetUrl;
+  if (targetModel) {
+    if (modelInput) modelInput.value = targetModel;
+    if (modelSelect) modelSelect.value = targetModel;
+    if (typeof addCustomByokModel === "function") {
+      addCustomByokModel(targetModel);
+    }
+    activeAiModel = targetModel;
+    localStorage.setItem("orborus_ai_model", targetModel);
+  }
+
+  updateEnvDisplayInModal();
+  renderByokModelsSettings();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+}
+
+function renderByokModelsSettings() {
+  const container = document.getElementById("byok-models-tags-container");
+  const modelInput = document.getElementById("input-byok-model-name");
+  const curModel = (activeAiModel || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gpt-4o").trim();
+
+  if (modelInput && (!modelInput.value || document.activeElement !== modelInput)) {
+    modelInput.value = curModel;
+  }
+
+  if (!container) return;
+  container.innerHTML = "";
+
+  const standardPresets = ["gpt-4o", "claude-3-7-sonnet", "claude-3-5-sonnet"];
+  const customList = (typeof getCustomByokModels === "function") ? getCustomByokModels() : [];
+  const allModels = [];
+
+  standardPresets.forEach(m => {
+    allModels.push({ key: m, isCustom: false });
+  });
+
+  customList.forEach(m => {
+    if (!allModels.some(existing => existing.key.toLowerCase() === m.toLowerCase())) {
+      allModels.push({ key: m, isCustom: true });
+    }
+  });
+
+  allModels.forEach(item => {
+    const isSelected = item.key.toLowerCase() === curModel.toLowerCase();
+    const tag = document.createElement("div");
+    tag.className = "byok-model-tag" + (isSelected ? " active" : "");
+    tag.onclick = () => selectByokModelTag(item.key);
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = item.key;
+    tag.appendChild(labelSpan);
+
+    if (isSelected) {
+      const checkIcon = document.createElement("span");
+      checkIcon.className = "byok-tag-check";
+      checkIcon.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+      tag.appendChild(checkIcon);
+    }
+
+    if (item.isCustom) {
+      const removeBtn = document.createElement("span");
+      removeBtn.className = "byok-tag-remove";
+      removeBtn.title = "Remove model";
+      removeBtn.textContent = "×";
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        handleRemoveByokModel(item.key);
+      };
+      tag.appendChild(removeBtn);
+    }
+
+    container.appendChild(tag);
+  });
+}
+
+function selectByokModelTag(modelId) {
+  if (!modelId) return;
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const modelInput = document.getElementById("input-byok-model-name");
+  if (modelInput) modelInput.value = modelId;
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) modelSelect.value = modelId;
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+}
+
+function handleByokModelInput(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return;
+  activeAiModel = clean;
+  localStorage.setItem("orborus_ai_model", clean);
+  const envDisplay = document.getElementById("env-display-model");
+  if (envDisplay) envDisplay.textContent = clean;
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) modelSelect.value = clean;
+  const customInput = document.getElementById("input-settings-custom-model");
+  if (customInput) customInput.value = clean;
+  renderByokModelsSettings();
+}
+
+function addCurrentByokModel() {
+  const input = document.getElementById("input-byok-model-name");
+  const raw = input ? input.value.trim() : "";
+  if (!raw) {
+    showToast("Please enter a model name or ID");
+    if (input) input.focus();
+    return;
+  }
+  const added = (typeof addCustomByokModel === "function") ? addCustomByokModel(raw) : raw;
+  activeAiModel = added;
+  localStorage.setItem("orborus_ai_model", added);
+  localStorage.setItem("orborus_custom_model", added);
+  renderByokModelsSettings();
   updateEnvDisplayInModal();
   populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Added model: " + added);
+}
+
+function handleRemoveByokModel(modelId) {
+  if (!modelId) return;
+  if (typeof removeCustomByokModel === "function") {
+    removeCustomByokModel(modelId);
+  }
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Removed model: " + modelId);
+}
+
+function quickSelectByokModel(modelId) {
+  if (!modelId) return;
+  if (typeof addCustomByokModel === "function") {
+    addCustomByokModel(modelId);
+  }
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const input = document.getElementById("input-byok-model-name");
+  if (input) input.value = modelId;
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Selected model: " + modelId);
 }
 
 async function saveDirectLlmSettings() {
   const urlInput = document.getElementById("input-ai-url");
   const keyInput = document.getElementById("input-ai-key");
+  const modelInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
 
-  let chosenModel = modelSelect ? modelSelect.value : "";
-  if (chosenModel === "custom" && customModelInput && customModelInput.value.trim()) {
-    chosenModel = customModelInput.value.trim();
+  let chosenModel = "";
+  if (modelInput && modelInput.value.trim()) {
+    chosenModel = modelInput.value.trim();
+  } else if (modelSelect && modelSelect.value) {
+    chosenModel = modelSelect.value;
+    if (chosenModel === "custom" && customModelInput && customModelInput.value.trim()) {
+      chosenModel = customModelInput.value.trim();
+    }
   }
 
   const aiUrl = urlInput ? urlInput.value.trim() : "";
@@ -716,15 +713,14 @@ async function saveDirectLlmSettings() {
   currentAiKey = aiKey;
   activeAiModel = chosenModel || "gpt-4o";
 
-  if (chosenModel && chosenModel !== "custom" && !AVAILABLE_AI_MODELS.some(m => m.key === chosenModel && m.key !== "custom")) {
-    localStorage.setItem("orborus_custom_model", chosenModel);
-  } else if (customModelInput && customModelInput.value.trim()) {
-    localStorage.setItem("orborus_custom_model", customModelInput.value.trim());
+  if (activeAiModel && typeof addCustomByokModel === "function") {
+    addCustomByokModel(activeAiModel);
   }
 
   localStorage.setItem("orborus_ai_url", aiUrl);
   localStorage.setItem("orborus_ai_key", aiKey);
   localStorage.setItem("orborus_ai_model", activeAiModel);
+  localStorage.setItem("orborus_custom_model", activeAiModel);
 
   if (typeof window.bridgeCall === "function") {
     try {
@@ -738,9 +734,13 @@ async function saveDirectLlmSettings() {
     }
   }
   updateEnvDisplayInModal();
+  renderByokModelsSettings();
   updateModesDisplay();
   if (typeof updateActiveModelLabel === "function") {
     updateActiveModelLabel();
+  }
+  if (typeof renderModelDropdown === "function") {
+    renderModelDropdown();
   }
   showToast("Direct LLM configuration saved");
 }
@@ -1234,6 +1234,7 @@ async function switchActiveWorkspaceFromSettings() {
 
 function populateAiModelSelect() {
   const modelSelect = document.getElementById("select-ai-model");
+  renderByokModelsSettings();
   if (!modelSelect) return;
 
   const curVal = activeAiModel || localStorage.getItem("orborus_ai_model") || "tendon-local";
@@ -1264,7 +1265,6 @@ function populateAiModelSelect() {
         opt.textContent = `${m.label} (${avail.badge})`;
       } else {
         opt.textContent = `${m.label} [Unavailable: ${avail.statusText}]`;
-        opt.disabled = true;
       }
       if (m.key === curVal) {
         opt.selected = true;
@@ -1283,15 +1283,6 @@ function populateAiModelSelect() {
       customModelInput.style.display = "block";
       customModelInput.value = curVal;
     }
-  } else if (currentOpt.disabled) {
-    const firstEnabled = modelSelect.querySelector("option:not([disabled])");
-    if (firstEnabled) {
-      firstEnabled.selected = true;
-      activeAiModel = firstEnabled.value;
-      localStorage.setItem("orborus_ai_model", activeAiModel);
-      if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
-    }
-    if (customModelInput) customModelInput.style.display = "none";
   } else {
     modelSelect.value = curVal;
     if (customModelInput) customModelInput.style.display = "none";
@@ -1304,9 +1295,10 @@ function updateEnvDisplayInModal() {
   const modelEl = document.getElementById("env-display-model");
   const urlInput = document.getElementById("input-ai-url");
   const keyInput = document.getElementById("input-ai-key");
+  const byokInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
-  let model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+  let model = (byokInput && byokInput.value.trim()) || (modelSelect && modelSelect.value) || (activeAiModel || "gemini-3.8-flash");
 
   if (model === "custom") {
     if (customModelInput) {
@@ -1360,6 +1352,7 @@ async function saveSettings() {
   try {
     const urlInput = document.getElementById("input-ai-url");
     const keyInput = document.getElementById("input-ai-key");
+    const byokModelInput = document.getElementById("input-byok-model-name");
     const modelSelect = document.getElementById("select-ai-model");
     const customModelInput = document.getElementById("input-settings-custom-model");
     const globalPreset = document.getElementById("select-global-preset");
@@ -1369,10 +1362,10 @@ async function saveSettings() {
 
     const url = urlInput ? urlInput.value.trim() : (currentAiUrl || "");
     let key = keyInput ? keyInput.value.trim() : "";
-    if (!key && currentAiKey && activeSettingsTab !== "models") {
+    if (!key && currentAiKey && activeSettingsTab !== "models" && activeSettingsTab !== "mode-direct") {
       key = currentAiKey;
     }
-    let model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+    let model = (byokModelInput && byokModelInput.value.trim()) || (modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash"));
     if (model === "custom" && customModelInput && customModelInput.value.trim()) {
       model = customModelInput.value.trim();
     }
@@ -1598,21 +1591,43 @@ async function loginWithOAuth() {
   if (isOAuthPending) return;
   isOAuthPending = true;
 
-  const btnLabel = document.getElementById("lbl-btn-auth");
+  const btnLabel = document.getElementById("lbl-btn-oauth-login") || document.getElementById("lbl-btn-auth");
   if (btnLabel) btnLabel.innerText = "Opening Browser...";
 
   try {
-    if (window.startOAuthLogin) {
-      await window.startOAuthLogin("https://shuffle.security");
-      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    let authUrl = "";
+    if (typeof window.startOAuthLogin === "function") {
+      const respRaw = await window.startOAuthLogin("https://shuffle.security");
+      let resp = respRaw;
+      if (typeof respRaw === "string") {
+        try { resp = JSON.parse(respRaw); } catch (_) {}
+      }
+      if (resp && resp.status === "error") {
+        throw new Error(resp.error || "Failed to start OAuth login");
+      }
+      if (resp && resp.url) authUrl = resp.url;
+    } else if (typeof window.bridgeCall === "function") {
+      const respRaw = await window.bridgeCall("startOAuthLogin", JSON.stringify({ base_url: "https://shuffle.security" }));
+      let resp = respRaw;
+      if (typeof respRaw === "string") {
+        try { resp = JSON.parse(respRaw); } catch (_) {}
+      }
+      if (resp && resp.status === "error") {
+        throw new Error(resp.error || "Failed to start OAuth login");
+      }
+      if (resp && resp.url) authUrl = resp.url;
     } else {
-      window.open("https://shuffle.security/oauth2/authorize", "_blank");
-      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+      authUrl = "https://shuffle.security/oauth2/authorize";
+      window.open(authUrl, "_blank");
     }
+
+    if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    showToast("Opening browser for Shuffle OAuth2 login...");
   } catch (err) {
     console.error("Failed to start OAuth login:", err);
-    if (btnLabel) btnLabel.innerText = "Log in with Shuffle";
+    if (btnLabel) btnLabel.innerText = "Open Shuffle OAuth2 Login";
     isOAuthPending = false;
+    showToast("Error opening login: " + (err.message || err));
   }
 }
 

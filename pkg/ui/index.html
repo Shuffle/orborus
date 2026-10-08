@@ -208,6 +208,26 @@
     height: calc(100vh - 38px);
   }
 
+  /* Universal SVG icon vertical centering normalization across all buttons */
+  button svg,
+  .btn-secondary-action svg,
+  .btn-skills-action svg,
+  .btn-modal-cancel svg,
+  .btn-modal-submit svg,
+  .btn-workspace-switch svg,
+  .btn-mode-activate svg,
+  .btn-mode-configure svg,
+  .btn-new-chat svg,
+  .btn-send svg,
+  .btn-stop svg,
+  .icon-btn svg,
+  .nav-icon-btn svg,
+  .model-picker-pill svg,
+  .rs-tab-btn svg {
+    display: block;
+    flex-shrink: 0;
+  }
+
 
 /* --- sidebar.css --- */
   /* ---------------- Left Sidebar ---------------- */
@@ -347,6 +367,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    line-height: 1;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-primary);
@@ -356,6 +377,10 @@
     border-radius: 9999px;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-new-chat svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-new-chat:hover {
     background: var(--bg-hover);
@@ -800,10 +825,12 @@
     background: var(--bg-active);
   }
 
-  .sidebar-settings-btn {
+  .sidebar-settings-btn,
+  .sidebar-settings-nav-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    width: 100%;
     padding: 6px 8px;
     border-radius: 6px;
     font-size: 12px;
@@ -812,8 +839,15 @@
     border: none;
     cursor: pointer;
     transition: all 0.15s ease;
+    line-height: 1;
   }
-  .sidebar-settings-btn:hover {
+  .sidebar-settings-btn svg,
+  .sidebar-settings-nav-btn svg {
+    display: block;
+    flex-shrink: 0;
+  }
+  .sidebar-settings-btn:hover,
+  .sidebar-settings-nav-btn:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
   }
@@ -1099,7 +1133,9 @@
   .model-picker-pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
     border-radius: 9999px;
@@ -1111,6 +1147,10 @@
     transition: all 0.15s ease;
     white-space: nowrap;
     max-width: 260px;
+  }
+  .model-picker-pill svg {
+    display: block;
+    flex-shrink: 0;
   }
   .model-picker-pill:hover {
     color: var(--text-primary);
@@ -1430,6 +1470,10 @@
     cursor: not-allowed;
     transition: all 0.15s ease;
   }
+  .btn-send svg {
+    display: block;
+    flex-shrink: 0;
+  }
   .btn-send.active {
     background: var(--accent-blue);
     color: white;
@@ -1452,6 +1496,10 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn-stop svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-stop:hover {
     background: #dc2626;
@@ -2448,7 +2496,9 @@
   .markdown-rendered-body .btn-copy-code {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #cbd5e1;
@@ -2457,6 +2507,10 @@
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .markdown-rendered-body .btn-copy-code svg {
+    display: block;
+    flex-shrink: 0;
   }
   .markdown-rendered-body .btn-copy-code:hover {
     background: rgba(255, 255, 255, 0.12);
@@ -2573,6 +2627,8 @@
   .btn-review-changes {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    line-height: 1;
     gap: 6px;
     padding: 4px 10px;
     background: rgba(255, 255, 255, 0.06);
@@ -2583,6 +2639,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-review-changes svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-review-changes:hover {
     background: rgba(255, 255, 255, 0.12);
@@ -2642,6 +2702,10 @@
     color: #71717a;
     cursor: pointer;
     transition: all 0.12s ease;
+  }
+  .rs-tab-btn svg {
+    display: block;
+    flex-shrink: 0;
   }
   .rs-tab-btn:hover {
     background: rgba(255, 255, 255, 0.05);
@@ -3240,6 +3304,11 @@
     margin-top: 8px;
   }
   .btn-modal-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1;
     background: var(--bg-hover);
     border: 1px solid var(--border);
     color: var(--text-secondary);
@@ -3248,7 +3317,16 @@
     font-size: 13px;
     cursor: pointer;
   }
+  .btn-modal-cancel svg {
+    display: block;
+    flex-shrink: 0;
+  }
   .btn-modal-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1;
     background: #ffffff;
     border: none;
     color: #090d16;
@@ -3258,6 +3336,10 @@
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.12s ease;
+  }
+  .btn-modal-submit svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-modal-submit:hover {
     opacity: 0.9;
@@ -3478,6 +3560,11 @@
     box-shadow: none;
   }
   .btn-workspace-switch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
@@ -3487,6 +3574,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-workspace-switch svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-workspace-switch:hover {
     color: var(--text-primary);
@@ -3499,6 +3590,11 @@
     cursor: default;
   }
   .btn-secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
@@ -3507,6 +3603,10 @@
     font-size: 12px;
     cursor: pointer;
     transition: all 0.12s ease;
+  }
+  .btn-secondary-action svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-secondary-action:hover {
     color: var(--text-primary);
@@ -3582,7 +3682,9 @@
   .btn-skills-action {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
@@ -3592,6 +3694,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-skills-action svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-skills-action:hover {
     border-color: rgba(255, 255, 255, 0.2);
@@ -3705,6 +3811,77 @@
     border-color: rgba(255, 255, 255, 0.2);
     background: rgba(255, 255, 255, 0.05);
   }
+
+  /* BYOK Model Management Styles */
+  .byok-model-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s ease;
+  }
+  .byok-model-tag:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  .byok-model-tag.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25);
+    font-weight: 500;
+  }
+  .byok-tag-check {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .byok-tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 2px;
+    transition: all 0.12s ease;
+  }
+  .byok-tag-remove:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .byok-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .byok-chip-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
   .sidebar-footer-nav {
     display: flex;
     align-items: center;
@@ -4166,10 +4343,15 @@
     background: rgba(255, 255, 255, 0.04);
     color: var(--text-secondary);
     transition: all 0.12s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
+    line-height: 1;
+  }
+  .btn-mode-activate svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-mode-activate:hover {
     border-color: rgba(255, 255, 255, 0.2);
@@ -4183,6 +4365,11 @@
     cursor: default;
   }
   .btn-mode-configure {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1;
     padding: 6px 11px;
     border-radius: 6px;
     font-size: 11.5px;
@@ -4193,6 +4380,10 @@
     color: var(--text-secondary);
     transition: all 0.12s ease;
     white-space: nowrap;
+  }
+  .btn-mode-configure svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-mode-configure:hover {
     color: var(--text-primary);
@@ -4414,12 +4605,6 @@
         </div>
       </div>
 
-      <!-- Compatibility fallback container hidden -->
-      <div id="auth-status-card" style="display:none;">
-        <span id="status-subtext"></span>
-        <div id="status-details-box"><span id="lbl-org"></span><span id="lbl-env"></span></div>
-        <button id="btn-auth-action"><span id="lbl-btn-auth"></span></button>
-      </div>
 
 
       <button id="btn-sidebar-settings" class="sidebar-settings-nav-btn" onclick="openSettingsModal()" title="Settings (Cmd+,)">
@@ -4670,20 +4855,6 @@
           <button id="btn-footer-auth"></button>
           <button id="btn-mic"></button>
         </div>
-        <div style="display:none;" class="card-footer-row">
-          <div class="footer-controls-group">
-            <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
-              <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
-              <span id="footer-env-label">Shuffle Standalone</span>
-            </button>
-            <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -4878,23 +5049,13 @@
           </button>
         </div>
 
-        <div class="settings-nav-section-title" style="margin-top:14px;">AI Connection Modes</div>
+        <div class="settings-nav-section-title" style="margin-top:14px;">AI Providers</div>
         <div class="settings-nav-items">
-          <button id="settings-tab-btn-modes-overview" class="settings-nav-item" onclick="switchSettingsTab('modes-overview')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            <span>Overview &amp; Swap</span>
-            <span id="nav-active-mode-badge" class="settings-mode-pill local">Local</span>
-          </button>
           <button id="settings-tab-btn-mode-shuffle" class="settings-nav-item" onclick="switchSettingsTab('mode-shuffle')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
-            <span>1. Shuffle (OAuth)</span>
+            <span>Shuffle (OAuth)</span>
           </button>
           <button id="settings-tab-btn-mode-orborus" class="settings-nav-item" onclick="switchSettingsTab('mode-orborus')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4903,14 +5064,14 @@
               <line x1="6" y1="6" x2="6.01" y2="6"/>
               <line x1="6" y1="18" x2="6.01" y2="18"/>
             </svg>
-            <span>2. Orborus (Org/Auth)</span>
+            <span>Shuffle (Self-Hosted)</span>
           </button>
           <button id="settings-tab-btn-mode-direct" class="settings-nav-item" onclick="switchSettingsTab('mode-direct')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="16 18 22 12 16 6"/>
               <polyline points="8 6 2 12 8 18"/>
             </svg>
-            <span>3. Direct LLM (BYOK)</span>
+            <span>Direct LLM (BYOK)</span>
           </button>
           <button id="settings-tab-btn-mode-local" class="settings-nav-item" onclick="switchSettingsTab('mode-local')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4925,7 +5086,7 @@
               <line x1="1" y1="9" x2="4" y2="9"/>
               <line x1="1" y1="14" x2="4" y2="14"/>
             </svg>
-            <span>4. Local GPU (CUDA)</span>
+            <span>Local GPU (CUDA)</span>
           </button>
         </div>
 
@@ -5028,136 +5189,9 @@
             </div>
           </div>
 
-          <!-- VIEW: AI MODES OVERVIEW & SWAPPER -->
-          <div id="settings-panel-modes-overview" class="settings-panel">
-            <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>AI Execution &amp; Connection Modes</span>
-              <span id="overview-active-pill" class="settings-mode-pill local">Local GPU Active</span>
-            </div>
-            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
-              Orborus supports <strong>4 distinct execution modes</strong>. You can configure credentials for all four simultaneously and swap active execution with one click.
-            </p>
-
-            <!-- 4 Distinct Mode Cards Grid -->
-            <div class="modes-overview-grid">
-              <!-- Mode 1 Card: Shuffle Cloud OAuth2 -->
-              <div id="card-mode-shuffle" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">1</span>
-                    <span class="mode-card-title">Shuffle Cloud (OAuth)</span>
-                  </div>
-                  <span id="badge-overview-shuffle" class="mode-card-badge badge-idle">Not Connected</span>
-                </div>
-                <div class="mode-card-desc">
-                  Sign in with Shuffle via browser OAuth2. Uses managed <strong>Shuffle AI</strong> (Gemini 3.8 Flash / Pro) by default with zero API key setup.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-shuffle">
-                  User: <span id="meta-user-shuffle">Not Logged In</span> &bull; Shuffle AI Default
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-shuffle" class="btn-mode-activate" onclick="activateExecutionMode('shuffle')">
-                    Activate Mode 1
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-shuffle')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 2 Card: Orborus Backend Connection -->
-              <div id="card-mode-orborus" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">2</span>
-                    <span class="mode-card-title">Orborus (Org/Auth)</span>
-                  </div>
-                  <span id="badge-overview-orborus" class="mode-card-badge badge-idle">Not Configured</span>
-                </div>
-                <div class="mode-card-desc">
-                  Connect to a Shuffle server or on-prem cluster via Org ID, API Auth key, and Environment. Uses <strong>Shuffle AI</strong> default.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-orborus">
-                  Org: <span id="meta-org-orborus">Not Set</span> &bull; Env: <span id="meta-env-orborus">standalone</span>
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-orborus" class="btn-mode-activate" onclick="activateExecutionMode('orborus')">
-                    Activate Mode 2
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-orborus')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 3 Card: Direct LLM (BYOK) -->
-              <div id="card-mode-direct" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">3</span>
-                    <span class="mode-card-title">Direct LLM (BYOK)</span>
-                  </div>
-                  <span id="badge-overview-direct" class="mode-card-badge badge-idle">No Key Set</span>
-                </div>
-                <div class="mode-card-desc">
-                  Direct offload to OpenAI, Anthropic Claude, Google Gemini, or custom OpenAI-compatible API using personal credentials.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-direct">
-                  Model: <span id="meta-model-direct">gpt-4o</span> &bull; Key: <span id="meta-key-direct">Not configured</span>
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-direct" class="btn-mode-activate" onclick="activateExecutionMode('direct')">
-                    Activate Mode 3
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-direct')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 4 Card: Local LLM (Native Tendon CUDA Engine) -->
-              <div id="card-mode-local" class="mode-card active">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">4</span>
-                    <span class="mode-card-title">Local LLM (GPU)</span>
-                  </div>
-                  <span id="badge-overview-local" class="mode-card-badge badge-active">Active GPU</span>
-                </div>
-                <div class="mode-card-desc">
-                  Native in-process C/CUDA engine running completely offline on your local GPU. Direct VRAM (-lm none), zero host RAM ballooning.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-local">
-                  Weight: <span id="meta-weight-local">No model loaded</span> &bull; 0 Host RAM
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-local" class="btn-mode-activate active" onclick="activateExecutionMode('local')">
-                    &check; Active
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-local')">
-                    Manage Models &rarr;
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- VIEW: MODE 1 - SHUFFLE CLOUD (OAUTH2) -->
+          <!-- VIEW: SHUFFLE (OAUTH2) -->
           <div id="settings-panel-mode-shuffle" class="settings-panel">
-            <div class="settings-group-header">1. Shuffle Cloud Account (OAuth2 Login)</div>
-            
-            <div id="banner-mode-shuffle" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 1: Shuffle Cloud (OAuth2)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-shuffle">Uses Shuffle AI default (Gemini 3.8 Flash / Pro) via cloud session</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-shuffle" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('shuffle')">
-                Activate Mode 1
-              </button>
-            </div>
+            <div class="settings-group-header">Shuffle Connection (OAuth2 Login) &mdash; Optional</div>
 
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -5168,48 +5202,35 @@
                 <span id="settings-auth-status-text" style="font-size:11px; color:var(--text-muted);">Disconnected</span>
               </div>
               <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                Connect this runner to your Shuffle Cloud account to execute workflows, stream agent executions, and use <strong>Shuffle AI (Gemini 3.8 Flash / Pro)</strong> without needing personal LLM keys.
+                Optionally connect this runner to your Shuffle account (Cloud or on-prem) to execute workflows, stream agent executions, and use <strong>Shuffle AI (Gemini 3.8 Flash)</strong> without personal LLM keys. This is completely optional &mdash; you can also run standalone with Direct LLM (BYOK) or Local GPU.
               </p>
-              <button type="button" class="btn-secondary-action" style="width:fit-content;" onclick="loginWithOAuth()">
+              <button id="btn-oauth-login" type="button" class="btn-secondary-action" style="width:fit-content;" onclick="loginWithOAuth()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                   <polyline points="10 17 15 12 10 7"/>
                   <line x1="15" y1="12" x2="3" y2="12"/>
                 </svg>
-                <span>Open Shuffle OAuth2 Login</span>
+                <span id="lbl-btn-oauth-login">Open Shuffle OAuth2 Login</span>
               </button>
 
               <div style="display:flex; gap:8px; margin-top:4px;">
                 <input id="input-oauth-token" class="form-input" style="flex:1; font-size:11px;" type="text" placeholder="Or paste OAuth2 / Session Token directly...">
-                <button type="button" class="btn-modal-cancel" style="padding:6px 12px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
+                <button id="btn-submit-oauth-token" type="button" class="btn-secondary-action" style="padding:6px 14px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
               </div>
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI Default</div>
-              When Mode 1 is active, agent requests automatically route to Shuffle AI with zero personal API key configuration. Workflows and conversations sync directly with your Shuffle Cloud workspace.
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI (Optional)</div>
+              When connected to Shuffle, agent requests can automatically route to Shuffle AI with zero personal API key setup. Workflows and conversations sync directly with your Shuffle workspace.
             </div>
           </div>
 
-          <!-- VIEW: MODE 2 - ORBORUS CONNECTION (ORG & AUTH) -->
+          <!-- VIEW: SHUFFLE SELF-HOSTED (ORG & AUTH) -->
           <div id="settings-panel-mode-orborus" class="settings-panel">
-            <div class="settings-group-header">2. Orborus Connection (Self-Hosted Runner)</div>
-
-            <div id="banner-mode-orborus" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 2: Orborus Backend Connection</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-orborus">Connects via Org ID, Auth Key, and Environment (Shuffle AI default)</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-orborus" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('orborus')">
-                Activate Mode 2
-              </button>
-            </div>
+            <div class="settings-group-header">Shuffle Self-Hosted Connection (Org &amp; Auth) &mdash; Optional</div>
 
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-              Provide an Org ID, API Auth Key, and Environment to connect this runner to a custom Shuffle backend or on-prem cluster.
+              Provide an Org ID, API Auth Key, and Base URL to connect this runner to a self-hosted Shuffle backend or on-prem cluster. This is completely optional.
             </p>
 
             <div class="form-group" style="margin-bottom:12px;">
@@ -5233,13 +5254,13 @@
             </div>
 
             <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
-              <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitOrborusAuth()">Save Orborus Credentials</button>
+              <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitOrborusAuth()">Save Shuffle Credentials</button>
               <span id="lbl-orborus-saved-status" style="font-size:11px; color:#10b981; display:none;">Saved!</span>
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI Default via Backend</div>
-              When Mode 2 is active, the runner communicates with the specified Shuffle backend and uses the organization's default Shuffle AI service.
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI via Self-Hosted Backend</div>
+              When connected, the runner communicates with the specified Shuffle backend and uses the organization's default Shuffle AI service.
             </div>
           </div>
 
@@ -5324,22 +5345,9 @@
             </div>
           </div>
 
-          <!-- VIEW: MODE 3 - DIRECT LLM CONNECTION (BYOK) -->
+          <!-- VIEW: DIRECT LLM CONNECTION (BYOK) -->
           <div id="settings-panel-mode-direct" class="settings-panel">
-            <div class="settings-group-header">3. Direct LLM Connection (BYOK)</div>
-
-            <div id="banner-mode-direct" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 3: Direct LLM (Bring Your Own Key)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-direct">Direct offload to OpenAI, Anthropic, or Gemini using your API credentials</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-direct" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('direct')">
-                Activate Mode 3
-              </button>
-            </div>
+            <div class="settings-group-header">Direct LLM Connection (BYOK)</div>
 
             <!-- Provider Presets -->
             <div class="form-group" style="margin-bottom:12px;">
@@ -5348,7 +5356,11 @@
                 <option value="">-- Choose Provider Preset --</option>
                 <option value="openai">OpenAI (api.openai.com &bull; GPT-4o)</option>
                 <option value="anthropic">Anthropic (api.anthropic.com &bull; Claude 3.7 Sonnet)</option>
-                <option value="gemini">Google Gemini (generativelanguage.googleapis.com)</option>
+                <option value="gemini">Google Gemini (generativelanguage.googleapis.com &bull; Gemini 2.5 Flash)</option>
+                <option value="deepseek">DeepSeek (api.deepseek.com &bull; deepseek-chat)</option>
+                <option value="groq">Groq (api.groq.com &bull; llama-3.3-70b)</option>
+                <option value="ollama">Ollama Local (http://localhost:11434/v1 &bull; llama3.2)</option>
+                <option value="openrouter">OpenRouter (openrouter.ai/api/v1 &bull; gpt-4o)</option>
                 <option value="custom">Custom OpenAI-Compatible API</option>
               </select>
             </div>
@@ -5363,25 +5375,43 @@
               <input id="input-ai-key" class="form-input" type="password" placeholder="sk-... or AIza..." oninput="updateEnvDisplayInModal(); populateAiModelSelect();">
             </div>
 
+            <!-- Active Direct Model: Manually Type or Add -->
             <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label" for="select-ai-model">Direct Model</label>
-              <select id="select-ai-model" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
-                <optgroup label="Remote Providers (BYOK)">
-                  <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                  <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic)</option>
-                  <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
-                  <option value="gemini-3.8-flash">Gemini 3.8 Flash (Google)</option>
-                  <option value="gemini-3.8-pro">Gemini 3.8 Pro (Google)</option>
-                </optgroup>
-                <optgroup label="Local Engine">
-                  <option value="tendon-local">Tendon Native CUDA (RTX 3080 Ti)</option>
-                </optgroup>
-                <optgroup label="Custom">
-                  <option value="custom">Custom Model...</option>
-                </optgroup>
-              </select>
-              <input id="input-settings-custom-model" class="form-input" style="margin-top:6px; display:none;" type="text" placeholder="Custom model name (e.g. mistral-large-2407)" oninput="updateEnvDisplayInModal()">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label class="form-label" for="input-byok-model-name" style="margin-bottom:0;">Direct Model (Type or Select)</label>
+                <span style="font-size:11px; color:var(--text-muted);">Type any model ID or add below</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <input id="input-byok-model-name" class="form-input" style="flex:1;" type="text" placeholder="e.g. gpt-4o, claude-3-7-sonnet, deepseek-chat, gpt-4o-mini" oninput="handleByokModelInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();addCurrentByokModel();}">
+                <button type="button" class="btn-skills-action" style="white-space:nowrap; padding:0 12px;" onclick="addCurrentByokModel()">+ Add Model</button>
+              </div>
             </div>
+
+            <!-- Your Saved BYOK Models -->
+            <div class="form-group" style="margin-bottom:10px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Your BYOK Models:</div>
+              <div id="byok-models-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; min-height:28px; align-items:center;">
+                <!-- Dynamically populated tags with click-to-select and (x) to remove -->
+              </div>
+            </div>
+
+            <!-- Popular Quick-Pick Presets -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Popular Model Presets:</div>
+              <div class="byok-preset-chips" style="display:flex; flex-wrap:wrap; gap:6px;">
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o')">gpt-4o</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o-mini')">gpt-4o-mini</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-7-sonnet')">claude-3-7-sonnet</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-5-haiku')">claude-3-5-haiku</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-chat')">deepseek-chat</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-reasoner')">deepseek-reasoner</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gemini-2.5-flash')">gemini-2.5-flash</button>
+              </div>
+            </div>
+
+            <!-- Compatibility select elements (hidden) -->
+            <select id="select-ai-model" style="display:none;"></select>
+            <input id="input-settings-custom-model" type="hidden">
 
             <div style="font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:12px; margin-bottom:14px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
               <div style="font-weight:500; color:var(--text-secondary);">Direct Environment Status:</div>
@@ -5393,26 +5423,13 @@
             <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="saveDirectLlmSettings()">Save Direct LLM Configuration</button>
           </div>
 
-          <!-- VIEW: MODE 4 - LOCAL LLM (NATIVE CUDA ENGINE) -->
+          <!-- VIEW: LOCAL GPU ENGINE (CUDA) -->
           <div id="settings-panel-mode-local" class="settings-panel">
             <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>4. Local LLM Connection (Native GPU)</span>
+              <span>Local GPU Engine (CUDA)</span>
               <span id="local-hardware-pill" class="settings-mode-pill">
                 Local GPU &bull; Direct VRAM
               </span>
-            </div>
-
-            <div id="banner-mode-local" class="mode-active-banner">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 4: Local LLM (Native Tendon Engine)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-local">Runs completely offline on local GPU with zero host RAM overhead</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-local" class="btn-mode-activate active" style="width:auto; max-width:160px;" onclick="activateExecutionMode('local')">
-                &check; Active
-              </button>
             </div>
 
             <!-- Default Save Location / Directory -->
@@ -5725,18 +5742,11 @@ var AVAILABLE_AI_MODELS = [
     category: "Local Models",
     provider: "local"
   },
-  // Shuffle Cloud AI
+  // Shuffle AI (Optional)
   {
     key: "gemini-3.8-flash",
-    label: "Gemini 3.8 Flash",
-    desc: "Shuffle AI Cloud",
-    category: "Shuffle AI",
-    provider: "shuffle"
-  },
-  {
-    key: "gemini-3.8-pro",
-    label: "Gemini 3.8 Pro",
-    desc: "Shuffle AI Cloud",
+    label: "Default (Gemini 3.8 Flash)",
+    desc: "Shuffle AI (Optional)",
     category: "Shuffle AI",
     provider: "shuffle"
   },
@@ -5772,12 +5782,93 @@ var AVAILABLE_AI_MODELS = [
   }
 ];
 
+function getCustomByokModels() {
+  try {
+    const raw = localStorage.getItem("orborus_byok_models");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(s => String(s).trim()).filter(Boolean);
+      }
+    }
+  } catch (e) {}
+  const legacy = (localStorage.getItem("orborus_custom_model") || "").trim();
+  if (legacy && legacy !== "custom") return [legacy];
+  return [];
+}
+
+function detectModelProvider(modelId) {
+  const lower = String(modelId || "").toLowerCase();
+  if (lower.startsWith("gpt-") || lower.startsWith("o1") || lower.startsWith("o3") || lower.startsWith("chatgpt")) return "openai";
+  if (lower.startsWith("claude-") || lower.startsWith("anthropic")) return "anthropic";
+  if (lower.startsWith("gemini-")) return "gemini";
+  if (lower.startsWith("deepseek")) return "deepseek";
+  if (lower.startsWith("groq") || lower.startsWith("llama")) return "groq";
+  if (lower.startsWith("mistral") || lower.startsWith("codestral")) return "mistral";
+  if (lower.startsWith("qwen")) return "qwen";
+  return "custom";
+}
+
+function syncAvailableAiModels() {
+  const customModels = getCustomByokModels();
+  AVAILABLE_AI_MODELS = AVAILABLE_AI_MODELS.filter(m => !m.isCustomByok);
+
+  customModels.forEach(modelId => {
+    const exists = AVAILABLE_AI_MODELS.some(m => m.key.toLowerCase() === modelId.toLowerCase());
+    if (!exists) {
+      AVAILABLE_AI_MODELS.push({
+        key: modelId,
+        label: modelId,
+        desc: "BYOK Model",
+        category: "BYOK Models",
+        provider: detectModelProvider(modelId),
+        isCustomByok: true
+      });
+    }
+  });
+}
+
+function addCustomByokModel(modelId) {
+  if (!modelId) return null;
+  const clean = modelId.trim();
+  if (!clean || clean === "custom") return null;
+
+  const list = getCustomByokModels();
+  if (!list.some(m => m.toLowerCase() === clean.toLowerCase())) {
+    list.push(clean);
+    localStorage.setItem("orborus_byok_models", JSON.stringify(list));
+  }
+  localStorage.setItem("orborus_custom_model", clean);
+  syncAvailableAiModels();
+  return clean;
+}
+
+function removeCustomByokModel(modelId) {
+  if (!modelId) return;
+  const clean = modelId.trim().toLowerCase();
+  let list = getCustomByokModels();
+  list = list.filter(m => m.toLowerCase() !== clean);
+  localStorage.setItem("orborus_byok_models", JSON.stringify(list));
+  syncAvailableAiModels();
+
+  if (activeAiModel && activeAiModel.toLowerCase() === clean) {
+    activeAiModel = "gpt-4o";
+    localStorage.setItem("orborus_ai_model", "gpt-4o");
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  }
+}
+
+// Initial sync on load
+syncAvailableAiModels();
+
 function getModelConfigStatus(modelKey) {
   const curKey = (modelKey || activeAiModel || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash").trim();
   const effectiveKey = (currentAiKey || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_key")) || "").trim();
   const effectiveUrl = (currentAiUrl || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_url")) || "").trim().toLowerCase();
   const hasShuffleAuth = !!(isLoggedIn || (typeof window !== "undefined" && window.isLoggedIn));
   const hasLocalGPU = (typeof window !== "undefined" && window.localExecutorAvailable !== false);
+  const hasGenericKey = effectiveKey.length > 0;
+  const hasGenericUrl = effectiveUrl.length > 0 && !effectiveUrl.startsWith("local://");
 
   // 1. Local GPU Models
   if (curKey === "tendon-local" || curKey.startsWith("tendon") || curKey.startsWith("local") || curKey.includes("gemma")) {
@@ -5806,26 +5897,14 @@ function getModelConfigStatus(modelKey) {
     }
   }
 
-  // 2. Shuffle AI Models (Gemini 3.8 Flash, Gemini 3.8 Pro)
-  const isShuffleModel = curKey === "gemini-3.8-flash" || curKey === "gemini-3.8-flash-high" || curKey === "gemini-3.8-pro";
-  if (isShuffleModel) {
-    const hasGoogleKey = (effectiveKey.startsWith("AIza") || effectiveKey.length >= 35) || effectiveUrl.includes("googleapis.com");
+  // 2. Shuffle AI Models (Optional Shuffle Gemini 3.8 Flash via OAuth or Backend)
+  const isShuffleCategory = curKey === "gemini-3.8-flash" || curKey === "gemini-3.8-flash-high" || curKey === "gemini-3.8-pro" || curKey === "default";
+  if (isShuffleCategory && (activeExecutionMode === "shuffle" || activeExecutionMode === "orborus" || (!hasGenericKey && !hasGenericUrl))) {
     if (hasShuffleAuth) {
       return {
         configured: true,
         category: "Shuffle AI",
         badge: "Connected",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasGoogleKey) {
-      return {
-        configured: true,
-        category: "Shuffle AI",
-        badge: "Google Key",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -5838,33 +5917,22 @@ function getModelConfigStatus(modelKey) {
         category: "Shuffle AI",
         badge: "Login needed",
         badgeType: "unconfigured",
-        reason: "Requires Shuffle login or Google API key",
+        reason: "Requires optional Shuffle login",
         actionText: "Log In to Shuffle",
         actionType: "auth",
-        setupTip: "Prompts will fail: Not logged in. Log in to Shuffle or provide a Google API key in Settings."
+        setupTip: "Optional Shuffle integration: log in to Shuffle in Settings or choose BYOK / Local GPU."
       };
     }
   }
 
-  // 3. OpenAI Models
+  // 3. OpenAI Models (BYOK)
   if (curKey === "gpt-4o" || curKey.startsWith("gpt-") || curKey.startsWith("o1") || curKey.startsWith("o3")) {
-    const hasOpenAiKey = (effectiveKey.startsWith("sk-") && !effectiveKey.startsWith("sk-ant-")) || effectiveUrl.includes("openai.com");
-    if (hasOpenAiKey) {
+    const hasOpenAiKey = (effectiveKey.startsWith("sk-") && !effectiveKey.startsWith("sk-ant-")) || effectiveUrl.includes("openai.com") || hasGenericKey;
+    if (hasOpenAiKey || hasGenericUrl) {
       return {
         configured: true,
         category: "BYOK Models",
         badge: "API Key",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasShuffleAuth) {
-      return {
-        configured: true,
-        category: "BYOK Models",
-        badge: "Shuffle Cloud",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -5877,33 +5945,22 @@ function getModelConfigStatus(modelKey) {
         category: "BYOK Models",
         badge: "Key needed",
         badgeType: "unconfigured",
-        reason: "Requires OpenAI API key in Settings",
+        reason: "Requires OpenAI API key in BYOK Settings",
         actionText: "Set OpenAI Key",
         actionType: "byok",
-        setupTip: "Prompts will fail: OpenAI API key is missing. Add your API key in Settings > AI & Models."
+        setupTip: "OpenAI API key is missing. Add your API key in Settings > Direct LLM (BYOK)."
       };
     }
   }
 
-  // 4. Anthropic Models
+  // 4. Anthropic Models (BYOK)
   if (curKey.startsWith("claude-") || curKey.startsWith("anthropic")) {
-    const hasClaudeKey = effectiveKey.startsWith("sk-ant-") || effectiveUrl.includes("anthropic.com");
-    if (hasClaudeKey) {
+    const hasClaudeKey = effectiveKey.startsWith("sk-ant-") || effectiveUrl.includes("anthropic.com") || hasGenericKey;
+    if (hasClaudeKey || hasGenericUrl) {
       return {
         configured: true,
         category: "BYOK Models",
         badge: "API Key",
-        badgeType: "ready",
-        reason: "",
-        actionText: "",
-        actionType: "",
-        setupTip: ""
-      };
-    } else if (hasShuffleAuth) {
-      return {
-        configured: true,
-        category: "BYOK Models",
-        badge: "Shuffle Cloud",
         badgeType: "ready",
         reason: "",
         actionText: "",
@@ -5916,22 +5973,48 @@ function getModelConfigStatus(modelKey) {
         category: "BYOK Models",
         badge: "Key needed",
         badgeType: "unconfigured",
-        reason: "Requires Anthropic API key in Settings",
+        reason: "Requires Anthropic API key in BYOK Settings",
         actionText: "Set Anthropic Key",
         actionType: "byok",
-        setupTip: "Prompts will fail: Anthropic API key is missing. Add your API key in Settings > AI & Models."
+        setupTip: "Anthropic API key is missing. Add your API key in Settings > Direct LLM (BYOK)."
       };
     }
   }
 
-  // 5. Custom Model / Unknown
-  const savedCustom = (typeof localStorage !== "undefined" && localStorage.getItem("orborus_custom_model") || "").trim();
-  const hasCustomConfig = (effectiveUrl !== "" && !effectiveUrl.startsWith("local://")) || (effectiveKey !== "");
-  if (hasCustomConfig || (curKey && curKey !== "custom" && savedCustom === curKey && effectiveKey !== "")) {
+  // 5. Gemini Models as BYOK (using user Google API key or custom endpoint)
+  if (curKey.startsWith("gemini")) {
+    const hasGoogleKey = (effectiveKey.startsWith("AIza") || effectiveKey.startsWith("AI-")) || effectiveUrl.includes("googleapis.com") || hasGenericKey;
+    if (hasGoogleKey || hasGenericUrl) {
+      return {
+        configured: true,
+        category: "BYOK Models",
+        badge: "API Key",
+        badgeType: "ready",
+        reason: "",
+        actionText: "",
+        actionType: "",
+        setupTip: ""
+      };
+    } else {
+      return {
+        configured: false,
+        category: "BYOK Models",
+        badge: "Key needed",
+        badgeType: "unconfigured",
+        reason: "Requires Gemini API key in BYOK Settings",
+        actionText: "Set Gemini Key",
+        actionType: "byok",
+        setupTip: "Gemini API key is missing. Add your key in Settings > Direct LLM (BYOK)."
+      };
+    }
+  }
+
+  // 6. User-added custom / other BYOK Models (e.g. DeepSeek, Groq, Mistral, Ollama)
+  if (hasGenericKey || hasGenericUrl) {
     return {
       configured: true,
       category: "BYOK Models",
-      badge: "Configured",
+      badge: "API Key",
       badgeType: "ready",
       reason: "",
       actionText: "",
@@ -5943,12 +6026,12 @@ function getModelConfigStatus(modelKey) {
   return {
     configured: false,
     category: "BYOK Models",
-    badge: "Setup needed",
+    badge: "Key needed",
     badgeType: "unconfigured",
-    reason: "No endpoint or API key configured",
-    actionText: "Configure Model",
+    reason: "Requires API key or endpoint in BYOK Settings",
+    actionText: "Configure BYOK",
     actionType: "byok",
-    setupTip: "Custom model requires an API URL and Key in Settings > AI & Models."
+    setupTip: "Add an API URL and Key in Settings > Direct LLM (BYOK)."
   };
 }
 
@@ -5963,9 +6046,93 @@ function checkModelAvailability(modelKey) {
   };
 }
 
+function isModelActiveAndValidated(modelKey) {
+  if (!modelKey) return false;
+  const status = getModelConfigStatus(modelKey);
+  return !!(status && status.configured);
+}
+
+function getBestActiveValidatedModel(preferredModel) {
+  if (preferredModel && isModelActiveAndValidated(preferredModel)) {
+    return preferredModel;
+  }
+  if (activeAiModel && isModelActiveAndValidated(activeAiModel)) {
+    return activeAiModel;
+  }
+  const globalLast = typeof localStorage !== "undefined" ? localStorage.getItem("orborus_last_model") : null;
+  if (globalLast && isModelActiveAndValidated(globalLast)) {
+    return globalLast;
+  }
+  const candidates = [
+    "tendon-local",
+    "gemini-3.8-flash",
+    "gpt-4o",
+    "claude-3-7-sonnet",
+    "gemini-3.8-pro"
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    if (isModelActiveAndValidated(candidates[i])) {
+      return candidates[i];
+    }
+  }
+  return preferredModel || activeAiModel || "gemini-3.8-flash";
+}
+
+function getChatTypeKey(projectPath) {
+  const p = (projectPath !== undefined ? projectPath : (typeof activeProjectPath !== "undefined" ? activeProjectPath : "")) || "";
+  const clean = p.trim();
+  if (!clean || clean === "__NONE__" || clean.toLowerCase() === "none" || clean.toLowerCase() === "no project") {
+    return "__no_project__";
+  }
+  return "proj_" + clean.replace(/\\/g, "/").toLowerCase();
+}
+
+function getRememberedModelForType(projectPath) {
+  const key = getChatTypeKey(projectPath);
+  try {
+    const stored = localStorage.getItem("orborus_model_by_type_" + key);
+    if (stored) return stored;
+  } catch (e) {}
+  return (typeof localStorage !== "undefined" && localStorage.getItem("orborus_last_model")) || "";
+}
+
+function saveRememberedModelForType(projectPath, model) {
+  if (!model) return;
+  const key = getChatTypeKey(projectPath);
+  try {
+    localStorage.setItem("orborus_model_by_type_" + key, model);
+    localStorage.setItem("orborus_last_model", model);
+    localStorage.setItem("orborus_ai_model", model);
+  } catch (e) {}
+}
+
+function getRememberedReasoningForType(projectPath) {
+  const key = getChatTypeKey(projectPath);
+  try {
+    const stored = localStorage.getItem("orborus_reasoning_by_type_" + key);
+    if (stored) return stored;
+  } catch (e) {}
+  return (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_reasoning")) || "low";
+}
+
+function saveRememberedReasoningForType(projectPath, reasoning) {
+  if (!reasoning) return;
+  const key = getChatTypeKey(projectPath);
+  try {
+    localStorage.setItem("orborus_reasoning_by_type_" + key, reasoning);
+    localStorage.setItem("orborus_ai_reasoning", reasoning);
+  } catch (e) {}
+}
+
 if (typeof window !== "undefined") {
   window.getModelConfigStatus = getModelConfigStatus;
   window.checkModelAvailability = checkModelAvailability;
+  window.isModelActiveAndValidated = isModelActiveAndValidated;
+  window.getBestActiveValidatedModel = getBestActiveValidatedModel;
+  window.getRememberedModelForType = getRememberedModelForType;
+  window.saveRememberedModelForType = saveRememberedModelForType;
+  window.getRememberedReasoningForType = getRememberedReasoningForType;
+  window.saveRememberedReasoningForType = saveRememberedReasoningForType;
 }
 
 function setChatMode(enabled) {
@@ -5993,15 +6160,27 @@ function hydrateOptimisticState() {
   // 1. Synchronously restore configuration from localStorage
   currentAiUrl = localStorage.getItem("orborus_ai_url") || "";
   currentAiKey = localStorage.getItem("orborus_ai_key") || "";
-  activeAiModel = (typeof window !== "undefined" && window.activeAiModel) || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+
+  const storedProject = localStorage.getItem("orborus_active_project");
+  if (storedProject !== null) {
+    activeProjectPath = storedProject;
+  }
+
+  const rememberedModel = getRememberedModelForType(activeProjectPath);
+  const preferred = (typeof window !== "undefined" && window.activeAiModel) || rememberedModel || localStorage.getItem("orborus_ai_model") || "gemini-3.8-flash";
+  activeAiModel = getBestActiveValidatedModel(preferred);
   if (typeof window !== "undefined") {
     window.activeAiModel = activeAiModel;
   }
+  localStorage.setItem("orborus_ai_model", activeAiModel);
+
   const isPredefined = AVAILABLE_AI_MODELS.some(m => m.key === activeAiModel && m.key !== "custom");
   if (!isPredefined && activeAiModel !== "custom" && !localStorage.getItem("orborus_custom_model")) {
     localStorage.setItem("orborus_custom_model", activeAiModel);
   }
-  activeReasoningEffort = localStorage.getItem("orborus_ai_reasoning") || "low";
+
+  const rememberedReasoning = getRememberedReasoningForType(activeProjectPath);
+  activeReasoningEffort = rememberedReasoning || localStorage.getItem("orborus_ai_reasoning") || "low";
   currentPermissionPolicy = localStorage.getItem("orborus_permission_policy") || "ask_all";
   currentTerminalExecutionPolicy = localStorage.getItem("orborus_terminal_execution_policy") || "sandbox";
   currentFileAccessPolicy = localStorage.getItem("orborus_file_access_policy") || "ask";
@@ -6156,15 +6335,16 @@ async function syncBackendState() {
       currentAiUrl = state.ai_api_url;
       localStorage.setItem("orborus_ai_url", state.ai_api_url);
     }
-    if (state.ai_model) {
-      activeAiModel = state.ai_model;
-      localStorage.setItem("orborus_ai_model", state.ai_model);
-      if (typeof window !== "undefined") window.activeAiModel = state.ai_model;
-    }
-    if ((!state.ai_api_key && !currentAiKey) && (state.local_executor_available || state.local_gpu_found)) {
-      activeAiModel = "tendon-local";
-      localStorage.setItem("orborus_ai_model", "tendon-local");
-      if (typeof window !== "undefined") window.activeAiModel = "tendon-local";
+    // Resolve model prioritizing active & validated model
+    const candidateModel = (activeConversationId && Array.isArray(appConversations) && appConversations.find(c => c && c.id === activeConversationId)?.model)
+      || getRememberedModelForType(activeProjectPath)
+      || state.ai_model
+      || activeAiModel;
+    const validatedModel = getBestActiveValidatedModel(candidateModel);
+    if (validatedModel) {
+      activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
     }
 
     // If frontend has credentials in localStorage that backend lacks, push to backend
@@ -6774,6 +6954,21 @@ async function selectConversation(convId) {
     if (projPath !== activeProjectPath) {
       setActiveProject(projPath, projName);
     }
+    const convModel = cachedConv.model || cachedConv.ai_model || (typeof getRememberedModelForType === "function" ? getRememberedModelForType(projPath) : null);
+    if (convModel) {
+      const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(convModel) : convModel;
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    const convReasoning = cachedConv.reasoning || (typeof getRememberedReasoningForType === "function" ? getRememberedReasoningForType(projPath) : null);
+    if (convReasoning) {
+      activeReasoningEffort = convReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = convReasoning;
+      localStorage.setItem("orborus_ai_reasoning", convReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
   }
   renderProjectTree();
   renderActiveConversation();
@@ -6792,6 +6987,20 @@ async function selectConversation(convId) {
           appConversations.unshift(diskConv);
         }
         if (activeConversationId === convId) {
+          const diskModel = diskConv.model || diskConv.ai_model;
+          if (diskModel) {
+            const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(diskModel) : diskModel;
+            activeAiModel = validatedModel;
+            if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+            localStorage.setItem("orborus_ai_model", validatedModel);
+          }
+          if (diskConv.reasoning) {
+            activeReasoningEffort = diskConv.reasoning;
+            if (typeof window !== "undefined") window.activeReasoningEffort = diskConv.reasoning;
+            localStorage.setItem("orborus_ai_reasoning", diskConv.reasoning);
+          }
+          if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+          if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
           renderActiveConversation();
         }
         try {
@@ -7214,6 +7423,18 @@ function renderProjectTree() {
   }
 }
 
+function renderProjects() {
+  if (typeof renderProjectTree === "function") {
+    renderProjectTree();
+  }
+  if (typeof renderSettingsProjectsList === "function") {
+    renderSettingsProjectsList();
+  }
+}
+if (typeof window !== "undefined") {
+  window.renderProjects = renderProjects;
+}
+
 function toggleProjectDropdown(event, forceState) {
   if (event) event.stopPropagation();
   const menu = document.getElementById("project-dropdown-menu");
@@ -7312,6 +7533,22 @@ async function selectProject(path, displayName, options = {}) {
         saveStoredConversations();
       }
     }
+  } else if (!activeConversationId) {
+    if (typeof getRememberedModelForType === "function" && typeof getBestActiveValidatedModel === "function") {
+      const rememberedModel = getRememberedModelForType(path);
+      const validatedModel = getBestActiveValidatedModel(rememberedModel);
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    if (typeof getRememberedReasoningForType === "function") {
+      const rememberedReasoning = getRememberedReasoningForType(path) || "low";
+      activeReasoningEffort = rememberedReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = rememberedReasoning;
+      localStorage.setItem("orborus_ai_reasoning", rememberedReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
   }
 
   // 3. Refresh right sidebar overview & git status only if a project workspace exists
@@ -7692,13 +7929,19 @@ function openSettingsModal(initialTab, focusField) {
     if (targetTab === "models" || targetTab === "mode-direct" || targetTab === "direct") {
       setTimeout(() => {
         if (focusField === "model") {
-          const customModelInput = document.getElementById("input-settings-custom-model");
-          const modelSelect = document.getElementById("select-ai-model");
-          if (customModelInput && (modelSelect && modelSelect.value === "custom" || customModelInput.style.display !== "none")) {
-            customModelInput.style.display = "block";
-            customModelInput.focus();
-          } else if (modelSelect) {
-            modelSelect.focus();
+          const byokInput = document.getElementById("input-byok-model-name");
+          if (byokInput) {
+            byokInput.focus();
+            byokInput.select();
+          } else {
+            const customModelInput = document.getElementById("input-settings-custom-model");
+            const modelSelect = document.getElementById("select-ai-model");
+            if (customModelInput && (modelSelect && modelSelect.value === "custom" || customModelInput.style.display !== "none")) {
+              customModelInput.style.display = "block";
+              customModelInput.focus();
+            } else if (modelSelect) {
+              modelSelect.focus();
+            }
           }
         } else if (focusField === "url") {
           const urlInput = document.getElementById("input-ai-url");
@@ -7780,29 +8023,25 @@ function switchSettingsTab(tabName) {
   const descEl = document.getElementById("settings-view-desc");
 
   if (tabName === "modes-overview") {
-    const btn = document.getElementById("settings-tab-btn-modes-overview");
-    if (btn) btn.classList.add("active");
-    const panel = document.getElementById("settings-panel-modes-overview");
-    if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "AI Execution & Connection Modes";
-    if (descEl) descEl.innerText = "Overview of all 4 connection modes, live statuses, and 1-click active engine swapping.";
-    updateModesDisplay();
+    switchSettingsTab("mode-shuffle");
+    return;
   } else if (tabName === "mode-shuffle" || tabName === "auth") {
     activeSettingsTab = "mode-shuffle";
     const btn = document.getElementById("settings-tab-btn-mode-shuffle") || document.getElementById("settings-tab-btn-auth");
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-shuffle") || document.getElementById("settings-panel-auth");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "1. Shuffle Cloud (OAuth2)";
-    if (descEl) descEl.innerText = "Sign in via browser OAuth2. Managed Shuffle AI (Gemini 3.8 Flash / Pro) default with zero key setup.";
+    if (titleEl) titleEl.innerText = "Shuffle (OAuth2 Login) — Optional";
+    if (descEl) descEl.innerText = "Optional: Connect to Shuffle via OAuth2 for managed Shuffle AI and workflow sync.";
     updateModesDisplay();
   } else if (tabName === "mode-orborus") {
+    activeSettingsTab = "mode-orborus";
     const btn = document.getElementById("settings-tab-btn-mode-orborus");
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-orborus");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "2. Orborus Connection (Self-Hosted Runner)";
-    if (descEl) descEl.innerText = "Connect to Shuffle server/cluster via Org ID, Auth Key, and Environment (Shuffle AI default).";
+    if (titleEl) titleEl.innerText = "Shuffle (Self-Hosted / Org ID) — Optional";
+    if (descEl) descEl.innerText = "Optional: Connect to a self-hosted Shuffle server/cluster via Org ID, Auth Key, and Base URL.";
     updateModesDisplay();
   } else if (tabName === "mode-direct" || tabName === "direct" || tabName === "models") {
     activeSettingsTab = "mode-direct";
@@ -7810,7 +8049,7 @@ function switchSettingsTab(tabName) {
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-direct") || document.getElementById("settings-panel-models");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "3. Direct LLM Connection (BYOK)";
+    if (titleEl) titleEl.innerText = "Direct LLM Connection (BYOK)";
     if (descEl) descEl.innerText = "Bring your own API key for OpenAI, Anthropic Claude, or Google Gemini.";
     updateEnvDisplayInModal();
     updateModesDisplay();
@@ -7820,7 +8059,7 @@ function switchSettingsTab(tabName) {
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-local");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "4. Local LLM (Native Tendon CUDA Engine)";
+    if (titleEl) titleEl.innerText = "Local GPU Engine (CUDA)";
     if (descEl) descEl.innerText = "Offline execution on your RTX 3080 Ti (12GB VRAM). Direct VRAM, 0 host RAM overhead.";
     loadLocalModelsSettings();
     updateModesDisplay();
@@ -7846,164 +8085,22 @@ function switchSettingsTab(tabName) {
 
 // --- 4 Execution Modes Control & Telemetry ---
 function updateModesDisplay() {
-  const activeMode = (typeof window !== "undefined" && window.activeExecutionMode) || localStorage.getItem("orborus_active_execution_mode") || "local";
-  
-  // 1. Sidebar badge
-  const navBadge = document.getElementById("nav-active-mode-badge");
-  if (navBadge) {
-    navBadge.className = "settings-mode-pill " + activeMode;
-    const labels = { shuffle: "Cloud", orborus: "Runner", direct: "Direct", local: "Local" };
-    navBadge.innerText = labels[activeMode] || activeMode;
-  }
-
-  // 2. Overview header pill
-  const overviewPill = document.getElementById("overview-active-pill");
-  if (overviewPill) {
-    overviewPill.className = "settings-mode-pill " + activeMode;
-    const modeNames = {
-      shuffle: "1. Shuffle Cloud Active",
-      orborus: "2. Orborus Backend Active",
-      direct: "3. Direct LLM Active",
-      local: "4. Local GPU Active"
-    };
-    overviewPill.innerText = modeNames[activeMode] || (activeMode.toUpperCase() + " Active");
-  }
-
-  // 3. Overview cards active highlights
-  const cards = {
-    shuffle: document.getElementById("card-mode-shuffle"),
-    orborus: document.getElementById("card-mode-orborus"),
-    direct: document.getElementById("card-mode-direct"),
-    local: document.getElementById("card-mode-local")
-  };
-  Object.keys(cards).forEach(m => {
-    if (cards[m]) {
-      cards[m].classList.toggle("active", m === activeMode);
-    }
-  });
-
-  // 4. Overview activate buttons
-  const overviewBtns = {
-    shuffle: document.getElementById("btn-overview-activate-shuffle"),
-    orborus: document.getElementById("btn-overview-activate-orborus"),
-    direct: document.getElementById("btn-overview-activate-direct"),
-    local: document.getElementById("btn-overview-activate-local")
-  };
-  Object.keys(overviewBtns).forEach(m => {
-    const btn = overviewBtns[m];
-    if (btn) {
-      if (m === activeMode) {
-        btn.classList.add("active");
-        btn.innerHTML = "✓ Active";
-      } else {
-        btn.classList.remove("active");
-        const nums = { shuffle: "1", orborus: "2", direct: "3", local: "4" };
-        btn.innerText = "Activate Mode " + nums[m];
-      }
-    }
-  });
-
-  // 5. Overview cards live metadata & status badges
-  // Mode 1: Shuffle Cloud
-  const badge1 = document.getElementById("badge-overview-shuffle");
-  const metaUser = document.getElementById("meta-user-shuffle");
-  if (isLoggedIn) {
-    if (badge1) {
-      badge1.className = "mode-card-badge " + (activeMode === "shuffle" ? "badge-active" : "badge-ready");
-      badge1.innerText = activeMode === "shuffle" ? "Active (OAuth)" : "Connected";
-    }
-    if (metaUser) metaUser.innerText = "Logged In (OAuth)";
-  } else {
-    if (badge1) {
-      badge1.className = "mode-card-badge " + (activeMode === "shuffle" ? "badge-active" : "badge-idle");
-      badge1.innerText = activeMode === "shuffle" ? "Active (Not Logged In)" : "Disconnected";
-    }
-    if (metaUser) metaUser.innerText = "Not Logged In";
-  }
-
-  // Mode 2: Orborus connection
   const orgInput = document.getElementById("input-org-id");
-  const authInput = document.getElementById("input-auth-key");
   const envInput = document.getElementById("input-env-name");
-  const hasOrborusCreds = (orgInput && orgInput.value.trim()) || (typeof window !== "undefined" && window.backendOrg);
-  const badge2 = document.getElementById("badge-overview-orborus");
   const metaOrg = document.getElementById("meta-org-orborus");
   const metaEnv = document.getElementById("meta-env-orborus");
   if (metaOrg && orgInput && orgInput.value.trim()) metaOrg.innerText = orgInput.value.trim();
   if (metaEnv && envInput && envInput.value.trim()) metaEnv.innerText = envInput.value.trim();
-  if (badge2) {
-    if (hasOrborusCreds) {
-      badge2.className = "mode-card-badge " + (activeMode === "orborus" ? "badge-active" : "badge-ready");
-      badge2.innerText = activeMode === "orborus" ? "Active (Orborus)" : "Configured";
-    } else {
-      badge2.className = "mode-card-badge " + (activeMode === "orborus" ? "badge-active" : "badge-idle");
-      badge2.innerText = activeMode === "orborus" ? "Active (Default)" : "Not Configured";
-    }
-  }
 
-  // Mode 3: Direct LLM
-  const badge3 = document.getElementById("badge-overview-direct");
   const metaModelDirect = document.getElementById("meta-model-direct");
   const metaKeyDirect = document.getElementById("meta-key-direct");
   const hasDirectKey = !!(currentAiKey || localStorage.getItem("orborus_ai_key"));
   if (metaModelDirect) metaModelDirect.innerText = activeAiModel || "gpt-4o";
   if (metaKeyDirect) metaKeyDirect.innerText = hasDirectKey ? "Configured" : "Not configured";
-  if (badge3) {
-    if (hasDirectKey) {
-      badge3.className = "mode-card-badge " + (activeMode === "direct" ? "badge-active" : "badge-ready");
-      badge3.innerText = activeMode === "direct" ? "Active (BYOK)" : "Ready";
-    } else {
-      badge3.className = "mode-card-badge " + (activeMode === "direct" ? "badge-active" : "badge-idle");
-      badge3.innerText = activeMode === "direct" ? "Active (No Key)" : "No Key Set";
-    }
-  }
 
-  // Mode 4: Local LLM (GPU)
-  const badge4 = document.getElementById("badge-overview-local");
   const metaWeightLocal = document.getElementById("meta-weight-local");
   const activeWeight = (window.localModelPath ? window.localModelPath.split(/[\\/]/).pop() : "No model loaded");
   if (metaWeightLocal) metaWeightLocal.innerText = activeWeight;
-  if (badge4) {
-    badge4.className = "mode-card-badge " + (activeMode === "local" ? "badge-active" : "badge-ready");
-    badge4.innerText = activeMode === "local" ? "Active GPU" : "Ready";
-  }
-
-  // 6. Mode tab banners inside individual panels
-  const banners = {
-    shuffle: {
-      banner: document.getElementById("banner-mode-shuffle"),
-      btn: document.getElementById("btn-banner-activate-shuffle")
-    },
-    orborus: {
-      banner: document.getElementById("banner-mode-orborus"),
-      btn: document.getElementById("btn-banner-activate-orborus")
-    },
-    direct: {
-      banner: document.getElementById("banner-mode-direct"),
-      btn: document.getElementById("btn-banner-activate-direct")
-    },
-    local: {
-      banner: document.getElementById("banner-mode-local"),
-      btn: document.getElementById("btn-banner-activate-local")
-    }
-  };
-
-  const numMap = { shuffle: "1", orborus: "2", direct: "3", local: "4" };
-  Object.keys(banners).forEach(m => {
-    const item = banners[m];
-    if (item.banner) {
-      item.banner.classList.toggle("inactive", m !== activeMode);
-    }
-    if (item.btn) {
-      if (m === activeMode) {
-        item.btn.classList.add("active");
-        item.innerHTML = "✓ Currently Active";
-      } else {
-        item.btn.classList.remove("active");
-        item.innerText = "Activate Mode " + numMap[m];
-      }
-    }
-  });
 }
 
 async function activateExecutionMode(mode) {
@@ -8012,85 +8109,222 @@ async function activateExecutionMode(mode) {
   window.activeExecutionMode = cleanMode;
   localStorage.setItem("orborus_active_execution_mode", cleanMode);
 
-  if (cleanMode === "local") {
-    activeAiModel = "tendon-local";
-    window.activeAiModel = "tendon-local";
-    localStorage.setItem("orborus_ai_model", "tendon-local");
-  } else if (cleanMode === "shuffle" || cleanMode === "orborus") {
-    if (!activeAiModel || activeAiModel === "tendon-local") {
-      activeAiModel = "gemini-3.8-flash";
-      window.activeAiModel = "gemini-3.8-flash";
-      localStorage.setItem("orborus_ai_model", "gemini-3.8-flash");
-    }
-  } else if (cleanMode === "direct") {
-    if (!activeAiModel || activeAiModel === "tendon-local" || activeAiModel.startsWith("gemini-")) {
-      const selectModel = document.getElementById("select-ai-model");
-      if (selectModel && selectModel.value && selectModel.value !== "tendon-local") {
-        activeAiModel = selectModel.value;
-      } else {
-        activeAiModel = "gpt-4o";
-      }
-      window.activeAiModel = activeAiModel;
-      localStorage.setItem("orborus_ai_model", activeAiModel);
-    }
-  }
-
-  // Notify backend bridge
   if (typeof window.bridgeCall === "function") {
     try {
       await window.bridgeCall("setActiveExecutionMode", JSON.stringify({ mode: cleanMode }));
-    } catch (e) {
-      console.warn("bridgeCall setActiveExecutionMode error:", e);
-    }
+    } catch (e) {}
   }
 
   updateModesDisplay();
   if (typeof updateActiveModelLabel === "function") {
     updateActiveModelLabel();
   }
-  if (typeof renderModelDropdown === "function") {
-    renderModelDropdown();
-  }
-
-  const modeNames = {
-    shuffle: "Mode 1: Shuffle Cloud (OAuth)",
-    orborus: "Mode 2: Orborus Backend Connection",
-    direct: "Mode 3: Direct LLM (BYOK)",
-    local: "Mode 4: Local GPU Engine (RTX 3080 Ti)"
-  };
-  showToast("Active mode switched to: " + (modeNames[cleanMode] || cleanMode));
 }
 
 function applyDirectLlmPreset(preset) {
   const urlInput = document.getElementById("input-ai-url");
+  const modelInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   if (!preset) return;
+  let targetUrl = "";
+  let targetModel = "";
+
   if (preset === "openai") {
-    if (urlInput) urlInput.value = "https://api.openai.com/v1";
-    if (modelSelect) modelSelect.value = "gpt-4o";
+    targetUrl = "https://api.openai.com/v1";
+    targetModel = "gpt-4o";
   } else if (preset === "anthropic") {
-    if (urlInput) urlInput.value = "https://api.anthropic.com/v1";
-    if (modelSelect) modelSelect.value = "claude-3-7-sonnet";
+    targetUrl = "https://api.anthropic.com/v1";
+    targetModel = "claude-3-7-sonnet";
   } else if (preset === "gemini") {
-    if (urlInput) urlInput.value = "https://generativelanguage.googleapis.com/v1beta";
-    if (modelSelect) modelSelect.value = "gemini-3.8-flash";
+    targetUrl = "https://generativelanguage.googleapis.com/v1beta";
+    targetModel = "gemini-2.5-flash";
+  } else if (preset === "deepseek") {
+    targetUrl = "https://api.deepseek.com/v1";
+    targetModel = "deepseek-chat";
+  } else if (preset === "groq") {
+    targetUrl = "https://api.groq.com/openai/v1";
+    targetModel = "llama-3.3-70b-versatile";
+  } else if (preset === "ollama") {
+    targetUrl = "http://localhost:11434/v1";
+    targetModel = "llama3.2";
+  } else if (preset === "openrouter") {
+    targetUrl = "https://openrouter.ai/api/v1";
+    targetModel = "openai/gpt-4o";
   } else if (preset === "custom") {
-    if (urlInput && !urlInput.value) urlInput.value = "http://localhost:8000/v1";
-    if (modelSelect) modelSelect.value = "custom";
+    targetUrl = "http://localhost:8000/v1";
+    targetModel = modelInput && modelInput.value.trim() ? modelInput.value.trim() : "custom-model";
   }
+
+  if (targetUrl && urlInput) urlInput.value = targetUrl;
+  if (targetModel) {
+    if (modelInput) modelInput.value = targetModel;
+    if (modelSelect) modelSelect.value = targetModel;
+    if (typeof addCustomByokModel === "function") {
+      addCustomByokModel(targetModel);
+    }
+    activeAiModel = targetModel;
+    localStorage.setItem("orborus_ai_model", targetModel);
+  }
+
+  updateEnvDisplayInModal();
+  renderByokModelsSettings();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+}
+
+function renderByokModelsSettings() {
+  const container = document.getElementById("byok-models-tags-container");
+  const modelInput = document.getElementById("input-byok-model-name");
+  const curModel = (activeAiModel || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gpt-4o").trim();
+
+  if (modelInput && (!modelInput.value || document.activeElement !== modelInput)) {
+    modelInput.value = curModel;
+  }
+
+  if (!container) return;
+  container.innerHTML = "";
+
+  const standardPresets = ["gpt-4o", "claude-3-7-sonnet", "claude-3-5-sonnet"];
+  const customList = (typeof getCustomByokModels === "function") ? getCustomByokModels() : [];
+  const allModels = [];
+
+  standardPresets.forEach(m => {
+    allModels.push({ key: m, isCustom: false });
+  });
+
+  customList.forEach(m => {
+    if (!allModels.some(existing => existing.key.toLowerCase() === m.toLowerCase())) {
+      allModels.push({ key: m, isCustom: true });
+    }
+  });
+
+  allModels.forEach(item => {
+    const isSelected = item.key.toLowerCase() === curModel.toLowerCase();
+    const tag = document.createElement("div");
+    tag.className = "byok-model-tag" + (isSelected ? " active" : "");
+    tag.onclick = () => selectByokModelTag(item.key);
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = item.key;
+    tag.appendChild(labelSpan);
+
+    if (isSelected) {
+      const checkIcon = document.createElement("span");
+      checkIcon.className = "byok-tag-check";
+      checkIcon.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+      tag.appendChild(checkIcon);
+    }
+
+    if (item.isCustom) {
+      const removeBtn = document.createElement("span");
+      removeBtn.className = "byok-tag-remove";
+      removeBtn.title = "Remove model";
+      removeBtn.textContent = "×";
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        handleRemoveByokModel(item.key);
+      };
+      tag.appendChild(removeBtn);
+    }
+
+    container.appendChild(tag);
+  });
+}
+
+function selectByokModelTag(modelId) {
+  if (!modelId) return;
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const modelInput = document.getElementById("input-byok-model-name");
+  if (modelInput) modelInput.value = modelId;
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) modelSelect.value = modelId;
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+}
+
+function handleByokModelInput(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return;
+  activeAiModel = clean;
+  localStorage.setItem("orborus_ai_model", clean);
+  const envDisplay = document.getElementById("env-display-model");
+  if (envDisplay) envDisplay.textContent = clean;
+  const modelSelect = document.getElementById("select-ai-model");
+  if (modelSelect) modelSelect.value = clean;
+  const customInput = document.getElementById("input-settings-custom-model");
+  if (customInput) customInput.value = clean;
+  renderByokModelsSettings();
+}
+
+function addCurrentByokModel() {
+  const input = document.getElementById("input-byok-model-name");
+  const raw = input ? input.value.trim() : "";
+  if (!raw) {
+    showToast("Please enter a model name or ID");
+    if (input) input.focus();
+    return;
+  }
+  const added = (typeof addCustomByokModel === "function") ? addCustomByokModel(raw) : raw;
+  activeAiModel = added;
+  localStorage.setItem("orborus_ai_model", added);
+  localStorage.setItem("orborus_custom_model", added);
+  renderByokModelsSettings();
   updateEnvDisplayInModal();
   populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Added model: " + added);
+}
+
+function handleRemoveByokModel(modelId) {
+  if (!modelId) return;
+  if (typeof removeCustomByokModel === "function") {
+    removeCustomByokModel(modelId);
+  }
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Removed model: " + modelId);
+}
+
+function quickSelectByokModel(modelId) {
+  if (!modelId) return;
+  if (typeof addCustomByokModel === "function") {
+    addCustomByokModel(modelId);
+  }
+  activeAiModel = modelId;
+  localStorage.setItem("orborus_ai_model", modelId);
+  const input = document.getElementById("input-byok-model-name");
+  if (input) input.value = modelId;
+  renderByokModelsSettings();
+  updateEnvDisplayInModal();
+  populateAiModelSelect();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  showToast("Selected model: " + modelId);
 }
 
 async function saveDirectLlmSettings() {
   const urlInput = document.getElementById("input-ai-url");
   const keyInput = document.getElementById("input-ai-key");
+  const modelInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
 
-  let chosenModel = modelSelect ? modelSelect.value : "";
-  if (chosenModel === "custom" && customModelInput && customModelInput.value.trim()) {
-    chosenModel = customModelInput.value.trim();
+  let chosenModel = "";
+  if (modelInput && modelInput.value.trim()) {
+    chosenModel = modelInput.value.trim();
+  } else if (modelSelect && modelSelect.value) {
+    chosenModel = modelSelect.value;
+    if (chosenModel === "custom" && customModelInput && customModelInput.value.trim()) {
+      chosenModel = customModelInput.value.trim();
+    }
   }
 
   const aiUrl = urlInput ? urlInput.value.trim() : "";
@@ -8100,15 +8334,14 @@ async function saveDirectLlmSettings() {
   currentAiKey = aiKey;
   activeAiModel = chosenModel || "gpt-4o";
 
-  if (chosenModel && chosenModel !== "custom" && !AVAILABLE_AI_MODELS.some(m => m.key === chosenModel && m.key !== "custom")) {
-    localStorage.setItem("orborus_custom_model", chosenModel);
-  } else if (customModelInput && customModelInput.value.trim()) {
-    localStorage.setItem("orborus_custom_model", customModelInput.value.trim());
+  if (activeAiModel && typeof addCustomByokModel === "function") {
+    addCustomByokModel(activeAiModel);
   }
 
   localStorage.setItem("orborus_ai_url", aiUrl);
   localStorage.setItem("orborus_ai_key", aiKey);
   localStorage.setItem("orborus_ai_model", activeAiModel);
+  localStorage.setItem("orborus_custom_model", activeAiModel);
 
   if (typeof window.bridgeCall === "function") {
     try {
@@ -8122,9 +8355,13 @@ async function saveDirectLlmSettings() {
     }
   }
   updateEnvDisplayInModal();
+  renderByokModelsSettings();
   updateModesDisplay();
   if (typeof updateActiveModelLabel === "function") {
     updateActiveModelLabel();
+  }
+  if (typeof renderModelDropdown === "function") {
+    renderModelDropdown();
   }
   showToast("Direct LLM configuration saved");
 }
@@ -8618,6 +8855,7 @@ async function switchActiveWorkspaceFromSettings() {
 
 function populateAiModelSelect() {
   const modelSelect = document.getElementById("select-ai-model");
+  renderByokModelsSettings();
   if (!modelSelect) return;
 
   const curVal = activeAiModel || localStorage.getItem("orborus_ai_model") || "tendon-local";
@@ -8648,7 +8886,6 @@ function populateAiModelSelect() {
         opt.textContent = `${m.label} (${avail.badge})`;
       } else {
         opt.textContent = `${m.label} [Unavailable: ${avail.statusText}]`;
-        opt.disabled = true;
       }
       if (m.key === curVal) {
         opt.selected = true;
@@ -8667,15 +8904,6 @@ function populateAiModelSelect() {
       customModelInput.style.display = "block";
       customModelInput.value = curVal;
     }
-  } else if (currentOpt.disabled) {
-    const firstEnabled = modelSelect.querySelector("option:not([disabled])");
-    if (firstEnabled) {
-      firstEnabled.selected = true;
-      activeAiModel = firstEnabled.value;
-      localStorage.setItem("orborus_ai_model", activeAiModel);
-      if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
-    }
-    if (customModelInput) customModelInput.style.display = "none";
   } else {
     modelSelect.value = curVal;
     if (customModelInput) customModelInput.style.display = "none";
@@ -8688,9 +8916,10 @@ function updateEnvDisplayInModal() {
   const modelEl = document.getElementById("env-display-model");
   const urlInput = document.getElementById("input-ai-url");
   const keyInput = document.getElementById("input-ai-key");
+  const byokInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
-  let model = (modelSelect && modelSelect.value) ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+  let model = (byokInput && byokInput.value.trim()) || (modelSelect && modelSelect.value) || (activeAiModel || "gemini-3.8-flash");
 
   if (model === "custom") {
     if (customModelInput) {
@@ -8744,6 +8973,7 @@ async function saveSettings() {
   try {
     const urlInput = document.getElementById("input-ai-url");
     const keyInput = document.getElementById("input-ai-key");
+    const byokModelInput = document.getElementById("input-byok-model-name");
     const modelSelect = document.getElementById("select-ai-model");
     const customModelInput = document.getElementById("input-settings-custom-model");
     const globalPreset = document.getElementById("select-global-preset");
@@ -8753,10 +8983,10 @@ async function saveSettings() {
 
     const url = urlInput ? urlInput.value.trim() : (currentAiUrl || "");
     let key = keyInput ? keyInput.value.trim() : "";
-    if (!key && currentAiKey && activeSettingsTab !== "models") {
+    if (!key && currentAiKey && activeSettingsTab !== "models" && activeSettingsTab !== "mode-direct") {
       key = currentAiKey;
     }
-    let model = modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash");
+    let model = (byokModelInput && byokModelInput.value.trim()) || (modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash"));
     if (model === "custom" && customModelInput && customModelInput.value.trim()) {
       model = customModelInput.value.trim();
     }
@@ -8982,21 +9212,43 @@ async function loginWithOAuth() {
   if (isOAuthPending) return;
   isOAuthPending = true;
 
-  const btnLabel = document.getElementById("lbl-btn-auth");
+  const btnLabel = document.getElementById("lbl-btn-oauth-login") || document.getElementById("lbl-btn-auth");
   if (btnLabel) btnLabel.innerText = "Opening Browser...";
 
   try {
-    if (window.startOAuthLogin) {
-      await window.startOAuthLogin("https://shuffle.security");
-      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    let authUrl = "";
+    if (typeof window.startOAuthLogin === "function") {
+      const respRaw = await window.startOAuthLogin("https://shuffle.security");
+      let resp = respRaw;
+      if (typeof respRaw === "string") {
+        try { resp = JSON.parse(respRaw); } catch (_) {}
+      }
+      if (resp && resp.status === "error") {
+        throw new Error(resp.error || "Failed to start OAuth login");
+      }
+      if (resp && resp.url) authUrl = resp.url;
+    } else if (typeof window.bridgeCall === "function") {
+      const respRaw = await window.bridgeCall("startOAuthLogin", JSON.stringify({ base_url: "https://shuffle.security" }));
+      let resp = respRaw;
+      if (typeof respRaw === "string") {
+        try { resp = JSON.parse(respRaw); } catch (_) {}
+      }
+      if (resp && resp.status === "error") {
+        throw new Error(resp.error || "Failed to start OAuth login");
+      }
+      if (resp && resp.url) authUrl = resp.url;
     } else {
-      window.open("https://shuffle.security/oauth2/authorize", "_blank");
-      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+      authUrl = "https://shuffle.security/oauth2/authorize";
+      window.open(authUrl, "_blank");
     }
+
+    if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+    showToast("Opening browser for Shuffle OAuth2 login...");
   } catch (err) {
     console.error("Failed to start OAuth login:", err);
-    if (btnLabel) btnLabel.innerText = "Log in with Shuffle";
+    if (btnLabel) btnLabel.innerText = "Open Shuffle OAuth2 Login";
     isOAuthPending = false;
+    showToast("Error opening login: " + (err.message || err));
   }
 }
 
@@ -9686,7 +9938,7 @@ function handleReminderAction() {
   const actionBtn = document.getElementById("btn-model-reminder-action");
   const actionType = actionBtn ? actionBtn.getAttribute("data-action-type") : "byok";
   if (actionType === "auth") {
-    openSettingsModal("auth");
+    openSettingsModal("mode-shuffle");
   } else if (actionType === "hardware") {
     openSettingsModal("mode-local");
   } else {
@@ -9755,8 +10007,8 @@ function renderModelDropdown() {
     }
   });
 
-  // If a custom model is configured or active, add it under BYOK Models
-  if (activeCustomName) {
+  // If a custom model is configured or active, add it under BYOK Models if not already present
+  if (activeCustomName && !categories["BYOK Models"].some(m => m.key.toLowerCase() === activeCustomName.toLowerCase())) {
     const isCustomSelected = (curModel === activeCustomName || curModel === "custom" || !isPredefined);
     categories["BYOK Models"].push({
       key: activeCustomName,
@@ -9772,8 +10024,8 @@ function renderModelDropdown() {
   // Always provide the action to configure / add custom model
   categories["BYOK Models"].push({
     key: "custom",
-    label: activeCustomName ? "Configure Custom Model..." : "Custom Model...",
-    desc: activeCustomName ? "Change endpoint or model name" : "Set custom endpoint & model",
+    label: "+ Add / Type BYOK Model...",
+    desc: "Type any model ID or set custom endpoint",
     category: "BYOK Models",
     provider: "custom",
     isSelected: !activeCustomName && (curModel === "custom" || !isPredefined),
@@ -9855,7 +10107,7 @@ function renderModelDropdown() {
       } else if (group.title === "Local Models") {
         metaHtml = `<span class="model-badge ready">Local</span>`;
       } else if (group.title === "Shuffle AI") {
-        metaHtml = `<span class="model-badge ready">Cloud</span>`;
+        metaHtml = `<span class="model-badge ready">Shuffle</span>`;
       } else {
         metaHtml = `<span class="model-badge ready">${escapeHtml(status.badge)}</span>`;
       }
@@ -9885,7 +10137,7 @@ function renderModelDropdown() {
   if (!hasShuffleAuth) {
     const hint = document.createElement("div");
     hint.className = "model-dropdown-footer-hint";
-    hint.innerHTML = `<span>Shuffle Cloud session</span><a href="javascript:void(0)" onclick="openSettingsModal('auth')">Log In</a>`;
+    hint.innerHTML = `<span>Optional Shuffle login</span><a href="javascript:void(0)" onclick="openSettingsModal('mode-shuffle')">Connect</a>`;
     menu.appendChild(hint);
   }
 }
@@ -9959,6 +10211,18 @@ function toggleReasoningDropdown(event) {
 function selectReasoningEffort(key) {
   activeReasoningEffort = key || "low";
   localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  if (typeof saveRememberedReasoningForType === "function") {
+    saveRememberedReasoningForType(activeProjectPath, activeReasoningEffort);
+  }
+  if (activeConversationId && Array.isArray(appConversations)) {
+    const curConv = appConversations.find(c => c && c.id === activeConversationId);
+    if (curConv) {
+      curConv.reasoning = activeReasoningEffort;
+      if (typeof saveStoredConversations === "function") {
+        saveStoredConversations();
+      }
+    }
+  }
   updateActiveReasoningLabel();
 
   const footerReasoning = document.getElementById("select-footer-reasoning");
@@ -10005,6 +10269,18 @@ function selectAiModel(key, label) {
   localStorage.setItem("orborus_ai_model", key);
   if (!isPredefined) {
     localStorage.setItem("orborus_custom_model", key);
+  }
+  if (typeof saveRememberedModelForType === "function") {
+    saveRememberedModelForType(activeProjectPath, key);
+  }
+  if (activeConversationId && Array.isArray(appConversations)) {
+    const curConv = appConversations.find(c => c && c.id === activeConversationId);
+    if (curConv) {
+      curConv.model = key;
+      if (typeof saveStoredConversations === "function") {
+        saveStoredConversations();
+      }
+    }
   }
 
   // Set default endpoint URLs and execution mode based on model provider
@@ -10092,8 +10368,8 @@ function selectAiModel(key, label) {
     targetMode = "local";
   } else if (key.startsWith("gpt") || key.startsWith("claude") || !isPredefined) {
     targetMode = "direct";
-  } else if (key.startsWith("gemini")) {
-    targetMode = (typeof isLoggedIn !== "undefined" && isLoggedIn) ? "shuffle" : "direct";
+  } else if (key.startsWith("gemini") || key === "default") {
+    targetMode = "shuffle";
   }
   if (typeof window !== "undefined") {
     window.activeExecutionMode = targetMode;
@@ -10533,6 +10809,22 @@ function startNewSession() {
     setTimeout(() => input.focus(), 50);
   }
 
+  // Restore remembered model and reasoning for this chat type, prioritizing active and validated
+  if (typeof getRememberedModelForType === "function" && typeof getBestActiveValidatedModel === "function") {
+    const rememberedModel = getRememberedModelForType(activeProjectPath);
+    const validatedModel = getBestActiveValidatedModel(rememberedModel);
+    activeAiModel = validatedModel;
+    if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+    localStorage.setItem("orborus_ai_model", validatedModel);
+  }
+  if (typeof getRememberedReasoningForType === "function") {
+    activeReasoningEffort = getRememberedReasoningForType(activeProjectPath) || "low";
+    if (typeof window !== "undefined") window.activeReasoningEffort = activeReasoningEffort;
+    localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  }
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
+
   renderProjectTree();
   showToast("Started new conversation session");
 }
@@ -10644,6 +10936,8 @@ async function submitPrompt(forcedPrompt) {
       projectName: effectiveProjName,
       project_name: effectiveProjName,
       title: firstLine,
+      model: selectedModel,
+      reasoning: activeReasoningEffort || "low",
       pinned: false,
       turns: [optimisticTurn]
     };
@@ -10662,14 +10956,26 @@ async function submitPrompt(forcedPrompt) {
         projectName: effectiveProjName,
         project_name: effectiveProjName,
         title: firstLine,
+        model: selectedModel,
+        reasoning: activeReasoningEffort || "low",
         pinned: false,
         turns: []
       };
       appConversations.unshift(curConv);
+    } else {
+      curConv.model = selectedModel;
+      curConv.reasoning = activeReasoningEffort || "low";
     }
     if (!curConv.turns) curConv.turns = [];
     curConv.turns.push(optimisticTurn);
     curConv.updated_at = new Date().toISOString();
+  }
+
+  if (typeof saveRememberedModelForType === "function") {
+    saveRememberedModelForType(activeProjectPath, selectedModel);
+  }
+  if (typeof saveRememberedReasoningForType === "function") {
+    saveRememberedReasoningForType(activeProjectPath, activeReasoningEffort || "low");
   }
 
   runningConversationId = activeConversationId;
@@ -10725,7 +11031,7 @@ async function submitPrompt(forcedPrompt) {
       bypass: false,
       conversation_id: activeConversationId || "",
       model: activeAiModel || "gemini-3.8-flash",
-      reasoning: activeReasoningEffort || "medium",
+      reasoning: activeReasoningEffort || "low",
       ai_api_key: effectiveKey,
       ai_api_url: effectiveUrl
     });
@@ -10733,7 +11039,7 @@ async function submitPrompt(forcedPrompt) {
     console.log("[Shuffle Agent] Submitting prompt to backend:", {
       prompt: prompt,
       model: activeAiModel || "gemini-3.8-flash",
-      reasoning: activeReasoningEffort || "medium",
+      reasoning: activeReasoningEffort || "low",
       conversation_id: activeConversationId,
       has_key: Boolean(effectiveKey),
       has_url: Boolean(effectiveUrl)
@@ -10835,6 +11141,7 @@ async function submitPrompt(forcedPrompt) {
     optimisticTurn.error = res.error || (isError ? res.output : "");
     optimisticTurn.error_type = res.error_type || "";
     optimisticTurn.fix_help = res.fix_help || "";
+    optimisticTurn.changed_files = res.changed_files || null;
     if (res.steps && Array.isArray(res.steps) && res.steps.length > 0) {
       optimisticTurn.steps = res.steps;
     } else {
@@ -11677,18 +11984,29 @@ function buildErrorArea(isError, errText, info, prompt, rawOutput) {
 
   let actionsHtml = "";
   if (isAiConfigError) {
-    const curModel = activeAiModel || (typeof window !== "undefined" && window.activeAiModel) || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash";
-    const status = (typeof getModelConfigStatus === "function") ? getModelConfigStatus(curModel) : { actionType: "byok" };
+    const curModel = (info && info.model) || (info && info.debug_info && info.debug_info.model) || activeAiModel || (typeof window !== "undefined" && window.activeAiModel) || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash";
+    const status = (typeof getModelConfigStatus === "function") ? getModelConfigStatus(curModel) : { actionType: "auth" };
     const hasLocal = (typeof window !== "undefined" && window.localExecutorAvailable !== false);
     const isAlreadyLocal = curModel === "tendon-local" || curModel.startsWith("tendon") || curModel.startsWith("local");
 
-    const authBtnText = status.actionType === "auth" ? "Log In to Shuffle" : "Configure in Settings";
-    const authTab = status.actionType === "auth" ? "auth" : "mode-direct";
+    const isShuffleAi = curModel === "gemini-3.8-flash" || curModel.startsWith("gemini") || curModel === "default" ||
+      (typeof window !== "undefined" && window.activeExecutionMode === "shuffle") ||
+      errText.includes("no organization-specific key") ||
+      errText.includes("custom ai app authentication") ||
+      status.actionType === "auth";
 
-    actionsHtml = `
-      <button type="button" class="btn-error-cta" onclick="openSettingsModal('${authTab}', 'key')">${authBtnText}</button>
-      ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
-    `;
+    if (isShuffleAi) {
+      actionsHtml = `
+        <button type="button" class="btn-error-cta" onclick="openSettingsModal('mode-shuffle')">Log In to Shuffle Cloud</button>
+        <button type="button" class="btn-error-secondary" onclick="openSettingsModal('mode-shuffle')">Configure in Settings</button>
+        ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
+      `;
+    } else {
+      actionsHtml = `
+        <button type="button" class="btn-error-cta" onclick="openSettingsModal('mode-direct', 'key')">Configure in Settings</button>
+        ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
+      `;
+    }
   } else if (isRateLimitError) {
     actionsHtml = `
       <button type="button" class="btn-error-cta" onclick="retryCardPrompt(this)">Retry</button>

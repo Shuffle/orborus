@@ -170,6 +170,21 @@ async function selectConversation(convId) {
     if (projPath !== activeProjectPath) {
       setActiveProject(projPath, projName);
     }
+    const convModel = cachedConv.model || cachedConv.ai_model || (typeof getRememberedModelForType === "function" ? getRememberedModelForType(projPath) : null);
+    if (convModel) {
+      const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(convModel) : convModel;
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    const convReasoning = cachedConv.reasoning || (typeof getRememberedReasoningForType === "function" ? getRememberedReasoningForType(projPath) : null);
+    if (convReasoning) {
+      activeReasoningEffort = convReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = convReasoning;
+      localStorage.setItem("orborus_ai_reasoning", convReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
   }
   renderProjectTree();
   renderActiveConversation();
@@ -188,6 +203,20 @@ async function selectConversation(convId) {
           appConversations.unshift(diskConv);
         }
         if (activeConversationId === convId) {
+          const diskModel = diskConv.model || diskConv.ai_model;
+          if (diskModel) {
+            const validatedModel = (typeof getBestActiveValidatedModel === "function") ? getBestActiveValidatedModel(diskModel) : diskModel;
+            activeAiModel = validatedModel;
+            if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+            localStorage.setItem("orborus_ai_model", validatedModel);
+          }
+          if (diskConv.reasoning) {
+            activeReasoningEffort = diskConv.reasoning;
+            if (typeof window !== "undefined") window.activeReasoningEffort = diskConv.reasoning;
+            localStorage.setItem("orborus_ai_reasoning", diskConv.reasoning);
+          }
+          if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+          if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
           renderActiveConversation();
         }
         try {
@@ -610,6 +639,18 @@ function renderProjectTree() {
   }
 }
 
+function renderProjects() {
+  if (typeof renderProjectTree === "function") {
+    renderProjectTree();
+  }
+  if (typeof renderSettingsProjectsList === "function") {
+    renderSettingsProjectsList();
+  }
+}
+if (typeof window !== "undefined") {
+  window.renderProjects = renderProjects;
+}
+
 function toggleProjectDropdown(event, forceState) {
   if (event) event.stopPropagation();
   const menu = document.getElementById("project-dropdown-menu");
@@ -708,6 +749,22 @@ async function selectProject(path, displayName, options = {}) {
         saveStoredConversations();
       }
     }
+  } else if (!activeConversationId) {
+    if (typeof getRememberedModelForType === "function" && typeof getBestActiveValidatedModel === "function") {
+      const rememberedModel = getRememberedModelForType(path);
+      const validatedModel = getBestActiveValidatedModel(rememberedModel);
+      activeAiModel = validatedModel;
+      if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+      localStorage.setItem("orborus_ai_model", validatedModel);
+    }
+    if (typeof getRememberedReasoningForType === "function") {
+      const rememberedReasoning = getRememberedReasoningForType(path) || "low";
+      activeReasoningEffort = rememberedReasoning;
+      if (typeof window !== "undefined") window.activeReasoningEffort = rememberedReasoning;
+      localStorage.setItem("orborus_ai_reasoning", rememberedReasoning);
+    }
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
   }
 
   // 3. Refresh right sidebar overview & git status only if a project workspace exists

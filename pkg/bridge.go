@@ -2738,6 +2738,8 @@ func (b *AgentBridge) captureWorkingTreeSnapshot(projectPath string) *WorkingTre
 					parts := strings.Split(filePath, " -> ")
 					filePath = parts[len(parts)-1]
 				}
+				filePath = strings.Trim(filePath, "\"")
+				filePath = filepath.ToSlash(filePath)
 				fullPath := filepath.Join(projectPath, filePath)
 				var fileHash string
 				var size int64

@@ -116,3 +116,23 @@
     width: 100%;
     height: calc(100vh - 38px);
   }
+
+  /* Universal SVG icon vertical centering normalization across all buttons */
+  button svg,
+  .btn-secondary-action svg,
+  .btn-skills-action svg,
+  .btn-modal-cancel svg,
+  .btn-modal-submit svg,
+  .btn-workspace-switch svg,
+  .btn-mode-activate svg,
+  .btn-mode-configure svg,
+  .btn-new-chat svg,
+  .btn-send svg,
+  .btn-stop svg,
+  .icon-btn svg,
+  .nav-icon-btn svg,
+  .model-picker-pill svg,
+  .rs-tab-btn svg {
+    display: block;
+    flex-shrink: 0;
+  }

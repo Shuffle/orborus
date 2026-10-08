@@ -161,7 +161,7 @@ function handleReminderAction() {
   const actionBtn = document.getElementById("btn-model-reminder-action");
   const actionType = actionBtn ? actionBtn.getAttribute("data-action-type") : "byok";
   if (actionType === "auth") {
-    openSettingsModal("auth");
+    openSettingsModal("mode-shuffle");
   } else if (actionType === "hardware") {
     openSettingsModal("mode-local");
   } else {
@@ -230,8 +230,8 @@ function renderModelDropdown() {
     }
   });
 
-  // If a custom model is configured or active, add it under BYOK Models
-  if (activeCustomName) {
+  // If a custom model is configured or active, add it under BYOK Models if not already present
+  if (activeCustomName && !categories["BYOK Models"].some(m => m.key.toLowerCase() === activeCustomName.toLowerCase())) {
     const isCustomSelected = (curModel === activeCustomName || curModel === "custom" || !isPredefined);
     categories["BYOK Models"].push({
       key: activeCustomName,
@@ -247,8 +247,8 @@ function renderModelDropdown() {
   // Always provide the action to configure / add custom model
   categories["BYOK Models"].push({
     key: "custom",
-    label: activeCustomName ? "Configure Custom Model..." : "Custom Model...",
-    desc: activeCustomName ? "Change endpoint or model name" : "Set custom endpoint & model",
+    label: "+ Add / Type BYOK Model...",
+    desc: "Type any model ID or set custom endpoint",
     category: "BYOK Models",
     provider: "custom",
     isSelected: !activeCustomName && (curModel === "custom" || !isPredefined),
@@ -330,7 +330,7 @@ function renderModelDropdown() {
       } else if (group.title === "Local Models") {
         metaHtml = `<span class="model-badge ready">Local</span>`;
       } else if (group.title === "Shuffle AI") {
-        metaHtml = `<span class="model-badge ready">Cloud</span>`;
+        metaHtml = `<span class="model-badge ready">Shuffle</span>`;
       } else {
         metaHtml = `<span class="model-badge ready">${escapeHtml(status.badge)}</span>`;
       }
@@ -360,7 +360,7 @@ function renderModelDropdown() {
   if (!hasShuffleAuth) {
     const hint = document.createElement("div");
     hint.className = "model-dropdown-footer-hint";
-    hint.innerHTML = `<span>Shuffle Cloud session</span><a href="javascript:void(0)" onclick="openSettingsModal('auth')">Log In</a>`;
+    hint.innerHTML = `<span>Optional Shuffle login</span><a href="javascript:void(0)" onclick="openSettingsModal('mode-shuffle')">Connect</a>`;
     menu.appendChild(hint);
   }
 }
@@ -434,6 +434,18 @@ function toggleReasoningDropdown(event) {
 function selectReasoningEffort(key) {
   activeReasoningEffort = key || "low";
   localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  if (typeof saveRememberedReasoningForType === "function") {
+    saveRememberedReasoningForType(activeProjectPath, activeReasoningEffort);
+  }
+  if (activeConversationId && Array.isArray(appConversations)) {
+    const curConv = appConversations.find(c => c && c.id === activeConversationId);
+    if (curConv) {
+      curConv.reasoning = activeReasoningEffort;
+      if (typeof saveStoredConversations === "function") {
+        saveStoredConversations();
+      }
+    }
+  }
   updateActiveReasoningLabel();
 
   const footerReasoning = document.getElementById("select-footer-reasoning");
@@ -480,6 +492,18 @@ function selectAiModel(key, label) {
   localStorage.setItem("orborus_ai_model", key);
   if (!isPredefined) {
     localStorage.setItem("orborus_custom_model", key);
+  }
+  if (typeof saveRememberedModelForType === "function") {
+    saveRememberedModelForType(activeProjectPath, key);
+  }
+  if (activeConversationId && Array.isArray(appConversations)) {
+    const curConv = appConversations.find(c => c && c.id === activeConversationId);
+    if (curConv) {
+      curConv.model = key;
+      if (typeof saveStoredConversations === "function") {
+        saveStoredConversations();
+      }
+    }
   }
 
   // Set default endpoint URLs and execution mode based on model provider
@@ -567,8 +591,8 @@ function selectAiModel(key, label) {
     targetMode = "local";
   } else if (key.startsWith("gpt") || key.startsWith("claude") || !isPredefined) {
     targetMode = "direct";
-  } else if (key.startsWith("gemini")) {
-    targetMode = (typeof isLoggedIn !== "undefined" && isLoggedIn) ? "shuffle" : "direct";
+  } else if (key.startsWith("gemini") || key === "default") {
+    targetMode = "shuffle";
   }
   if (typeof window !== "undefined") {
     window.activeExecutionMode = targetMode;
@@ -1008,6 +1032,22 @@ function startNewSession() {
     setTimeout(() => input.focus(), 50);
   }
 
+  // Restore remembered model and reasoning for this chat type, prioritizing active and validated
+  if (typeof getRememberedModelForType === "function" && typeof getBestActiveValidatedModel === "function") {
+    const rememberedModel = getRememberedModelForType(activeProjectPath);
+    const validatedModel = getBestActiveValidatedModel(rememberedModel);
+    activeAiModel = validatedModel;
+    if (typeof window !== "undefined") window.activeAiModel = validatedModel;
+    localStorage.setItem("orborus_ai_model", validatedModel);
+  }
+  if (typeof getRememberedReasoningForType === "function") {
+    activeReasoningEffort = getRememberedReasoningForType(activeProjectPath) || "low";
+    if (typeof window !== "undefined") window.activeReasoningEffort = activeReasoningEffort;
+    localStorage.setItem("orborus_ai_reasoning", activeReasoningEffort);
+  }
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof updateActiveReasoningLabel === "function") updateActiveReasoningLabel();
+
   renderProjectTree();
   showToast("Started new conversation session");
 }
@@ -1119,6 +1159,8 @@ async function submitPrompt(forcedPrompt) {
       projectName: effectiveProjName,
       project_name: effectiveProjName,
       title: firstLine,
+      model: selectedModel,
+      reasoning: activeReasoningEffort || "low",
       pinned: false,
       turns: [optimisticTurn]
     };
@@ -1137,14 +1179,26 @@ async function submitPrompt(forcedPrompt) {
         projectName: effectiveProjName,
         project_name: effectiveProjName,
         title: firstLine,
+        model: selectedModel,
+        reasoning: activeReasoningEffort || "low",
         pinned: false,
         turns: []
       };
       appConversations.unshift(curConv);
+    } else {
+      curConv.model = selectedModel;
+      curConv.reasoning = activeReasoningEffort || "low";
     }
     if (!curConv.turns) curConv.turns = [];
     curConv.turns.push(optimisticTurn);
     curConv.updated_at = new Date().toISOString();
+  }
+
+  if (typeof saveRememberedModelForType === "function") {
+    saveRememberedModelForType(activeProjectPath, selectedModel);
+  }
+  if (typeof saveRememberedReasoningForType === "function") {
+    saveRememberedReasoningForType(activeProjectPath, activeReasoningEffort || "low");
   }
 
   runningConversationId = activeConversationId;
@@ -1200,7 +1254,7 @@ async function submitPrompt(forcedPrompt) {
       bypass: false,
       conversation_id: activeConversationId || "",
       model: activeAiModel || "gemini-3.8-flash",
-      reasoning: activeReasoningEffort || "medium",
+      reasoning: activeReasoningEffort || "low",
       ai_api_key: effectiveKey,
       ai_api_url: effectiveUrl
     });
@@ -1208,7 +1262,7 @@ async function submitPrompt(forcedPrompt) {
     console.log("[Shuffle Agent] Submitting prompt to backend:", {
       prompt: prompt,
       model: activeAiModel || "gemini-3.8-flash",
-      reasoning: activeReasoningEffort || "medium",
+      reasoning: activeReasoningEffort || "low",
       conversation_id: activeConversationId,
       has_key: Boolean(effectiveKey),
       has_url: Boolean(effectiveUrl)
@@ -1310,6 +1364,7 @@ async function submitPrompt(forcedPrompt) {
     optimisticTurn.error = res.error || (isError ? res.output : "");
     optimisticTurn.error_type = res.error_type || "";
     optimisticTurn.fix_help = res.fix_help || "";
+    optimisticTurn.changed_files = res.changed_files || null;
     if (res.steps && Array.isArray(res.steps) && res.steps.length > 0) {
       optimisticTurn.steps = res.steps;
     } else {
@@ -2152,18 +2207,29 @@ function buildErrorArea(isError, errText, info, prompt, rawOutput) {
 
   let actionsHtml = "";
   if (isAiConfigError) {
-    const curModel = activeAiModel || (typeof window !== "undefined" && window.activeAiModel) || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash";
-    const status = (typeof getModelConfigStatus === "function") ? getModelConfigStatus(curModel) : { actionType: "byok" };
+    const curModel = (info && info.model) || (info && info.debug_info && info.debug_info.model) || activeAiModel || (typeof window !== "undefined" && window.activeAiModel) || (typeof localStorage !== "undefined" && localStorage.getItem("orborus_ai_model")) || "gemini-3.8-flash";
+    const status = (typeof getModelConfigStatus === "function") ? getModelConfigStatus(curModel) : { actionType: "auth" };
     const hasLocal = (typeof window !== "undefined" && window.localExecutorAvailable !== false);
     const isAlreadyLocal = curModel === "tendon-local" || curModel.startsWith("tendon") || curModel.startsWith("local");
 
-    const authBtnText = status.actionType === "auth" ? "Log In to Shuffle" : "Configure in Settings";
-    const authTab = status.actionType === "auth" ? "auth" : "mode-direct";
+    const isShuffleAi = curModel === "gemini-3.8-flash" || curModel.startsWith("gemini") || curModel === "default" ||
+      (typeof window !== "undefined" && window.activeExecutionMode === "shuffle") ||
+      errText.includes("no organization-specific key") ||
+      errText.includes("custom ai app authentication") ||
+      status.actionType === "auth";
 
-    actionsHtml = `
-      <button type="button" class="btn-error-cta" onclick="openSettingsModal('${authTab}', 'key')">${authBtnText}</button>
-      ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
-    `;
+    if (isShuffleAi) {
+      actionsHtml = `
+        <button type="button" class="btn-error-cta" onclick="openSettingsModal('mode-shuffle')">Log In to Shuffle Cloud</button>
+        <button type="button" class="btn-error-secondary" onclick="openSettingsModal('mode-shuffle')">Configure in Settings</button>
+        ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
+      `;
+    } else {
+      actionsHtml = `
+        <button type="button" class="btn-error-cta" onclick="openSettingsModal('mode-direct', 'key')">Configure in Settings</button>
+        ${(hasLocal && !isAlreadyLocal) ? `<button type="button" class="btn-error-secondary" onclick="handleReminderUseLocal()">Switch to Local GPU</button>` : ""}
+      `;
+    }
   } else if (isRateLimitError) {
     actionsHtml = `
       <button type="button" class="btn-error-cta" onclick="retryCardPrompt(this)">Retry</button>

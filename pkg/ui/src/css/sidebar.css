@@ -135,6 +135,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    line-height: 1;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-primary);
@@ -144,6 +145,10 @@
     border-radius: 9999px;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-new-chat svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-new-chat:hover {
     background: var(--bg-hover);
@@ -588,10 +593,12 @@
     background: var(--bg-active);
   }
 
-  .sidebar-settings-btn {
+  .sidebar-settings-btn,
+  .sidebar-settings-nav-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    width: 100%;
     padding: 6px 8px;
     border-radius: 6px;
     font-size: 12px;
@@ -600,8 +607,15 @@
     border: none;
     cursor: pointer;
     transition: all 0.15s ease;
+    line-height: 1;
   }
-  .sidebar-settings-btn:hover {
+  .sidebar-settings-btn svg,
+  .sidebar-settings-nav-btn svg {
+    display: block;
+    flex-shrink: 0;
+  }
+  .sidebar-settings-btn:hover,
+  .sidebar-settings-nav-btn:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
   }

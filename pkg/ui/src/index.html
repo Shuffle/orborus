@@ -179,12 +179,6 @@
         </div>
       </div>
 
-      <!-- Compatibility fallback container hidden -->
-      <div id="auth-status-card" style="display:none;">
-        <span id="status-subtext"></span>
-        <div id="status-details-box"><span id="lbl-org"></span><span id="lbl-env"></span></div>
-        <button id="btn-auth-action"><span id="lbl-btn-auth"></span></button>
-      </div>
 
 
       <button id="btn-sidebar-settings" class="sidebar-settings-nav-btn" onclick="openSettingsModal()" title="Settings (Cmd+,)">
@@ -435,20 +429,6 @@
           <button id="btn-footer-auth"></button>
           <button id="btn-mic"></button>
         </div>
-        <div style="display:none;" class="card-footer-row">
-          <div class="footer-controls-group">
-            <button id="btn-footer-auth" class="footer-dropdown-btn" title="Authentication & Connection Settings" onclick="openSettingsModal('auth')">
-              <div id="footer-status-dot" class="status-dot disconnected" style="width:7px; height:7px;"></div>
-              <span id="footer-env-label">Shuffle Standalone</span>
-            </button>
-            <button class="footer-dropdown-btn" title="Open Settings" onclick="openSettingsModal('models')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -643,23 +623,13 @@
           </button>
         </div>
 
-        <div class="settings-nav-section-title" style="margin-top:14px;">AI Connection Modes</div>
+        <div class="settings-nav-section-title" style="margin-top:14px;">AI Providers</div>
         <div class="settings-nav-items">
-          <button id="settings-tab-btn-modes-overview" class="settings-nav-item" onclick="switchSettingsTab('modes-overview')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            <span>Overview &amp; Swap</span>
-            <span id="nav-active-mode-badge" class="settings-mode-pill local">Local</span>
-          </button>
           <button id="settings-tab-btn-mode-shuffle" class="settings-nav-item" onclick="switchSettingsTab('mode-shuffle')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
-            <span>1. Shuffle (OAuth)</span>
+            <span>Shuffle (OAuth)</span>
           </button>
           <button id="settings-tab-btn-mode-orborus" class="settings-nav-item" onclick="switchSettingsTab('mode-orborus')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -668,14 +638,14 @@
               <line x1="6" y1="6" x2="6.01" y2="6"/>
               <line x1="6" y1="18" x2="6.01" y2="18"/>
             </svg>
-            <span>2. Orborus (Org/Auth)</span>
+            <span>Shuffle (Self-Hosted)</span>
           </button>
           <button id="settings-tab-btn-mode-direct" class="settings-nav-item" onclick="switchSettingsTab('mode-direct')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="16 18 22 12 16 6"/>
               <polyline points="8 6 2 12 8 18"/>
             </svg>
-            <span>3. Direct LLM (BYOK)</span>
+            <span>Direct LLM (BYOK)</span>
           </button>
           <button id="settings-tab-btn-mode-local" class="settings-nav-item" onclick="switchSettingsTab('mode-local')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -690,7 +660,7 @@
               <line x1="1" y1="9" x2="4" y2="9"/>
               <line x1="1" y1="14" x2="4" y2="14"/>
             </svg>
-            <span>4. Local GPU (CUDA)</span>
+            <span>Local GPU (CUDA)</span>
           </button>
         </div>
 
@@ -793,136 +763,9 @@
             </div>
           </div>
 
-          <!-- VIEW: AI MODES OVERVIEW & SWAPPER -->
-          <div id="settings-panel-modes-overview" class="settings-panel">
-            <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>AI Execution &amp; Connection Modes</span>
-              <span id="overview-active-pill" class="settings-mode-pill local">Local GPU Active</span>
-            </div>
-            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
-              Orborus supports <strong>4 distinct execution modes</strong>. You can configure credentials for all four simultaneously and swap active execution with one click.
-            </p>
-
-            <!-- 4 Distinct Mode Cards Grid -->
-            <div class="modes-overview-grid">
-              <!-- Mode 1 Card: Shuffle Cloud OAuth2 -->
-              <div id="card-mode-shuffle" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">1</span>
-                    <span class="mode-card-title">Shuffle Cloud (OAuth)</span>
-                  </div>
-                  <span id="badge-overview-shuffle" class="mode-card-badge badge-idle">Not Connected</span>
-                </div>
-                <div class="mode-card-desc">
-                  Sign in with Shuffle via browser OAuth2. Uses managed <strong>Shuffle AI</strong> (Gemini 3.8 Flash / Pro) by default with zero API key setup.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-shuffle">
-                  User: <span id="meta-user-shuffle">Not Logged In</span> &bull; Shuffle AI Default
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-shuffle" class="btn-mode-activate" onclick="activateExecutionMode('shuffle')">
-                    Activate Mode 1
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-shuffle')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 2 Card: Orborus Backend Connection -->
-              <div id="card-mode-orborus" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">2</span>
-                    <span class="mode-card-title">Orborus (Org/Auth)</span>
-                  </div>
-                  <span id="badge-overview-orborus" class="mode-card-badge badge-idle">Not Configured</span>
-                </div>
-                <div class="mode-card-desc">
-                  Connect to a Shuffle server or on-prem cluster via Org ID, API Auth key, and Environment. Uses <strong>Shuffle AI</strong> default.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-orborus">
-                  Org: <span id="meta-org-orborus">Not Set</span> &bull; Env: <span id="meta-env-orborus">standalone</span>
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-orborus" class="btn-mode-activate" onclick="activateExecutionMode('orborus')">
-                    Activate Mode 2
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-orborus')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 3 Card: Direct LLM (BYOK) -->
-              <div id="card-mode-direct" class="mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">3</span>
-                    <span class="mode-card-title">Direct LLM (BYOK)</span>
-                  </div>
-                  <span id="badge-overview-direct" class="mode-card-badge badge-idle">No Key Set</span>
-                </div>
-                <div class="mode-card-desc">
-                  Direct offload to OpenAI, Anthropic Claude, Google Gemini, or custom OpenAI-compatible API using personal credentials.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-direct">
-                  Model: <span id="meta-model-direct">gpt-4o</span> &bull; Key: <span id="meta-key-direct">Not configured</span>
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-direct" class="btn-mode-activate" onclick="activateExecutionMode('direct')">
-                    Activate Mode 3
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-direct')">
-                    Configure &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <!-- Mode 4 Card: Local LLM (Native Tendon CUDA Engine) -->
-              <div id="card-mode-local" class="mode-card active">
-                <div class="mode-card-header">
-                  <div class="mode-card-title-group">
-                    <span class="mode-card-num">4</span>
-                    <span class="mode-card-title">Local LLM (GPU)</span>
-                  </div>
-                  <span id="badge-overview-local" class="mode-card-badge badge-active">Active GPU</span>
-                </div>
-                <div class="mode-card-desc">
-                  Native in-process C/CUDA engine running completely offline on your local GPU. Direct VRAM (-lm none), zero host RAM ballooning.
-                </div>
-                <div class="mode-card-meta" id="meta-overview-local">
-                  Weight: <span id="meta-weight-local">No model loaded</span> &bull; 0 Host RAM
-                </div>
-                <div class="mode-card-actions">
-                  <button type="button" id="btn-overview-activate-local" class="btn-mode-activate active" onclick="activateExecutionMode('local')">
-                    &check; Active
-                  </button>
-                  <button type="button" class="btn-mode-configure" onclick="switchSettingsTab('mode-local')">
-                    Manage Models &rarr;
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- VIEW: MODE 1 - SHUFFLE CLOUD (OAUTH2) -->
+          <!-- VIEW: SHUFFLE (OAUTH2) -->
           <div id="settings-panel-mode-shuffle" class="settings-panel">
-            <div class="settings-group-header">1. Shuffle Cloud Account (OAuth2 Login)</div>
-            
-            <div id="banner-mode-shuffle" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 1: Shuffle Cloud (OAuth2)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-shuffle">Uses Shuffle AI default (Gemini 3.8 Flash / Pro) via cloud session</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-shuffle" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('shuffle')">
-                Activate Mode 1
-              </button>
-            </div>
+            <div class="settings-group-header">Shuffle Connection (OAuth2 Login) &mdash; Optional</div>
 
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -933,48 +776,35 @@
                 <span id="settings-auth-status-text" style="font-size:11px; color:var(--text-muted);">Disconnected</span>
               </div>
               <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                Connect this runner to your Shuffle Cloud account to execute workflows, stream agent executions, and use <strong>Shuffle AI (Gemini 3.8 Flash / Pro)</strong> without needing personal LLM keys.
+                Optionally connect this runner to your Shuffle account (Cloud or on-prem) to execute workflows, stream agent executions, and use <strong>Shuffle AI (Gemini 3.8 Flash)</strong> without personal LLM keys. This is completely optional &mdash; you can also run standalone with Direct LLM (BYOK) or Local GPU.
               </p>
-              <button type="button" class="btn-secondary-action" style="width:fit-content;" onclick="loginWithOAuth()">
+              <button id="btn-oauth-login" type="button" class="btn-secondary-action" style="width:fit-content;" onclick="loginWithOAuth()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                   <polyline points="10 17 15 12 10 7"/>
                   <line x1="15" y1="12" x2="3" y2="12"/>
                 </svg>
-                <span>Open Shuffle OAuth2 Login</span>
+                <span id="lbl-btn-oauth-login">Open Shuffle OAuth2 Login</span>
               </button>
 
               <div style="display:flex; gap:8px; margin-top:4px;">
                 <input id="input-oauth-token" class="form-input" style="flex:1; font-size:11px;" type="text" placeholder="Or paste OAuth2 / Session Token directly...">
-                <button type="button" class="btn-modal-cancel" style="padding:6px 12px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
+                <button id="btn-submit-oauth-token" type="button" class="btn-secondary-action" style="padding:6px 14px; font-size:11px;" onclick="submitOAuthToken()">Connect</button>
               </div>
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI Default</div>
-              When Mode 1 is active, agent requests automatically route to Shuffle AI with zero personal API key configuration. Workflows and conversations sync directly with your Shuffle Cloud workspace.
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI (Optional)</div>
+              When connected to Shuffle, agent requests can automatically route to Shuffle AI with zero personal API key setup. Workflows and conversations sync directly with your Shuffle workspace.
             </div>
           </div>
 
-          <!-- VIEW: MODE 2 - ORBORUS CONNECTION (ORG & AUTH) -->
+          <!-- VIEW: SHUFFLE SELF-HOSTED (ORG & AUTH) -->
           <div id="settings-panel-mode-orborus" class="settings-panel">
-            <div class="settings-group-header">2. Orborus Connection (Self-Hosted Runner)</div>
-
-            <div id="banner-mode-orborus" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 2: Orborus Backend Connection</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-orborus">Connects via Org ID, Auth Key, and Environment (Shuffle AI default)</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-orborus" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('orborus')">
-                Activate Mode 2
-              </button>
-            </div>
+            <div class="settings-group-header">Shuffle Self-Hosted Connection (Org &amp; Auth) &mdash; Optional</div>
 
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-              Provide an Org ID, API Auth Key, and Environment to connect this runner to a custom Shuffle backend or on-prem cluster.
+              Provide an Org ID, API Auth Key, and Base URL to connect this runner to a self-hosted Shuffle backend or on-prem cluster. This is completely optional.
             </p>
 
             <div class="form-group" style="margin-bottom:12px;">
@@ -998,13 +828,13 @@
             </div>
 
             <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
-              <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitOrborusAuth()">Save Orborus Credentials</button>
+              <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="submitOrborusAuth()">Save Shuffle Credentials</button>
               <span id="lbl-orborus-saved-status" style="font-size:11px; color:#10b981; display:none;">Saved!</span>
             </div>
 
             <div style="font-size:12px; color:var(--text-muted); line-height:1.45; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI Default via Backend</div>
-              When Mode 2 is active, the runner communicates with the specified Shuffle backend and uses the organization's default Shuffle AI service.
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Shuffle AI via Self-Hosted Backend</div>
+              When connected, the runner communicates with the specified Shuffle backend and uses the organization's default Shuffle AI service.
             </div>
           </div>
 
@@ -1089,22 +919,9 @@
             </div>
           </div>
 
-          <!-- VIEW: MODE 3 - DIRECT LLM CONNECTION (BYOK) -->
+          <!-- VIEW: DIRECT LLM CONNECTION (BYOK) -->
           <div id="settings-panel-mode-direct" class="settings-panel">
-            <div class="settings-group-header">3. Direct LLM Connection (BYOK)</div>
-
-            <div id="banner-mode-direct" class="mode-active-banner inactive">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 3: Direct LLM (Bring Your Own Key)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-direct">Direct offload to OpenAI, Anthropic, or Gemini using your API credentials</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-direct" class="btn-mode-activate" style="width:auto; max-width:160px;" onclick="activateExecutionMode('direct')">
-                Activate Mode 3
-              </button>
-            </div>
+            <div class="settings-group-header">Direct LLM Connection (BYOK)</div>
 
             <!-- Provider Presets -->
             <div class="form-group" style="margin-bottom:12px;">
@@ -1113,7 +930,11 @@
                 <option value="">-- Choose Provider Preset --</option>
                 <option value="openai">OpenAI (api.openai.com &bull; GPT-4o)</option>
                 <option value="anthropic">Anthropic (api.anthropic.com &bull; Claude 3.7 Sonnet)</option>
-                <option value="gemini">Google Gemini (generativelanguage.googleapis.com)</option>
+                <option value="gemini">Google Gemini (generativelanguage.googleapis.com &bull; Gemini 2.5 Flash)</option>
+                <option value="deepseek">DeepSeek (api.deepseek.com &bull; deepseek-chat)</option>
+                <option value="groq">Groq (api.groq.com &bull; llama-3.3-70b)</option>
+                <option value="ollama">Ollama Local (http://localhost:11434/v1 &bull; llama3.2)</option>
+                <option value="openrouter">OpenRouter (openrouter.ai/api/v1 &bull; gpt-4o)</option>
                 <option value="custom">Custom OpenAI-Compatible API</option>
               </select>
             </div>
@@ -1128,25 +949,43 @@
               <input id="input-ai-key" class="form-input" type="password" placeholder="sk-... or AIza..." oninput="updateEnvDisplayInModal(); populateAiModelSelect();">
             </div>
 
+            <!-- Active Direct Model: Manually Type or Add -->
             <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label" for="select-ai-model">Direct Model</label>
-              <select id="select-ai-model" class="form-input" style="cursor:pointer;" onchange="updateEnvDisplayInModal()">
-                <optgroup label="Remote Providers (BYOK)">
-                  <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                  <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic)</option>
-                  <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
-                  <option value="gemini-3.8-flash">Gemini 3.8 Flash (Google)</option>
-                  <option value="gemini-3.8-pro">Gemini 3.8 Pro (Google)</option>
-                </optgroup>
-                <optgroup label="Local Engine">
-                  <option value="tendon-local">Tendon Native CUDA (RTX 3080 Ti)</option>
-                </optgroup>
-                <optgroup label="Custom">
-                  <option value="custom">Custom Model...</option>
-                </optgroup>
-              </select>
-              <input id="input-settings-custom-model" class="form-input" style="margin-top:6px; display:none;" type="text" placeholder="Custom model name (e.g. mistral-large-2407)" oninput="updateEnvDisplayInModal()">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label class="form-label" for="input-byok-model-name" style="margin-bottom:0;">Direct Model (Type or Select)</label>
+                <span style="font-size:11px; color:var(--text-muted);">Type any model ID or add below</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <input id="input-byok-model-name" class="form-input" style="flex:1;" type="text" placeholder="e.g. gpt-4o, claude-3-7-sonnet, deepseek-chat, gpt-4o-mini" oninput="handleByokModelInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();addCurrentByokModel();}">
+                <button type="button" class="btn-skills-action" style="white-space:nowrap; padding:0 12px;" onclick="addCurrentByokModel()">+ Add Model</button>
+              </div>
             </div>
+
+            <!-- Your Saved BYOK Models -->
+            <div class="form-group" style="margin-bottom:10px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Your BYOK Models:</div>
+              <div id="byok-models-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; min-height:28px; align-items:center;">
+                <!-- Dynamically populated tags with click-to-select and (x) to remove -->
+              </div>
+            </div>
+
+            <!-- Popular Quick-Pick Presets -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <div style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:6px;">Popular Model Presets:</div>
+              <div class="byok-preset-chips" style="display:flex; flex-wrap:wrap; gap:6px;">
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o')">gpt-4o</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gpt-4o-mini')">gpt-4o-mini</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-7-sonnet')">claude-3-7-sonnet</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('claude-3-5-haiku')">claude-3-5-haiku</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-chat')">deepseek-chat</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('deepseek-reasoner')">deepseek-reasoner</button>
+                <button type="button" class="byok-chip-btn" onclick="quickSelectByokModel('gemini-2.5-flash')">gemini-2.5-flash</button>
+              </div>
+            </div>
+
+            <!-- Compatibility select elements (hidden) -->
+            <select id="select-ai-model" style="display:none;"></select>
+            <input id="input-settings-custom-model" type="hidden">
 
             <div style="font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:12px; margin-bottom:14px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
               <div style="font-weight:500; color:var(--text-secondary);">Direct Environment Status:</div>
@@ -1158,26 +997,13 @@
             <button type="button" class="btn-secondary-action" style="padding:8px 14px;" onclick="saveDirectLlmSettings()">Save Direct LLM Configuration</button>
           </div>
 
-          <!-- VIEW: MODE 4 - LOCAL LLM (NATIVE CUDA ENGINE) -->
+          <!-- VIEW: LOCAL GPU ENGINE (CUDA) -->
           <div id="settings-panel-mode-local" class="settings-panel">
             <div class="settings-group-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>4. Local LLM Connection (Native GPU)</span>
+              <span>Local GPU Engine (CUDA)</span>
               <span id="local-hardware-pill" class="settings-mode-pill">
                 Local GPU &bull; Direct VRAM
               </span>
-            </div>
-
-            <div id="banner-mode-local" class="mode-active-banner">
-              <div class="mode-banner-info">
-                <div class="mode-banner-dot"></div>
-                <div>
-                  <div class="mode-banner-text-title">Mode 4: Local LLM (Native Tendon Engine)</div>
-                  <div class="mode-banner-text-desc" id="banner-desc-local">Runs completely offline on local GPU with zero host RAM overhead</div>
-                </div>
-              </div>
-              <button type="button" id="btn-banner-activate-local" class="btn-mode-activate active" style="width:auto; max-width:160px;" onclick="activateExecutionMode('local')">
-                &check; Active
-              </button>
             </div>
 
             <!-- Default Save Location / Directory -->

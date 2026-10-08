@@ -277,7 +277,9 @@
   .model-picker-pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
     border-radius: 9999px;
@@ -289,6 +291,10 @@
     transition: all 0.15s ease;
     white-space: nowrap;
     max-width: 260px;
+  }
+  .model-picker-pill svg {
+    display: block;
+    flex-shrink: 0;
   }
   .model-picker-pill:hover {
     color: var(--text-primary);
@@ -608,6 +614,10 @@
     cursor: not-allowed;
     transition: all 0.15s ease;
   }
+  .btn-send svg {
+    display: block;
+    flex-shrink: 0;
+  }
   .btn-send.active {
     background: var(--accent-blue);
     color: white;
@@ -630,6 +640,10 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn-stop svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-stop:hover {
     background: #dc2626;
@@ -1626,7 +1640,9 @@
   .markdown-rendered-body .btn-copy-code {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
+    line-height: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #cbd5e1;
@@ -1635,6 +1651,10 @@
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .markdown-rendered-body .btn-copy-code svg {
+    display: block;
+    flex-shrink: 0;
   }
   .markdown-rendered-body .btn-copy-code:hover {
     background: rgba(255, 255, 255, 0.12);
@@ -1751,6 +1771,8 @@
   .btn-review-changes {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    line-height: 1;
     gap: 6px;
     padding: 4px 10px;
     background: rgba(255, 255, 255, 0.06);
@@ -1761,6 +1783,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+  }
+  .btn-review-changes svg {
+    display: block;
+    flex-shrink: 0;
   }
   .btn-review-changes:hover {
     background: rgba(255, 255, 255, 0.12);
@@ -1820,6 +1846,10 @@
     color: #71717a;
     cursor: pointer;
     transition: all 0.12s ease;
+  }
+  .rs-tab-btn svg {
+    display: block;
+    flex-shrink: 0;
   }
   .rs-tab-btn:hover {
     background: rgba(255, 255, 255, 0.05);
