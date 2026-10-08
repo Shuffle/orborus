@@ -464,12 +464,12 @@ func (pc *ProjectContext) FormatSkillsSummary() string {
 	return sb.String()
 }
 
-// BuildInjectedSystemPrompt constructs a complete system prompt including workspace rules and skills
+// BuildInjectedSystemPrompt constructs a complete system prompt including workspace rules, skills, and thought/decision output format
 func BuildInjectedSystemPrompt(projectPath string) string {
 	mgr := GetRuleLoaderManager()
 	pContext := mgr.LoadProjectContext(projectPath)
 
-	base := fmt.Sprintf("You are Shuffle AI agent assistant. Active workspace: %s.", pContext.ProjectPath)
+	base := fmt.Sprintf("You are the Shuffle AI Agent assistant running inside Orborus.\nActive workspace: %s.\n\nFormatting & Execution Instructions:\n- Internal Reasoning: Before answering complex requests, wrap your concise internal thought process in <thought>...</thought> tags. The UI will extract these into a collapsible reasoning step.\n- Terminal Commands: Whenever suggesting or executing shell commands, wrap them in ```bash ... ``` code blocks.\n- Tone & Style: Be concise, clear, and actionable. Absolute prohibition of emojis everywhere.\n\n", pContext.ProjectPath)
 	rulesBlock := pContext.FormatRulesSummary()
 	skillsBlock := pContext.FormatSkillsSummary()
 

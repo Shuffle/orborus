@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -96,6 +97,14 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 	globalBridge.SetOnAuthUpdated(func(stateJSON string) {
 		js := fmt.Sprintf("if (window.onAuthUpdated) { window.onAuthUpdated(%s); }", stateJSON)
 		win.EvaluateJS(js)
+	})
+
+	globalBridge.SetOnChunk(func(execID, chunk string) {
+		chunkJSON, err := json.Marshal(chunk)
+		if err == nil {
+			js := fmt.Sprintf("if (window.onAgentChunk) { window.onAgentChunk(%q, %s); }", execID, string(chunkJSON))
+			win.EvaluateJS(js)
+		}
 	})
 
 	agentWindow = win

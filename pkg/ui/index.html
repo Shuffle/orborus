@@ -1705,6 +1705,22 @@
     to { transform: rotate(360deg); }
   }
 
+  .streaming-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 14px;
+    background: #f85f38;
+    margin-left: 3px;
+    vertical-align: middle;
+    border-radius: 1px;
+    animation: cursor-blink 0.8s infinite;
+  }
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+
 
 /* --- modals.css --- */
   /* ---------------- Auth / Login Modal ---------------- */
@@ -5722,7 +5738,27 @@ async function clearAllHistory() {
 
 
 // --- chat.js ---
-// --- Running Tasks & Activity Steps Formatting ---
+// --- Real-time Streamed Chunk Handler & Activity Steps Formatting ---
+window.onAgentChunk = function(execId, chunk) {
+  if (!chunk) return;
+  if (!Array.isArray(appConversations)) return;
+  const curConv = appConversations.find(c => c.id === activeConversationId);
+  if (!curConv || !Array.isArray(curConv.turns) || curConv.turns.length === 0) return;
+  const targetTurn = curConv.turns[curConv.turns.length - 1];
+  if (targetTurn && targetTurn.status === "running") {
+    targetTurn.output = (targetTurn.output || "") + chunk;
+    if (targetTurn.steps && targetTurn.steps.length > 1) {
+      targetTurn.steps[1].name = "Streaming Response";
+      targetTurn.steps[1].detail = `Received ${targetTurn.output.length} characters...`;
+    }
+    renderActiveConversation();
+    const stream = document.getElementById("execution-stream");
+    if (stream) {
+      stream.scrollTop = stream.scrollHeight;
+    }
+  }
+};
+
 function extractRunningTasksFromDecisions(decisions) {
   if (!Array.isArray(decisions) || decisions.length === 0) return [];
   const tasks = [];
@@ -6734,18 +6770,24 @@ function renderTurnElement(turn, index) {
     runningCard.style.borderColor = "var(--border-subtle)";
     runningCard.style.background = "rgba(255,255,255,0.02)";
     const currentModelName = (typeof window !== "undefined" && window.activeAiModel) || activeAiModel || "gemini-3.8-flash";
+    const hasStreamingOutput = !!(turn.output && turn.output.length > 0);
     runningCard.innerHTML = `
-      <div class="exec-header" style="border-bottom:none;">
+      <div class="exec-header" style="${hasStreamingOutput ? 'border-bottom:1px solid var(--border-subtle);' : 'border-bottom:none;'}">
         <div style="display:flex; align-items:center; gap:8px;">
           <svg class="running-task-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f85f38" stroke-width="2.5">
             <circle cx="12" cy="12" r="9" stroke-dasharray="28 28"/>
           </svg>
-          <span style="font-size:12px; color:var(--text-normal);">Processing prompt with ${escapeHtml(currentModelName)}...</span>
+          <span style="font-size:12px; color:var(--text-normal); font-weight:500;">${hasStreamingOutput ? 'Streaming response from ' + escapeHtml(currentModelName) + '...' : 'Processing prompt with ' + escapeHtml(currentModelName) + '...'}</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <span id="live-dur-${turn.id}" style="font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; font-family:ui-monospace,monospace; background:rgba(248,95,56,0.12); color:#f85f38;">${escapeHtml(turn.duration || "0s")}</span>
         </div>
       </div>
+      ${hasStreamingOutput ? `
+        <div class="exec-body" style="white-space:pre-wrap; word-break:break-word; font-size:13px; line-height:1.55; color:var(--text-normal); padding:12px 14px; user-select:text; -webkit-user-select:text;">
+          ${escapeHtml(turn.output)}<span class="streaming-cursor"></span>
+        </div>
+      ` : ''}
     `;
     turnEl.appendChild(runningCard);
   } else if (turn.output || turn.error || (turn.status && turn.status !== "running")) {
