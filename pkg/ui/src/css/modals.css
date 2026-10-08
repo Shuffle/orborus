@@ -81,23 +81,24 @@
     cursor: pointer;
   }
   .btn-modal-submit {
-    background: #f85f38;
+    background: #ffffff;
     border: none;
-    color: white;
+    color: #090d16;
     padding: 7px 16px;
     border-radius: 6px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+    transition: opacity 0.12s ease;
   }
   .btn-modal-submit:hover {
-    background: #ea580c;
+    opacity: 0.9;
   }
 
   /* ---------------- Settings Area Modal & Dialog ---------------- */
   .settings-modal-dialog {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: #131722;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     width: 820px;
     max-width: 94vw;
@@ -112,8 +113,8 @@
   .settings-sidebar {
     width: 220px;
     min-width: 220px;
-    background: #090d16;
-    border-right: 1px solid var(--border);
+    background: #0d1017;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     padding: 16px 10px;
     display: flex;
     flex-direction: column;
@@ -154,18 +155,18 @@
   }
   .settings-nav-item:hover {
     color: var(--text-primary);
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.04);
   }
   .settings-nav-item * {
     pointer-events: none;
   }
   .settings-nav-item.active {
-    color: #ffffff;
-    background: rgba(248, 95, 56, 0.14);
-    font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: 500;
   }
   .settings-nav-item.active svg {
-    color: #f85f38;
+    color: currentColor;
   }
   .settings-nav-item.project-item {
     justify-content: space-between;
@@ -180,13 +181,13 @@
   }
   .settings-project-badge {
     font-size: 9px;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     padding: 1px 5px;
     border-radius: 4px;
-    background: rgba(248, 95, 56, 0.2);
-    color: #f85f38;
-    border: 1px solid rgba(248, 95, 56, 0.3);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
   }
   .settings-content-pane {
@@ -263,7 +264,7 @@
   }
   .settings-select {
     background: var(--bg-sidebar);
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     color: var(--text-primary);
     font-size: 12px;
@@ -273,7 +274,7 @@
     min-width: 220px;
   }
   .settings-select:focus {
-    border-color: #f85f38;
+    border-color: rgba(255, 255, 255, 0.25);
   }
   .settings-footer {
     display: flex;
@@ -285,8 +286,8 @@
   }
   .segmented-control {
     display: inline-flex;
-    background: var(--bg-sidebar);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     padding: 2px;
     gap: 2px;
@@ -303,14 +304,14 @@
     transition: all 0.12s ease;
   }
   .segmented-btn.active {
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text-primary);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    font-weight: 500;
+    box-shadow: none;
   }
   .btn-workspace-switch {
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
     padding: 4px 10px;
     border-radius: 6px;
@@ -320,20 +321,20 @@
     transition: all 0.15s ease;
   }
   .btn-workspace-switch:hover {
-    color: #f85f38;
-    border-color: #f85f38;
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
   }
   .btn-workspace-switch.active {
-    background: rgba(248, 95, 56, 0.15);
-    color: #f85f38;
-    border-color: #f85f38;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.18);
     cursor: default;
   }
   .btn-secondary-action {
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 5px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    padding: 6px 14px;
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
@@ -341,7 +342,8 @@
   }
   .btn-secondary-action:hover {
     color: var(--text-primary);
-    background: var(--bg-active);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
   }
   .toggle-switch {
     position: relative;
@@ -358,7 +360,7 @@
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: var(--border);
+    background-color: rgba(255, 255, 255, 0.12);
     transition: 0.2s;
     border-radius: 20px;
   }
@@ -369,29 +371,32 @@
     width: 14px;
     left: 3px;
     bottom: 3px;
-    background-color: white;
+    background-color: #cbd5e1;
     transition: 0.2s;
     border-radius: 50%;
   }
   .toggle-switch input:checked + .slider {
-    background-color: #f85f38;
+    background-color: rgba(255, 255, 255, 0.35);
   }
   .toggle-switch input:checked + .slider:before {
     transform: translateX(18px);
+    background-color: #ffffff;
   }
   .shortcuts-table {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
   .shortcut-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    background: var(--bg-sidebar);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
+    padding: 8px 0;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .shortcut-row:last-child {
+    border-bottom: none;
   }
   .shortcut-desc {
     font-size: 12px;
@@ -400,9 +405,9 @@
   .shortcut-pill {
     font-size: 10px;
     font-family: ui-monospace, Menlo, Monaco, monospace;
-    background: var(--bg-code);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-muted);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 2px 6px;
     border-radius: 4px;
   }
@@ -410,9 +415,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
     padding: 5px 11px;
     border-radius: 6px;
     font-size: 11.5px;
@@ -421,8 +426,9 @@
     transition: all 0.15s ease;
   }
   .btn-skills-action:hover {
-    border-color: #f85f38;
-    color: #f85f38;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.07);
   }
   .settings-subgroup-title {
     font-size: 11px;
@@ -435,17 +441,20 @@
   .skills-list-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
   .skill-card {
-    background: var(--bg-sidebar);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 10px 0;
     transition: border-color 0.15s ease;
   }
+  .skill-card:last-child {
+    border-bottom: none;
+  }
   .skill-card:hover {
-    border-color: rgba(248, 95, 56, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
   }
   .skill-card-header {
     display: flex;
@@ -461,37 +470,28 @@
   }
   .skill-card-name {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
     font-family: ui-monospace, Menlo, Monaco, monospace;
   }
   .skill-badge {
     font-size: 9px;
-    font-weight: 700;
+    font-weight: 500;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    padding: 2px 6px;
+    padding: 1px 5px;
     border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
-  .skill-badge.injected {
-    background: rgba(248, 95, 56, 0.18);
-    color: #f85f38;
-    border: 1px solid rgba(248, 95, 56, 0.35);
-  }
-  .skill-badge.control {
-    background: rgba(245, 158, 11, 0.18);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.35);
-  }
-  .skill-badge.project {
-    background: rgba(59, 130, 246, 0.18);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.35);
-  }
+  .skill-badge.injected,
+  .skill-badge.control,
+  .skill-badge.project,
   .skill-badge.global {
-    background: rgba(148, 163, 184, 0.15);
-    color: #cbd5e1;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .skill-card-desc {
     font-size: 12px;
@@ -511,31 +511,31 @@
   .skill-card-instructions {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
     font-size: 11px;
     font-family: ui-monospace, Menlo, Monaco, monospace;
     color: var(--text-muted);
     white-space: pre-wrap;
     max-height: 120px;
     overflow-y: auto;
-    background: var(--bg-code);
-    padding: 8px;
-    border-radius: 6px;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
   }
   .btn-skill-revoke {
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-muted);
     font-size: 10.5px;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.12s ease;
   }
   .btn-skill-revoke:hover {
-    color: #f87171;
-    border-color: #f87171;
-    background: rgba(239, 68, 68, 0.1);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
   }
   .sidebar-footer-nav {
     display: flex;
@@ -569,7 +569,7 @@
     transition: color 0.15s ease;
   }
   .sidebar-settings-nav-btn:hover svg {
-    color: #f85f38;
+    color: var(--text-primary);
   }
 
   .sidebar {
@@ -585,31 +585,7 @@
     pointer-events: none;
   }
 
-  /* Popovers / Dropdowns */
-  .toolbar-left {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .model-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 32px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 4px;
-    min-width: 210px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-    display: none;
-    flex-direction: column;
-    gap: 2px;
-    z-index: 50;
-  }
-  .model-dropdown-menu.visible {
-    display: flex;
-  }
+
   .footer-dropdown-wrapper {
     position: relative;
   }
@@ -806,4 +782,293 @@
   }
   .app-toast.visible {
     display: flex;
+  }
+
+  /* Local Models Management */
+  .local-model-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    gap: 8px;
+    transition: all 0.15s ease;
+  }
+  .local-model-row:last-child {
+    border-bottom: none;
+  }
+  .local-model-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .local-model-row.active {
+    background: transparent;
+  }
+  .local-model-name {
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .local-model-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .local-model-size-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    font-size: 10.5px;
+  }
+  .local-model-quant-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .btn-activate-model {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .btn-activate-model:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .btn-activate-model.active {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+    cursor: default;
+  }
+
+  /* 4 Distinct AI Execution Modes & Overview Grid */
+  .settings-mode-pill {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .settings-mode-pill.local,
+  .settings-mode-pill.shuffle,
+  .settings-mode-pill.orborus,
+  .settings-mode-pill.direct {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .modes-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .mode-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .mode-card:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .mode-card.active {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: none;
+  }
+  .mode-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .mode-card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mode-card-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .mode-card.active .mode-card-num {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+  }
+  .mode-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .mode-card-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .mode-card-badge.badge-active {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .mode-card-badge.badge-ready {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .mode-card-badge.badge-idle {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+  .mode-card-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+  .mode-card-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: ui-monospace, Menlo, Monaco, monospace;
+    background: transparent;
+    padding: 4px 0;
+    border: none;
+  }
+  .mode-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-mode-activate {
+    flex: 1;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    transition: all 0.12s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-mode-activate:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .btn-mode-activate.active {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+    cursor: default;
+  }
+  .btn-mode-configure {
+    padding: 6px 11px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.12s ease;
+    white-space: nowrap;
+  }
+  .btn-mode-configure:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .mode-active-banner {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0;
+    padding: 8px 0 14px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .mode-active-banner.inactive {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+  .mode-banner-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mode-banner-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    box-shadow: none;
+  }
+  .mode-active-banner.inactive .mode-banner-dot {
+    background: var(--text-muted);
+    box-shadow: none;
+  }
+  .mode-banner-text-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .mode-banner-text-desc {
+    font-size: 11px;
+    color: var(--text-muted);
   }

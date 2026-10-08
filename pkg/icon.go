@@ -12,3 +12,8 @@ var ShuffleIconPNG []byte
 //go:embed app_icon.png
 var AppIconPNG []byte
 
+// ShuffleIconICO contains the official Shuffle icon formatted for Windows systray
+//
+//go:embed shuffle_icon.ico
+var ShuffleIconICO []byte
+

@@ -4,7 +4,6 @@
     min-height: 38px;
     width: 100%;
     background: var(--bg-sidebar);
-    border-bottom: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -39,13 +38,75 @@
     cursor: default;
   }
 
+  .titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+    margin-right: -14px;
+    -webkit-app-region: no-drag;
+  }
+
   .titlebar-left button,
   .titlebar-left .traffic-lights,
   .titlebar-left .window-nav-icons,
   .titlebar-center button,
   .titlebar-center a,
+  .titlebar-right button,
+  .win-window-controls,
+  .win-control-btn,
   .no-drag {
     -webkit-app-region: no-drag !important;
+  }
+
+  .titlebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 6px;
+    -webkit-app-region: drag;
+  }
+
+  .shuffle-logo-svg {
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+  }
+
+  .titlebar-brand:hover .shuffle-logo-svg {
+    color: var(--text-primary);
+  }
+
+  .win-window-controls {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 6px;
+    -webkit-app-region: no-drag;
+  }
+
+  .win-control-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 38px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    padding: 0;
+    outline: none;
+  }
+
+  .win-control-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+  }
+
+  .win-control-btn.btn-win-close:hover {
+    background: #e81123;
+    color: #ffffff;
   }
 
   .app-body {

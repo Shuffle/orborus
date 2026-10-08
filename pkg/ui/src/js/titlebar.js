@@ -29,6 +29,42 @@ function toggleSidebar() {
   }
 }
 
+function toggleRightSidebar() {
+  const sidebar = document.getElementById("preview-sidebar");
+  if (!sidebar) return;
+  const isHidden = sidebar.style.display === "none" || !sidebar.style.display;
+  const btnTopbar = document.getElementById("btn-toggle-right-sidebar");
+
+  if (isHidden) {
+    sidebar.style.display = "flex";
+    if (btnTopbar) {
+      btnTopbar.classList.add("active");
+      btnTopbar.setAttribute("title", "Contract Right Sidebar");
+    }
+    if (typeof currentRightTab === "undefined" || currentRightTab === "overview") {
+      if (typeof switchRightSidebarTab === "function") {
+        switchRightSidebarTab("overview");
+      }
+    }
+  } else {
+    sidebar.style.display = "none";
+    if (btnTopbar) {
+      btnTopbar.classList.remove("active");
+      btnTopbar.setAttribute("title", "Expand Right Sidebar");
+    }
+  }
+}
+
+function toggleRightSidebarMaximize() {
+  const sidebar = document.getElementById("preview-sidebar");
+  if (!sidebar) return;
+  const isMax = sidebar.classList.toggle("expanded");
+  const btn = document.getElementById("btn-rs-action-expand");
+  if (btn) {
+    btn.setAttribute("title", isMax ? "Contract Width" : "Expand Width");
+  }
+}
+
 function reportTitlebarNoDragWidth() {
   const leftEl = document.querySelector(".titlebar-left");
   if (leftEl) {
@@ -58,7 +94,7 @@ function setupWindowDragging() {
   window.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return; // Left click only
     const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
-    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
+    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle, .win-control-btn, .win-window-controls");
 
     if (isTopHeader && !isNoDrag) {
       if (typeof window.startWindowDrag === "function") {
@@ -74,7 +110,7 @@ function setupWindowDragging() {
   window.addEventListener("dblclick", (e) => {
     if (e.button !== 0) return;
     const isTopHeader = !!e.target.closest(".app-titlebar, .window-drag-area");
-    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle");
+    const isNoDrag = !!e.target.closest("button, input, select, textarea, a, .no-drag, .traffic-lights, .dot, .nav-icon-btn, .btn-new-chat, .project-folder-actions, .btn-pin-toggle, .win-control-btn, .win-window-controls");
 
     if (isTopHeader && !isNoDrag) {
       if (typeof window.windowAction === "function") {
@@ -147,8 +183,9 @@ async function submitCustomDir() {
   const input = document.getElementById("input-custom-dir-path");
   const path = input ? input.value.trim() : "";
   if (path) {
-    await selectProject(path);
-    showToast("Project opened: " + path.split("/").filter(Boolean).pop());
+    await selectProject(path, undefined, { switchConversation: true });
+    const projName = path.split(/[/\\]/).filter(Boolean).pop() || "Project";
+    showToast("Project opened: " + projName);
     closeCustomDirModal();
   }
 }

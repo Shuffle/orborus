@@ -111,15 +111,46 @@ window.addEventListener("keydown", function(e) {
 }, true);
 
 function bootApp() {
-  setupWindowDragging();
-  init();
-  initFooterControls();
-  const savedModel = localStorage.getItem("orborus_ai_model");
-  if (savedModel) {
-    activeAiModel = savedModel;
-    const sel = document.getElementById("select-ai-model");
-    if (sel) sel.value = savedModel;
+  try {
+    if (typeof updateActiveModelLabel === "function") {
+      updateActiveModelLabel();
+    }
+  } catch(e) {}
+
+  try {
+    setupWindowDragging();
+  } catch(e) {}
+
+  try {
+    init();
+  } catch(e) {
+    console.error("init error:", e);
   }
+
+  try {
+    initFooterControls();
+  } catch(e) {}
+
+  try {
+    const savedModel = localStorage.getItem("orborus_ai_model");
+    if (savedModel) {
+      activeAiModel = savedModel;
+      const sel = document.getElementById("select-ai-model");
+      if (sel) sel.value = savedModel;
+    }
+    if (typeof updateActiveModelLabel === "function") {
+      updateActiveModelLabel();
+    }
+  } catch(e) {}
+
+  try {
+    if (typeof populateAiModelSelect === "function") {
+      populateAiModelSelect();
+    }
+    if (typeof updateModesDisplay === "function") {
+      updateModesDisplay();
+    }
+  } catch(e) {}
 }
 
 if (document.readyState === "loading") {

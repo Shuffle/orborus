@@ -82,12 +82,12 @@
   .window-controls-windows {
     display: none;
     align-items: center;
-    gap: 2px;
+    height: 100%;
     -webkit-app-region: no-drag;
   }
   .win-btn {
-    width: 26px;
-    height: 22px;
+    width: 46px;
+    height: 38px;
     background: transparent;
     border: none;
     color: var(--text-muted);
@@ -95,15 +95,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
-    transition: background 0.15s, color 0.15s;
+    border-radius: 0;
+    transition: background 0.1s, color 0.1s;
   }
   .win-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
   .win-btn-close:hover {
-    background: #ef4444 !important;
+    background: #e81123 !important;
     color: #ffffff !important;
   }
 
@@ -319,7 +319,7 @@
   }
   .conversation-row.active {
     color: #ffffff;
-    background: #242938;
+    background: rgba(255, 255, 255, 0.08);
     font-weight: 500;
   }
   .conversation-row.active::before {
@@ -329,13 +329,14 @@
     top: 4px;
     bottom: 4px;
     width: 2.5px;
-    background: #38bdf8;
+    background: rgba(255, 255, 255, 0.4);
     border-radius: 2px;
   }
-  .conversation-left {
+  .conversation-left,
+  .conversation-row-left {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     overflow: hidden;
     flex: 1;
   }
@@ -343,13 +344,68 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--text-muted);
+    background: rgba(255, 255, 255, 0.25);
     flex-shrink: 0;
   }
   .conversation-row.active .conversation-dot {
-    background: #38bdf8;
-    box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: none;
   }
+  .conversation-spinner {
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    border-top-color: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    animation: conv-spin 0.8s linear infinite;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+  @keyframes conv-spin {
+    to { transform: rotate(360deg); }
+  }
+  .conversation-running-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+    transition: background 0.15s ease;
+  }
+  .conversation-running-wrap:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .conversation-running-wrap .conversation-spinner {
+    display: inline-block;
+  }
+  .conversation-running-wrap .conversation-abort-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+  .conversation-row:hover .conversation-running-wrap .conversation-spinner {
+    display: none;
+  }
+  .conversation-row:hover .conversation-running-wrap .conversation-abort-btn {
+    display: flex;
+  }
+  .conversation-running-wrap .conversation-abort-btn:hover {
+    color: #ffffff;
+  }
+  .conversation-title,
   .conversation-title-text {
     white-space: nowrap;
     overflow: hidden;
@@ -379,32 +435,76 @@
     opacity: 1;
   }
   .conversation-row.pinned .btn-pin-toggle {
-    color: #f85f38;
+    color: rgba(255, 255, 255, 0.7);
   }
   .btn-pin-toggle:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
   }
+  .btn-archive-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.15s ease;
+  }
+  .conversation-row:hover .btn-archive-toggle {
+    opacity: 1;
+  }
+  .btn-archive-toggle:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .sidebar-section-divider {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 8px 10px 4px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 
   /* ---------------- Bottom Left Status Area ---------------- */
   .sidebar-bottom {
-    padding: 12px;
+    padding: 10px 12px;
     border-top: 1px solid var(--border-subtle);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     background: var(--bg-sidebar);
   }
 
-  /* Auth / Login Status Card */
+  .sidebar-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .sidebar-status-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* Auth / Login Status Card (Legacy fallback) */
   .status-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 6px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.15s ease;
   }
   .status-card-header {
@@ -418,27 +518,24 @@
     gap: 7px;
   }
   .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
   }
   .status-dot.connected {
     background: var(--green);
-    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
   }
   .status-dot.standalone {
-    background: #f85f38;
-    box-shadow: 0 0 6px rgba(248, 95, 56, 0.4);
+    background: #94a3b8;
   }
   .status-dot.disconnected {
     background: var(--amber);
-    box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
   }
   .status-label {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 500;
+    color: var(--text-secondary);
   }
   .status-subtext {
     font-size: 11px;
