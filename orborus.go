@@ -1072,9 +1072,9 @@ func handleBackendImageDownload(ctx context.Context, images string) error {
 		//		//log.Printf("[DEBUG] Skipping image removal for %s as swarmConfig is not set to run or swarm. Value: %#v", curimage, swarmConfig)
 		//	}
 
-		err := shuffle.DownloadDockerImageBackend(&http.Client{Timeout: imagedownloadTimeout}, curimage)
+		err := ensureImage(ctx, curimage, true)
 		if err != nil {
-			//log.Printf("[ERROR] Failed downloading image: %s", err)
+			log.Printf("[ERROR] Failed downloading image %s: %s", curimage, err)
 		} else {
 			//log.Printf("[DEBUG] Downloaded image: %s", curimage)
 			successful = append(successful, curimage)
@@ -1083,6 +1083,7 @@ func handleBackendImageDownload(ctx context.Context, images string) error {
 
 	if len(successful) == 0 {
 		log.Printf("[ERROR] Failed downloading image copies: %s. This means the app may not have been updated.", strings.Join(handled, ", "))
+		return fmt.Errorf("failed downloading every requested image: %s", strings.Join(handled, ", "))
 	} else {
 		log.Printf("[DEBUG] Successfully downloaded image copies: %s", strings.Join(successful, ", "))
 	}
@@ -1313,6 +1314,12 @@ func deployK8sWorker(image string, identifier string, env []string) error {
 
 	if len(os.Getenv("REGISTRY_URL")) > 0 {
 		env = append(env, fmt.Sprintf("REGISTRY_URL=%s", os.Getenv("REGISTRY_URL")))
+	}
+
+	for _, key := range []string{"SHUFFLE_HYBRID", "SHUFFLE_CLOUD", "SHUFFLE_STREAM_PRIVATE_REGISTRY", "SHUFFLE_STREAM_PRIVATE_REGISTRY_INSECURE", "SHUFFLE_ORBORUS_IMAGE_MANAGER_URL"} {
+		if value := os.Getenv(key); value != "" {
+			env = append(env, fmt.Sprintf("%s=%s", key, value))
+		}
 	}
 
 	if len(os.Getenv("SHUFFLE_USE_GHCR_OVERRIDE_FOR_AUTODEPLOY")) > 0 {
@@ -2606,6 +2613,7 @@ func mainLoop() {
 	}
 
 	client := shuffle.GetExternalClient(baseUrl)
+	startImageManagerServer()
 	fullUrl := fmt.Sprintf("%s/api/v1/workflows/queue", baseUrl)
 
 	// Increases default concurrency to 50 for swarm
@@ -3181,12 +3189,11 @@ func mainLoop() {
 						log.Printf("[INFO] Re-downloading new image(s) due to backend request: %#v", incRequest.ExecutionArgument)
 
 						if len(incRequest.ExecutionArgument) > 0 {
-							go handleBackendImageDownload(ctx, incRequest.ExecutionArgument)
+							startQueuedImageDownload(ctx, client, incRequest)
 						} else {
 							log.Printf("[ERROR] No image name provided for download. Removing job from queue.")
+							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						}
-
-						toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 					} else if incRequest.Type == "WORKER_CLEANUP" {
 						if err := handleCleanupRequest(ctx); err != nil {
 							log.Printf("[ERROR] Failed handling CLEANUP request: %s. Deleting job anyway.", err)
