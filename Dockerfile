@@ -4,10 +4,10 @@ ARG TARGETOS TARGETARCH
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN sed -i '/replace.*=> \.\.\//d' go.mod && go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /app/orborus .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /app/orborus orborus.go
 
 FROM alpine:3.22.1
 

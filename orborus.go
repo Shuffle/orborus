@@ -877,7 +877,9 @@ func deployServiceWorkers(image string) {
 	)
 
 	// Force deploy if it's not disabled
-	deployTenzirNode()
+	if !tenzirDisabled {
+		deployTenzirNode()
+	}
 
 	if err == nil {
 		log.Printf("[DEBUG] Successfully deployed workers with %d replica(s) on %d node(s)", replicas, cnt)
@@ -2190,25 +2192,33 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 	if sensorMode.Enabled { 
 		cacheKey := fmt.Sprintf("orborus_sensorDetails_cache")
 		cached, err := shuffle.GetCache(ctx, cacheKey)
-		if err == nil {
-			cacheData := []byte(cached.([]uint8))
-			err := json.Unmarshal(cacheData, &newStats.SensorDetails)
-			if err == nil && len(newStats.SensorDetails.Hostname) > 0 {
-				newStats.SensorDetails.SensorMode = true
-
-				// Not necessary to always send as it's big
-				// Backend optimises this anyway
-				if len(newStats.SensorDetails.Serial) > 500 { 
-					newStats.SensorDetails.Serial = newStats.SensorDetails.Serial[:500]
-				}
-
-				newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
-				newStats.SensorDetails.InstalledSoftware = []shuffle.Software{}
-				newStats.SensorDetails.CodeScanner = []shuffle.ProjectInfo{}
-				return newStats
+		if err == nil && cached != nil {
+			var cacheData []byte
+			switch v := cached.(type) {
+			case []byte:
+				cacheData = v
+			case string:
+				cacheData = []byte(v)
 			}
-			// If there's an error, we ignore the cache and continue to gather details
-			log.Printf("[WARNING] Failed to unmarshal cached sensor details: %s. Gathering new details.", err)
+			if len(cacheData) > 0 {
+				err := json.Unmarshal(cacheData, &newStats.SensorDetails)
+				if err == nil && len(newStats.SensorDetails.Hostname) > 0 {
+					newStats.SensorDetails.SensorMode = true
+
+					// Not necessary to always send as it's big
+					// Backend optimises this anyway
+					if len(newStats.SensorDetails.Serial) > 500 { 
+						newStats.SensorDetails.Serial = newStats.SensorDetails.Serial[:500]
+					}
+
+					newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
+					newStats.SensorDetails.InstalledSoftware = []shuffle.Software{}
+					newStats.SensorDetails.CodeScanner = []shuffle.ProjectInfo{}
+					return newStats
+				}
+				// If there's an error, we ignore the cache and continue to gather details
+				log.Printf("[WARNING] Failed to unmarshal cached sensor details: %s. Gathering new details.", err)
+			}
 		}
 
 		newStats.SensorDetails.SensorMode = true
@@ -2505,7 +2515,8 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 		}
 
 		if orborusCount > 1 { 
-			panic(fmt.Sprintf("%d Orborus instances are already running. Exiting to prevent multiple instances.", orborusCount))
+			log.Printf("[ERROR] %d Orborus instances are already running. Exiting to prevent multiple instances.", orborusCount)
+			return fmt.Errorf("%d Orborus instances are already running", orborusCount)
 		}
 	}
 
@@ -2577,6 +2588,18 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 
 // Initial loop etc
 func main() {
+	if debug { 
+		/*
+		screenshots, _ := osctrl.ScreenshotAllDisplaysMacos() 
+		for _, screenshot := range screenshots { 
+			screenshot.Image = []byte{}
+			//screenshot.ImageBase64 = ""
+			log.Printf("SCREENSHOT: %#v", screenshot)
+		}
+		os.Exit(3)
+		*/
+	}
+
 	mainLoop()
 }
 
@@ -3606,6 +3629,10 @@ func handlePipeline(incRequest shuffle.ExecutionRequest) error {
 }
 
 func deployTenzirNode() error {
+	if tenzirDisabled {
+		return errors.New("Tenzir is disabled")
+	}
+
 	// Specifically for standalone tenzir
 	if os.Getenv("SHUFFLE_PIPELINE_STANDALONE") == "true" {
 		return nil
@@ -3616,7 +3643,7 @@ func deployTenzirNode() error {
 		return errors.New("Pipelines are disabled by user with SHUFFLE_SKIP_PIPELINES (1)")
 	}
 
-	if isKubernetes == "true" {
+	if isKubernetes == "true" || shuffle.IsRunningInCluster() {
 		return errors.New("Tenzir not implemented for k8s")
 	}
 
@@ -4502,13 +4529,15 @@ func sendPipelineHealthStatus(sensorMode shuffle.SensorMode) (shuffle.LakeConfig
 			log.Printf("[ERROR] Tenzir node connection problem: %s", err)
 
 		} else {
-			//tenzirDisabled = true
-			if debug {
+			if !strings.Contains(err.Error(), "SHUFFLE_SKIP_PIPELINES") && !strings.Contains(err.Error(), "Tenzir Node is already running") {
+				log.Printf("[WARNING] Disabling pipelines: %s. You will need to restart the Orborus to fix this.", err)
+			} else if debug {
 				log.Printf("[WARNING] Disabling pipelines: %s. You will need to restart the Orborus to fix this.", err)
 			}
 
 		}
 
+		tenzirDisabled = true
 		return pipelinePayload, err
 	}
 

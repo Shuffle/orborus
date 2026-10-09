@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
 
       - name: Build binary
         run: |
@@ -49,7 +49,8 @@ jobs:
           OUTPUT="dist/${BINARY_NAME}${EXT}"
 
           echo "Building $OUTPUT"
-          GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="$LDFLAGS" -o "$OUTPUT"
+          sed -i '/replace.*=> \.\.\//d' go.mod || true
+          GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="$LDFLAGS" -o "$OUTPUT" orborus.go
 
       - name: Package
         run: |
