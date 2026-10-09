@@ -105,6 +105,7 @@ var org = os.Getenv("ORG")
 // var orgId = os.Getenv("ORG_ID")
 var baseUrl = os.Getenv("BASE_URL")
 var workerServerUrl = os.Getenv("SHUFFLE_WORKER_SERVER_URL")
+var queuedWorkerImageDownloads sync.Map
 var environment = os.Getenv("ENVIRONMENT_NAME")
 var dockerApiVersion = os.Getenv("DOCKER_API_VERSION")
 var runningMode = strings.ToLower(os.Getenv("RUNNING_MODE"))
@@ -1074,7 +1075,7 @@ func handleBackendImageDownload(ctx context.Context, images string) error {
 		//		//log.Printf("[DEBUG] Skipping image removal for %s as swarmConfig is not set to run or swarm. Value: %#v", curimage, swarmConfig)
 		//	}
 
-		err := ensureImage(ctx, curimage, true)
+		err := shuffle.DownloadDockerImageBackend(&http.Client{Timeout: imagedownloadTimeout}, curimage)
 		if err != nil {
 			log.Printf("[ERROR] Failed downloading image %s: %s", curimage, err)
 		} else {
@@ -1085,7 +1086,6 @@ func handleBackendImageDownload(ctx context.Context, images string) error {
 
 	if len(successful) == 0 {
 		log.Printf("[ERROR] Failed downloading image copies: %s. This means the app may not have been updated.", strings.Join(handled, ", "))
-		return fmt.Errorf("failed downloading every requested image: %s", strings.Join(handled, ", "))
 	} else {
 		log.Printf("[DEBUG] Successfully downloaded image copies: %s", strings.Join(successful, ", "))
 	}
@@ -1159,6 +1159,65 @@ func handleBackendImageDownload(ctx context.Context, images string) error {
 	}
 
 	return nil
+}
+
+func requestWorkerImageDownload(ctx context.Context, client *http.Client, workerURL, authorization, orgID, image string) error {
+	workerURL = strings.TrimSuffix(strings.TrimSpace(workerURL), "/")
+	workerURL = strings.TrimSuffix(workerURL, "/api/v1/execute")
+	if workerURL == "" {
+		workerURL = "http://shuffle-workers:33333"
+	}
+
+	body, err := json.Marshal(map[string]string{"image": image})
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, workerURL+"/api/v1/download", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	if authorization != "" {
+		request.Header.Set("Authorization", "Bearer "+authorization)
+	}
+	if orgID != "" {
+		request.Header.Set("Org-Id", orgID)
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		responseBody, _ := io.ReadAll(io.LimitReader(response.Body, 1024*1024))
+		return fmt.Errorf("worker image download returned %s: %s", response.Status, strings.TrimSpace(string(responseBody)))
+	}
+	return nil
+}
+
+func startQueuedWorkerImageDownload(ctx context.Context, client *http.Client, request shuffle.ExecutionRequest) {
+	key := request.ExecutionId
+	if key == "" {
+		key = request.ExecutionArgument
+	}
+	if _, loaded := queuedWorkerImageDownloads.LoadOrStore(key, struct{}{}); loaded {
+		return
+	}
+
+	go func() {
+		if err := requestWorkerImageDownload(ctx, client, workerServerUrl, auth, org, request.ExecutionArgument); err != nil {
+			log.Printf("[ERROR] Worker image request %s failed and will remain queued: %s", key, err)
+			time.AfterFunc(10*time.Second, func() { queuedWorkerImageDownloads.Delete(key) })
+			return
+		}
+
+		remove := shuffle.ExecutionRequestWrapper{Data: []shuffle.ExecutionRequest{request}}
+		if err := sendRemoveRequest(client, remove, baseUrl, environment, auth, org, sleepTime); err != nil {
+			log.Printf("[ERROR] Image %s is ready, but its queue request could not be confirmed: %s", request.ExecutionArgument, err)
+		}
+		queuedWorkerImageDownloads.Delete(key)
+	}()
 }
 
 func fixk8sRoles() {
@@ -1318,7 +1377,7 @@ func deployK8sWorker(image string, identifier string, env []string) error {
 		env = append(env, fmt.Sprintf("REGISTRY_URL=%s", os.Getenv("REGISTRY_URL")))
 	}
 
-	for _, key := range []string{"SHUFFLE_HYBRID", "SHUFFLE_CLOUD", "SHUFFLE_STREAM_PRIVATE_REGISTRY", "SHUFFLE_STREAM_PRIVATE_REGISTRY_INSECURE", "SHUFFLE_ORBORUS_IMAGE_MANAGER_URL"} {
+	for _, key := range []string{"SHUFFLE_HYBRID", "SHUFFLE_CLOUD", "SHUFFLE_STREAM_PRIVATE_REGISTRY", "SHUFFLE_STREAM_PRIVATE_REGISTRY_INSECURE", "SHUFFLE_AUTO_IMAGE_DOWNLOAD"} {
 		if value := os.Getenv(key); value != "" {
 			env = append(env, fmt.Sprintf("%s=%s", key, value))
 		}
@@ -2636,7 +2695,6 @@ func mainLoop() {
 	}
 
 	client := shuffle.GetExternalClient(baseUrl)
-	startImageManagerServer()
 	fullUrl := fmt.Sprintf("%s/api/v1/workflows/queue", baseUrl)
 
 	// Increases default concurrency to 50 for swarm
@@ -2731,7 +2789,7 @@ func mainLoop() {
 			log.Printf("[INFO] Running inside k8s cluster")
 		}
 
-		if isKubernetes == "true" {
+		if isKubernetes == "true" && workerServiceAccountName == "" {
 			fixk8sRoles()
 		}
 
@@ -3212,7 +3270,12 @@ func mainLoop() {
 						log.Printf("[INFO] Re-downloading new image(s) due to backend request: %#v", incRequest.ExecutionArgument)
 
 						if len(incRequest.ExecutionArgument) > 0 {
-							startQueuedImageDownload(ctx, client, incRequest)
+							if isKubernetes == "true" {
+								startQueuedWorkerImageDownload(ctx, client, incRequest)
+							} else {
+								go handleBackendImageDownload(ctx, incRequest.ExecutionArgument)
+								toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
+							}
 						} else {
 							log.Printf("[ERROR] No image name provided for download. Removing job from queue.")
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
