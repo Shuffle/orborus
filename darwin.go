@@ -431,6 +431,14 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 		win.EvaluateJS(js)
 	})
 
+	globalBridge.SetOnChunk(func(execID, chunk string) {
+		chunkJSON, err := json.Marshal(chunk)
+		if err == nil {
+			js := fmt.Sprintf("if (window.onAgentChunk) { window.onAgentChunk(%q, %s); }", execID, string(chunkJSON))
+			win.EvaluateJS(js)
+		}
+	})
+
 	agentWindow = win
 	return win
 }

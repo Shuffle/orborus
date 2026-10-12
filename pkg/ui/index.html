@@ -3100,6 +3100,20 @@
     to { transform: rotate(360deg); }
   }
 
+  .streaming-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 14px;
+    background: #f85f38;
+    margin-left: 3px;
+    vertical-align: middle;
+    border-radius: 1px;
+    animation: cursor-blink 0.8s infinite;
+  }
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
   /* Shimmer progress bar for active turns */
   .running-progress-shimmer {
     position: relative;
@@ -9770,7 +9784,27 @@ async function clearAllHistory() {
 
 
 // --- chat.js ---
-// --- Running Tasks & Activity Steps Formatting ---
+// --- Real-time Streamed Chunk Handler & Activity Steps Formatting ---
+window.onAgentChunk = function(execId, chunk) {
+  if (!chunk) return;
+  if (!Array.isArray(appConversations)) return;
+  const curConv = appConversations.find(c => c.id === activeConversationId);
+  if (!curConv || !Array.isArray(curConv.turns) || curConv.turns.length === 0) return;
+  const targetTurn = curConv.turns[curConv.turns.length - 1];
+  if (targetTurn && targetTurn.status === "running") {
+    targetTurn.output = (targetTurn.output || "") + chunk;
+    if (targetTurn.steps && targetTurn.steps.length > 1) {
+      targetTurn.steps[1].name = "Streaming Response";
+      targetTurn.steps[1].detail = `Received ${targetTurn.output.length} characters...`;
+    }
+    renderActiveConversation();
+    const stream = document.getElementById("execution-stream");
+    if (stream) {
+      stream.scrollTop = stream.scrollHeight;
+    }
+  }
+};
+
 function extractRunningTasksFromDecisions(decisions) {
   if (!Array.isArray(decisions) || decisions.length === 0) return [];
   const tasks = [];
@@ -12173,7 +12207,7 @@ function renderTurnElement(turn, index) {
       assistantTurn.className = "assistant-turn-content";
       assistantTurn.innerHTML = `
         <div class="assistant-markdown-stream">
-          ${renderMarkdown(turn.output)}
+          ${renderMarkdown(turn.output)}<span class="streaming-cursor"></span>
         </div>
       `;
       turnEl.appendChild(assistantTurn);

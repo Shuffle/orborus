@@ -2244,6 +2244,20 @@
     to { transform: rotate(360deg); }
   }
 
+  .streaming-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 14px;
+    background: #f85f38;
+    margin-left: 3px;
+    vertical-align: middle;
+    border-radius: 1px;
+    animation: cursor-blink 0.8s infinite;
+  }
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
   /* Shimmer progress bar for active turns */
   .running-progress-shimmer {
     position: relative;

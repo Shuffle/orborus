@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -8,14 +9,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	openai "github.com/sashabaranov/go-openai"
 	"github.com/shuffle/osctrl"
 	"orborus/pkg/webview"
 	shuffle "github.com/shuffle/shuffle-shared"
@@ -76,6 +80,7 @@ type AgentBridge struct {
 	oauthLoggedIn           bool
 	oauthToken              string
 	onAuthUpdated           func(stateJSON string)
+	onChunk                 func(execID, chunk string)
 	aiApiKey                string
 	aiApiUrl                string
 	aiModel                 string
@@ -674,6 +679,13 @@ func (b *AgentBridge) SetOnAuthUpdated(fn func(string)) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.onAuthUpdated = fn
+}
+
+// SetOnChunk registers a listener for real-time streamed LLM tokens
+func (b *AgentBridge) SetOnChunk(fn func(execID, chunk string)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onChunk = fn
 }
 
 // StartOAuthLogin opens the Shuffle OAuth2 login flow with dynamic auth matching ChatGPT MCP logins
@@ -1554,59 +1566,8 @@ func (b *AgentBridge) RunPromptWithOpts(prompt string, forceApprove bool, cID, r
 
 	duration := time.Since(start).Round(time.Millisecond).String()
 
-	var extractedDecisions []shuffle.AgentDecision
-	var extractedSteps []ConversationStep
-	if workflowExec != nil {
-		for _, actionRes := range workflowExec.Results {
-			if actionRes.Result == "" {
-				continue
-			}
-			var agentOut shuffle.AgentOutput
-			if jsonErr := json.Unmarshal([]byte(actionRes.Result), &agentOut); jsonErr == nil && len(agentOut.Decisions) > 0 {
-				extractedDecisions = append(extractedDecisions, agentOut.Decisions...)
-			} else {
-				var directDecs []shuffle.AgentDecision
-				if jsonErr2 := json.Unmarshal([]byte(actionRes.Result), &directDecs); jsonErr2 == nil && len(directDecs) > 0 {
-					extractedDecisions = append(extractedDecisions, directDecs...)
-				}
-			}
-		}
-
-		for _, dec := range extractedDecisions {
-			stepName := dec.Action
-			if stepName == "" {
-				stepName = dec.Tool
-			}
-			if stepName == "" {
-				stepName = "Agent Step"
-			}
-			stepType := "thought"
-			if dec.Tool != "" && dec.Tool != "thought" {
-				stepType = "cmd"
-			}
-			stepDur := ""
-			if dec.RunDetails.CompletedAt > 0 && dec.RunDetails.StartedAt > 0 {
-				diff := dec.RunDetails.CompletedAt - dec.RunDetails.StartedAt
-				if diff > 1000 {
-					stepDur = fmt.Sprintf("%.1fs", float64(diff)/1000.0)
-				} else {
-					stepDur = fmt.Sprintf("%dms", diff)
-				}
-			}
-			detailText := dec.Reason
-			if detailText == "" {
-				detailText = dec.RunDetails.RawResponse
-			}
-			extractedSteps = append(extractedSteps, ConversationStep{
-				ID:        fmt.Sprintf("step-%d", dec.I),
-				Name:      stepName,
-				Detail:    detailText,
-				Type:      stepType,
-				Duration:  stepDur,
-				Collapsed: true,
-			})
-		}
-	}
+	cleanOutput, extractedDecisions, extractedSteps := parseModelResponseStepsAndDecisions(output, duration, activeModel)
+	output = cleanOutput
 
 	if err != nil {
 		log.Printf("[ERROR][%s] RunPrompt completed with error: %v (type=%s, duration=%s)", execID, err, errorType, duration)
@@ -1879,6 +1840,152 @@ func (b *AgentBridge) executeDirect(cmd string) (string, error) {
 	return osctrl.RunCommandString(fullCmd, 30*time.Second, nil)
 }
 
+type streamChunkPayload struct {
+	Choices []struct {
+		Delta struct {
+			Content          string `json:"content"`
+			ReasoningContent string `json:"reasoning_content"`
+		} `json:"delta"`
+	} `json:"choices"`
+}
+
+type streamBridgeWriter struct {
+	header  http.Header
+	onChunk func(chunk string)
+}
+
+func (w *streamBridgeWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+	return w.header
+}
+
+func (w *streamBridgeWriter) WriteHeader(statusCode int) {}
+
+func (w *streamBridgeWriter) Flush() {}
+
+func (w *streamBridgeWriter) Write(p []byte) (int, error) {
+	trimmed := bytes.TrimSpace(p)
+	if bytes.HasPrefix(trimmed, []byte("data: ")) {
+		trimmed = bytes.TrimPrefix(trimmed, []byte("data: "))
+		trimmed = bytes.TrimSpace(trimmed)
+	}
+	if len(trimmed) == 0 || string(trimmed) == "[DONE]" {
+		return len(p), nil
+	}
+	var payload streamChunkPayload
+	if err := json.Unmarshal(trimmed, &payload); err == nil && len(payload.Choices) > 0 {
+		content := payload.Choices[0].Delta.Content
+		if content == "" {
+			content = payload.Choices[0].Delta.ReasoningContent
+		}
+		if content != "" && w.onChunk != nil {
+			w.onChunk(content)
+		}
+	}
+	return len(p), nil
+}
+
+// parseModelResponseStepsAndDecisions extracts decisions, thought steps, commands, and cleans output
+func parseModelResponseStepsAndDecisions(rawOutput, duration, model string) (string, []shuffle.AgentDecision, []ConversationStep) {
+	var extractedDecisions []shuffle.AgentDecision
+	var extractedSteps []ConversationStep
+
+	cleanOutput := rawOutput
+
+	// 1. Check if rawOutput is a JSON-encoded AgentOutput or list of decisions
+	var agentOut shuffle.AgentOutput
+	if jsonErr := json.Unmarshal([]byte(rawOutput), &agentOut); jsonErr == nil && len(agentOut.Decisions) > 0 {
+		extractedDecisions = append(extractedDecisions, agentOut.Decisions...)
+		if agentOut.DecisionString != "" {
+			cleanOutput = agentOut.DecisionString
+		}
+	} else {
+		var directDecs []shuffle.AgentDecision
+		if jsonErr2 := json.Unmarshal([]byte(rawOutput), &directDecs); jsonErr2 == nil && len(directDecs) > 0 {
+			extractedDecisions = append(extractedDecisions, directDecs...)
+		}
+	}
+
+	for _, dec := range extractedDecisions {
+		stepName := dec.Action
+		if stepName == "" {
+			stepName = dec.Tool
+		}
+		if stepName == "" {
+			stepName = "Agent Step"
+		}
+		stepType := "thought"
+		if dec.Tool != "" && dec.Tool != "thought" {
+			stepType = "cmd"
+		}
+		detailText := dec.Reason
+		if detailText == "" {
+			detailText = dec.RunDetails.RawResponse
+		}
+		extractedSteps = append(extractedSteps, ConversationStep{
+			ID:        fmt.Sprintf("step-%d", dec.I),
+			Name:      stepName,
+			Detail:    detailText,
+			Type:      stepType,
+			Duration:  duration,
+			Collapsed: true,
+		})
+	}
+
+	// 2. Parse <thought>...</thought> or <thinking>...</thinking> tags from markdown output
+	reThought := regexp.MustCompile(`(?s)<(?:thought|thinking)>(.*?)</(?:thought|thinking)>`)
+	matches := reThought.FindAllStringSubmatch(cleanOutput, -1)
+	for i, m := range matches {
+		thoughtText := strings.TrimSpace(m[1])
+		if thoughtText != "" {
+			extractedSteps = append(extractedSteps, ConversationStep{
+				ID:        fmt.Sprintf("thought-%d", i+1),
+				Name:      "Thought Process",
+				Detail:    thoughtText,
+				Type:      "thought",
+				Duration:  "<1s",
+				Collapsed: true,
+			})
+		}
+	}
+	cleanOutput = strings.TrimSpace(reThought.ReplaceAllString(cleanOutput, ""))
+
+	// 3. Parse bash / shell command blocks: ```bash ... ``` or ```sh ... ```
+	reCmd := regexp.MustCompile("(?s)```(?:bash|sh|shell|zsh)\n(.*?)```")
+	cmdMatches := reCmd.FindAllStringSubmatch(cleanOutput, -1)
+	for i, m := range cmdMatches {
+		cmdText := strings.TrimSpace(m[1])
+		firstLine := strings.Split(cmdText, "\n")[0]
+		if len(firstLine) > 40 {
+			firstLine = firstLine[:37] + "..."
+		}
+		extractedSteps = append(extractedSteps, ConversationStep{
+			ID:        fmt.Sprintf("cmd-%d", i+1),
+			Name:      fmt.Sprintf("Command: %s", firstLine),
+			Detail:    cmdText,
+			Type:      "cmd",
+			Duration:  duration,
+			Collapsed: true,
+		})
+	}
+
+	// 4. Default step if no structured steps were extracted
+	if len(extractedSteps) == 0 {
+		extractedSteps = append(extractedSteps, ConversationStep{
+			ID:        "step-exec",
+			Name:      "AI Query Completed",
+			Detail:    fmt.Sprintf("Executed directly with %s", model),
+			Type:      "cmd",
+			Duration:  duration,
+			Collapsed: true,
+		})
+	}
+
+	return cleanOutput, extractedDecisions, extractedSteps
+}
+
 // executeAiRequest directly executes the AI prompt using shuffle-shared/ai.go RunAiQuery
 func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoning ...string) (string, *shuffle.WorkflowExecution, error) {
 	b.mu.Lock()
@@ -1907,6 +2014,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 		orgID = b.cfg.Org
 	}
 	isDebug := (b.cfg != nil && b.cfg.Debug) || os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
+	chunkCb := b.onChunk
 	localExec := b.localAiExecutor
 	b.mu.Unlock()
 
@@ -1997,14 +2105,40 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	log.Printf("[INFO][%s] AI Agent: Executing direct prompt query with shuffle.RunAiQuery (model=%s, reasoning=%s, url=%s, key=%s, prompt_len=%d)",
 		execID, model, reasoning, apiURL, maskedKey, len(prompt))
 
+	var streamWriter *streamBridgeWriter
+	if chunkCb != nil {
+		streamWriter = &streamBridgeWriter{
+			onChunk: func(chunk string) {
+				chunkCb(execID, chunk)
+			},
+		}
+	}
+
 	sysPrompt := BuildInjectedSystemPrompt(project)
 	callInfo := shuffle.AiCallInfo{
 		Caller:          "orborus",
 		OrgID:           orgID,
+		ExecutionId:     execID,
+		Resp:            streamWriter,
 		Url:             apiURL,
 		Model:           model,
 		ApiKey:          apiKey,
 		ReasoningEffort: reasoning,
+	}
+
+	incomingReq := openai.ChatCompletionRequest{
+		Model:  model,
+		Stream: true,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: sysPrompt,
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
 	}
 
 	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
@@ -2021,7 +2155,7 @@ func (b *AgentBridge) executeAiRequest(prompt, execID string, reqModelAndReasoni
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	respStr, err := shuffle.RunAiQuery(ctx, callInfo, sysPrompt, prompt)
+	respStr, err := shuffle.RunAiQuery(ctx, callInfo, sysPrompt, prompt, incomingReq)
 	exec.CompletedAt = time.Now().Unix()
 	if err != nil {
 		exec.Status = "FAILURE"
