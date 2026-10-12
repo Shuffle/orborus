@@ -6189,11 +6189,6 @@ function hydrateOptimisticState() {
     currentSandboxMode = storedSandbox === "true";
   }
 
-  const storedProject = localStorage.getItem("orborus_active_project");
-  if (storedProject !== null) {
-    activeProjectPath = storedProject;
-  }
-
   const storedModelsDir = localStorage.getItem("orborus_local_models_dir");
   if (storedModelsDir) {
     window.localModelsDir = storedModelsDir;
@@ -13092,6 +13087,70 @@ function bootApp() {
     }
   } catch(e) {}
 }
+
+// Explicit global window bindings for all interactive handlers & safety aliases
+function registerGlobalHandlers() {
+  if (typeof window === "undefined") return;
+  const handlers = {
+    submitPrompt: typeof submitPrompt === "function" ? submitPrompt : async function() {},
+    toggleModelDropdown: typeof toggleModelDropdown === "function" ? toggleModelDropdown : function() {},
+    toggelModelDropdown: typeof toggleModelDropdown === "function" ? toggleModelDropdown : function() {}, // Typo safety alias
+    toggleReasoningDropdown: typeof toggleReasoningDropdown === "function" ? toggleReasoningDropdown : function() {},
+    toggleProjectDropdown: typeof toggleProjectDropdown === "function" ? toggleProjectDropdown : function() {},
+    toggleRunningTasks: typeof toggleRunningTasks === "function" ? toggleRunningTasks : function() {},
+    toggleActiveSteps: typeof toggleActiveSteps === "function" ? toggleActiveSteps : function() {},
+    toggleSidebar: typeof toggleSidebar === "function" ? toggleSidebar : function() {},
+    toggleRightSidebar: typeof toggleRightSidebar === "function" ? toggleRightSidebar : function() {},
+    toggleHistoryModal: typeof toggleHistoryModal === "function" ? toggleHistoryModal : function() {},
+    closeHistoryModal: typeof closeHistoryModal === "function" ? closeHistoryModal : function() {},
+    startNewSession: typeof startNewSession === "function" ? startNewSession : function() {},
+    selectAiModel: typeof selectAiModel === "function" ? selectAiModel : function() {},
+    selectReasoningEffort: typeof selectReasoningEffort === "function" ? selectReasoningEffort : function() {},
+    openSettingsModal: typeof openSettingsModal === "function" ? openSettingsModal : function() {},
+    closeSettingsModal: typeof closeSettingsModal === "function" ? closeSettingsModal : function() {},
+    switchSettingsTab: typeof switchSettingsTab === "function" ? switchSettingsTab : function() {},
+    saveSettings: typeof saveSettings === "function" ? saveSettings : function() {},
+    saveDirectLlmSettings: typeof saveDirectLlmSettings === "function" ? saveDirectLlmSettings : function() {},
+    addCurrentByokModel: typeof addCurrentByokModel === "function" ? addCurrentByokModel : function() {},
+    handleRemoveByokModel: typeof handleRemoveByokModel === "function" ? handleRemoveByokModel : function() {},
+    quickSelectByokModel: typeof quickSelectByokModel === "function" ? quickSelectByokModel : function() {},
+    handleByokModelInput: typeof handleByokModelInput === "function" ? handleByokModelInput : function() {},
+    applyDirectLlmPreset: typeof applyDirectLlmPreset === "function" ? applyDirectLlmPreset : function() {},
+    loginWithOAuth: typeof loginWithOAuth === "function" ? loginWithOAuth : function() {},
+    submitOAuthToken: typeof submitOAuthToken === "function" ? submitOAuthToken : function() {},
+    submitOrborusAuth: typeof submitOrborusAuth === "function" ? submitOrborusAuth : function() {},
+    scanRepositories: typeof scanRepositories === "function" ? scanRepositories : function() {},
+    chooseCustomDirectory: typeof chooseCustomDirectory === "function" ? chooseCustomDirectory : function() {},
+    handleAuthAction: typeof handleAuthAction === "function" ? handleAuthAction : function() {},
+    handleReminderAction: typeof handleReminderAction === "function" ? handleReminderAction : function() {},
+    handleReminderUseLocal: typeof handleReminderUseLocal === "function" ? handleReminderUseLocal : function() {},
+    selectApprovalOption: typeof selectApprovalOption === "function" ? selectApprovalOption : function() {},
+    skipApproval: typeof skipApproval === "function" ? skipApproval : function() {},
+    submitApproval: typeof submitApproval === "function" ? submitApproval : function() {},
+    stopExecution: typeof stopExecution === "function" ? stopExecution : function() {},
+    addFileContext: typeof addFileContext === "function" ? addFileContext : function() {},
+    handleInput: typeof handleInput === "function" ? handleInput : function() {},
+    handleKeyDown: typeof handleKeyDown === "function" ? handleKeyDown : function() {},
+    filterProjectTree: typeof filterProjectTree === "function" ? filterProjectTree : function() {},
+    filterProjects: typeof filterProjects === "function" ? filterProjects : function() {},
+    archiveConversation: typeof archiveConversation === "function" ? archiveConversation : function() {},
+    clearAllHistory: typeof clearAllHistory === "function" ? clearAllHistory : function() {},
+    setQueuedMessageMode: typeof setQueuedMessageMode === "function" ? setQueuedMessageMode : function() {},
+    handleGlobalPresetChange: typeof handleGlobalPresetChange === "function" ? handleGlobalPresetChange : function() {},
+    rescanLocalModels: typeof rescanLocalModels === "function" ? rescanLocalModels : function() {},
+    toggleCustomSkillForm: typeof toggleCustomSkillForm === "function" ? toggleCustomSkillForm : function() {},
+    browseAndInjectSkillFile: typeof browseAndInjectSkillFile === "function" ? browseAndInjectSkillFile : function() {},
+    saveCustomSkill: typeof saveCustomSkill === "function" ? saveCustomSkill : function() {},
+    windowControl: typeof windowControl === "function" ? windowControl : function() {},
+    handleFooterModelChange: typeof handleFooterModelChange === "function" ? handleFooterModelChange : function() {},
+    handleFooterReasoningChange: typeof handleFooterReasoningChange === "function" ? handleFooterReasoningChange : function() {}
+  };
+  for (const [k, fn] of Object.entries(handlers)) {
+    window[k] = fn;
+  }
+}
+
+registerGlobalHandlers();
 
 if (document.readyState === "loading") {
   window.addEventListener("DOMContentLoaded", bootApp);

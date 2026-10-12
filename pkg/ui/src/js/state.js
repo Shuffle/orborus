@@ -535,11 +535,6 @@ function hydrateOptimisticState() {
     currentSandboxMode = storedSandbox === "true";
   }
 
-  const storedProject = localStorage.getItem("orborus_active_project");
-  if (storedProject !== null) {
-    activeProjectPath = storedProject;
-  }
-
   const storedModelsDir = localStorage.getItem("orborus_local_models_dir");
   if (storedModelsDir) {
     window.localModelsDir = storedModelsDir;
