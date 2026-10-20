@@ -44,6 +44,22 @@ If you want to use it for your project, you can
 1. Orborus polls for jobs from ${BASE_URL}/api/v1/queue
 2. Jobs are returned in the format
 
+## Building Tendon (Desktop Agent & UI)
+**Windows (`tendon.exe`)**
+```bash
+go build -ldflags="-s -w -H=windowsgui" -o tendon.exe windows.go
+```
+
+**macOS (`tendon`)**
+```bash
+go build -ldflags="-s -w" -o tendon darwin.go
+```
+
+**Linux (`tendon`)**
+```bash
+go build -ldflags="-s -w" -o tendon nix.go
+```
+
 ## Testing
 Development branch: 
 ```

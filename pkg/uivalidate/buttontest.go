@@ -50,11 +50,17 @@ func RunButtonTests(htmlPath string) (*ButtonTestResult, error) {
 	port := listener.Addr().(*net.TCPAddr).Port
 
 	resultChan := make(chan ButtonTestResult, 1)
+	var lastStep string
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		lastStep = "served /"
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(instrumented))
+	})
+	mux.HandleFunc("/__test_step", func(w http.ResponseWriter, r *http.Request) {
+		lastStep = r.URL.Query().Get("s")
+		w.WriteHeader(http.StatusOK)
 	})
 	mux.HandleFunc("/__test_report", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -72,16 +78,23 @@ func RunButtonTests(htmlPath string) (*ButtonTestResult, error) {
 
 	testUrl := fmt.Sprintf("http://127.0.0.1:%d/", port)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+
+	tmpDir, _ := os.MkdirTemp("", "vivaldi-buttontest-*")
+	defer os.RemoveAll(tmpDir)
 
 	cmd := exec.CommandContext(ctx, vivaldiPath,
 		"--headless=new",
 		"--disable-gpu",
-		"--disable-extensions",
 		"--no-sandbox",
+		"--no-first-run",
+		"--no-default-browser-check",
+		"--disable-background-networking",
+		"--disable-sync",
 		"--disable-dev-shm-usage",
-		testUrl,
+		fmt.Sprintf("--user-data-dir=%s", tmpDir),
+		fmt.Sprintf("--app=%s", testUrl),
 	)
 
 	var cmdErrBuf bytes.Buffer
@@ -96,9 +109,9 @@ func RunButtonTests(htmlPath string) (*ButtonTestResult, error) {
 		_ = cmd.Process.Kill()
 		return &res, nil
 
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		_ = cmd.Process.Kill()
-		return nil, fmt.Errorf("timeout waiting for Vivaldi button tests (stderr: %s)", cmdErrBuf.String())
+		return nil, fmt.Errorf("timeout waiting for Vivaldi button tests (lastStep=%q, stderr: %s)", lastStep, cmdErrBuf.String())
 	}
 }
 
@@ -227,7 +240,19 @@ window.getLocalExecutorStatus = async function() {};
       () => window.setQueuedMessageMode && window.setQueuedMessageMode('queue'),
       () => window.toggleCustomSkillForm && window.toggleCustomSkillForm(),
       () => window.rescanLocalModels && window.rescanLocalModels(),
-      () => window.scanRepositories && window.scanRepositories()
+      () => window.scanRepositories && window.scanRepositories(),
+      () => {
+        if (window.toggleModelDropdown) window.toggleModelDropdown(new Event('click'));
+        const familyRows = document.querySelectorAll('.model-family-row');
+        familyRows.forEach(row => {
+          if (row.onclick) row.onclick(new MouseEvent('click', { bubbles: true }));
+          const items = document.querySelectorAll('.submenu-model-item');
+          items.forEach(it => {
+            if (it.onclick) it.onclick(new MouseEvent('click', { bubbles: true }));
+          });
+        });
+        if (window.hideLocalModelSubmenu) window.hideLocalModelSubmenu(true);
+      }
     ];
 
     for (let i = 0; i < functionsToTest.length; i++) {

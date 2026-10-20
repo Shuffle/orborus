@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -53,23 +54,31 @@ func generateRandomHex(byteCount int) string {
 
 // openBrowser opens the specified URL in the user's default browser cross-platform
 func openBrowser(targetURL string) error {
-	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", targetURL)
+		return exec.Command("open", targetURL).Start()
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", targetURL)
-	default:
-		cmd = exec.Command("xdg-open", targetURL)
-	}
-	if err := cmd.Start(); err != nil {
-		if runtime.GOOS == "windows" {
-			cmd = exec.Command("cmd", "/c", "start", "", targetURL)
-			return cmd.Start()
+		// url.dll,FileProtocolHandler silently fails or truncates URLs longer than ~256 chars (MAX_PATH).
+		// For short clean URLs (such as our local http://127.0.0.1:<port>/login redirector), rundll32 works
+		// without flashing a console window. For long URLs with query parameters, use PowerShell Start-Process.
+		if len(targetURL) < 200 && !strings.Contains(targetURL, "&") {
+			if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", targetURL).Start(); err == nil {
+				return nil
+			}
+			if err := exec.Command("cmd", "/c", "start", "", targetURL).Start(); err == nil {
+				return nil
+			}
 		}
-		return err
+		escaped := strings.ReplaceAll(targetURL, "'", "''")
+		psCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", fmt.Sprintf("Start-Process '%s'", escaped))
+		if err := psCmd.Start(); err == nil {
+			return nil
+		}
+		escapedCmd := strings.ReplaceAll(targetURL, "&", "^&")
+		return exec.Command("cmd", "/c", "start", "", escapedCmd).Start()
+	default:
+		return exec.Command("xdg-open", targetURL).Start()
 	}
-	return nil
 }
 
 // StartDynamicOAuth2Flow initializes the dynamic auth flow matching ChatGPT MCP logins
@@ -142,6 +151,40 @@ func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplet
 	}
 	session.Server = server
 
+	b.mu.Lock()
+	if b.activeOAuthSession != nil && b.activeOAuthSession.Server != nil {
+		_ = b.activeOAuthSession.Server.Close()
+	}
+	b.activeOAuthSession = session
+	b.mu.Unlock()
+
+	var loginConnected int32
+	loginRedirectURI := fmt.Sprintf("http://127.0.0.1:%d/login", port)
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		atomic.StoreInt32(&loginConnected, 1)
+		log.Printf("[INFO] Browser connected to local OAuth2 /login redirector, redirecting to Shuffle OAuth2")
+		http.Redirect(w, r, fullAuthURL, http.StatusFound)
+	})
+
+	mux.HandleFunc("/done", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status":"ok"}`)
+
+		// Bring the runner window to foreground
+		b.mu.Lock()
+		cb := b.onAuthUpdated
+		b.mu.Unlock()
+		if cb != nil {
+			cb(b.GetInitialState())
+		}
+
+		go func() {
+			time.Sleep(3 * time.Second)
+			_ = server.Shutdown(context.Background())
+		}()
+	})
+
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		retState := q.Get("state")
@@ -185,6 +228,11 @@ func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplet
 			token = code
 		}
 
+		b.mu.Lock()
+		if b.cfg != nil {
+			b.cfg.BaseURL = resolveShuffleAiBaseURL(b.cfg.BaseURL)
+		}
+		b.mu.Unlock()
 		b.SetOAuthToken(token, orgID, envName)
 
 		if onAuthComplete != nil {
@@ -192,21 +240,77 @@ func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplet
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<html><head><title>Shuffle Agent Runner</title></head>
-		<body style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#090d16; color:#f8fafc; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0;">
-			<div style="background:#131c2e; border:1px solid #1e293b; border-radius:16px; padding:36px; max-width:440px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-				<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:16px;">
-					<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-					<polyline points="22 4 12 14.01 9 11.01"/>
-				</svg>
-				<h2 style="margin:0 0 8px 0; font-size:20px; font-weight:600;">Authentication Successful</h2>
-				<p style="color:#94a3b8; font-size:14px; line-height:1.5; margin:0 0 24px 0;">You have successfully authenticated with Shuffle OAuth2. You can now close this tab and return to the Shuffle Agent Runner window.</p>
-				<button onclick="window.close()" style="background:#3b82f6; border:none; color:white; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">Close Window</button>
-			</div>
-		</body></html>`)
+		fmt.Fprint(w, `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Authentication Successful — Shuffle</title></head>
+<body style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background:#0b0f17; color:#e2e8f0; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; padding:20px; box-sizing:border-box;">
+	<div style="background:#12161f; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:36px; max-width:440px; width:100%; text-align:center; box-shadow:0 18px 36px rgba(0,0,0,0.45);">
+		<div style="width:44px; height:44px; margin:0 auto 16px auto; border-radius:50%; background:rgba(34, 197, 94, 0.1); border:1px solid rgba(34, 197, 94, 0.25); display:flex; align-items:center; justify-content:center;">
+			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="20 6 9 17 4 12"/>
+			</svg>
+		</div>
+		<h2 style="margin:0 0 10px 0; font-size:19px; font-weight:600; color:#f8fafc; letter-spacing:-0.01em;">Authentication Successful</h2>
+		<p style="color:#94a3b8; font-size:13px; line-height:1.55; margin:0 0 20px 0;">
+			Your Shuffle OAuth2 session has been transferred to the Shuffle Agent Runner window. Shuffle AI models and cloud sync are now active.
+		</p>
+		<button id="btn-close" onclick="tryClose()" style="background:#2563eb; border:none; color:white; padding:9px 24px; border-radius:7px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s ease;">Close Window</button>
+		<div id="close-guide" style="display:none; margin-top:16px; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:12px; color:#94a3b8; line-height:1.45;">
+			Shuffle Tendon is ready. You can safely close this tab or press <kbd id="shortcut-key" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); border-radius:4px; padding:2px 6px; font-family:inherit; color:#f8fafc; font-size:11px;">Ctrl+W</kbd>.
+		</div>
+		<p id="close-note" style="color:#64748b; font-size:11px; margin:14px 0 0 0; line-height:1.4;">
+			If your browser prevents closing this tab automatically, you can safely close it and switch back to the runner window.
+		</p>
+	</div>
+	<script>
+		var closedState = false;
+		var isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || '');
+		var shortcut = isMac ? '⌘+W' : 'Ctrl+W';
+		var kbd = document.getElementById('shortcut-key');
+		if (kbd) kbd.innerText = shortcut;
+
+		function tryClose() {
+			try {
+				fetch('/done', { method: 'POST', mode: 'no-cors' }).catch(function(){});
+			} catch(e) {}
+
+			try { window.close(); } catch(e) {}
+			try { self.close(); } catch(e) {}
+			try { window.top.close(); } catch(e) {}
+			try {
+				if (window.opener) { window.opener = null; }
+				window.open('', '_self', '');
+				window.close();
+			} catch(e) {}
+
+			if (closedState) {
+				try { window.location.replace("about:blank"); } catch(e) {}
+				return;
+			}
+			closedState = true;
+
+			var btn = document.getElementById('btn-close');
+			if (btn) {
+				btn.innerHTML = '&#10003; All Set &mdash; Close Tab (' + shortcut + ')';
+				btn.style.background = 'rgba(255, 255, 255, 0.08)';
+				btn.style.color = '#cbd5e1';
+				btn.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+			}
+			var guide = document.getElementById('close-guide');
+			if (guide) guide.style.display = 'block';
+			var note = document.getElementById('close-note');
+			if (note) note.style.display = 'none';
+		}
+
+		// Attempt auto-close after 1.5 seconds if browser allows
+		setTimeout(function() {
+			try { window.close(); } catch(e) {}
+		}, 1500);
+	</script>
+</body></html>`)
 
 		go func() {
-			time.Sleep(1 * time.Second)
+			// Keep server alive for 60 seconds to allow user interaction with the page and /done callback
+			time.Sleep(60 * time.Second)
 			_ = server.Shutdown(context.Background())
 		}()
 	})
@@ -217,9 +321,24 @@ func (b *AgentBridge) StartDynamicOAuth2Flow(customBaseURL string, onAuthComplet
 		}
 	}()
 
-	// Open user's default browser to Shuffle OAuth2 authorize URL
-	if err := openBrowser(fullAuthURL); err != nil {
-		log.Printf("[WARN] Failed to open browser automatically: %v", err)
+	// Open user's default browser via short local redirect URI (avoids Windows MAX_PATH truncation & query escaping issues)
+	if err := openBrowser(loginRedirectURI); err != nil {
+		log.Printf("[WARN] Failed to open browser automatically via primary launcher: %v", err)
+	}
+
+	if runtime.GOOS == "windows" {
+		go func(redirectURL string) {
+			time.Sleep(900 * time.Millisecond)
+			if atomic.LoadInt32(&loginConnected) == 0 {
+				log.Printf("[INFO] Browser has not hit /login after 900ms; attempting Windows cmd start fallback for %s", redirectURL)
+				_ = exec.Command("cmd", "/c", "start", "", redirectURL).Start()
+			}
+			time.Sleep(1100 * time.Millisecond)
+			if atomic.LoadInt32(&loginConnected) == 0 {
+				log.Printf("[INFO] Browser has not hit /login after 2000ms; attempting PowerShell Start-Process fallback for %s", redirectURL)
+				_ = exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", fmt.Sprintf("Start-Process '%s'", redirectURL)).Start()
+			}
+		}(loginRedirectURI)
 	}
 
 	return fullAuthURL, nil
@@ -239,7 +358,7 @@ func exchangeCodeForToken(oauthHost, code, clientID, redirectURI, codeVerifier s
 	formData.Set("redirect_uri", redirectURI)
 	formData.Set("code_verifier", codeVerifier)
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 
 	for _, tokenURL := range endpoints {
 		log.Printf("[INFO] Exchanging OAuth2 code with %s", tokenURL)

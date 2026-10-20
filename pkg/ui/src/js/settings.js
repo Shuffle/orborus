@@ -65,8 +65,56 @@ function dismissAuthErrorsIfConfigured() {
 }
 
 function updateAuthState(state) {
-  isLoggedIn = !!state.is_logged_in;
+  if (typeof state === "string") {
+    try { state = JSON.parse(state); } catch (_) {}
+  }
+  state = state || {};
   isBypassed = !!state.is_bypassed;
+  if (state.oauth_logged_in === false || state.is_logged_in === false) {
+    window.oauthLoggedIn = false;
+    window.shuffleVerified = false;
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("orborus_oauth_logged_in");
+    }
+  }
+
+  let isOAuthConnected = false;
+  if (state.oauth_logged_in === true) {
+    isOAuthConnected = true;
+  } else if (state.oauth_logged_in === false || state.is_logged_in === false) {
+    isOAuthConnected = false;
+  } else if (state.auth && typeof state.auth === "string" && state.auth.startsWith("shfl_")) {
+    isOAuthConnected = true;
+  } else {
+    isOAuthConnected = !!window.oauthLoggedIn;
+  }
+
+  if (isOAuthConnected) {
+    window.oauthLoggedIn = true;
+    isLoggedIn = true;
+    isOAuthPending = false;
+    const candidateToken = state.oauth_token || (typeof state.auth === "string" && state.auth ? state.auth : "") || (typeof state.ai_api_key === "string" && state.ai_api_key.startsWith("shfl_") ? state.ai_api_key : "");
+    if (candidateToken) {
+      window.activeShuffleToken = candidateToken;
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("orborus_shuffle_token", candidateToken);
+      }
+    } else if (!window.activeShuffleToken && typeof localStorage !== "undefined") {
+      window.activeShuffleToken = localStorage.getItem("orborus_shuffle_token") || "";
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orborus_oauth_logged_in", "true");
+    }
+  } else {
+    window.oauthLoggedIn = false;
+    isLoggedIn = false;
+    window.shuffleVerified = false;
+    window.activeShuffleToken = "";
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("orborus_oauth_logged_in");
+      localStorage.removeItem("orborus_shuffle_token");
+    }
+  }
   if (state.ai_api_url !== undefined) currentAiUrl = state.ai_api_url;
   if (state.ai_api_key !== undefined) currentAiKey = state.ai_api_key;
   if (state.permission_policy !== undefined) currentPermissionPolicy = state.permission_policy;
@@ -75,8 +123,44 @@ function updateAuthState(state) {
   if (state.terminal_execution_policy !== undefined) currentTerminalExecutionPolicy = state.terminal_execution_policy;
   if (state.file_access_policy !== undefined) currentFileAccessPolicy = state.file_access_policy;
   if (state.project_permissions !== undefined) currentProjectPermissions = state.project_permissions;
+  if (Array.isArray(state.shuffle_orgs) && state.shuffle_orgs.length > 0) {
+    window.shuffleOrgs = state.shuffle_orgs;
+    if (typeof localStorage !== "undefined") {
+      try { localStorage.setItem("orborus_shuffle_orgs", JSON.stringify(state.shuffle_orgs)); } catch (_) {}
+    }
+  } else if (!Array.isArray(window.shuffleOrgs) || window.shuffleOrgs.length === 0) {
+    let restored = [];
+    if (typeof localStorage !== "undefined") {
+      try {
+        const rawOrgs = localStorage.getItem("orborus_shuffle_orgs");
+        if (rawOrgs) {
+          const parsed = JSON.parse(rawOrgs);
+          if (Array.isArray(parsed)) restored = parsed;
+        }
+      } catch (_) {}
+    }
+    window.shuffleOrgs = restored;
+  }
+  if (state.org_id) {
+    window.activeShuffleOrgId = state.org_id;
+    if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_org_id", state.org_id);
+  } else if (!window.activeShuffleOrgId && typeof localStorage !== "undefined") {
+    window.activeShuffleOrgId = localStorage.getItem("orborus_shuffle_org_id") || "";
+  }
+  if (state.org_name) {
+    window.activeShuffleOrgName = state.org_name;
+    if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_org_name", state.org_name);
+  } else if (!window.activeShuffleOrgName && typeof localStorage !== "undefined") {
+    window.activeShuffleOrgName = localStorage.getItem("orborus_shuffle_org_name") || "";
+  }
+  if (state.base_url) {
+    window.activeShuffleBaseUrl = state.base_url;
+    if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_base_url", state.base_url);
+  } else if (!window.activeShuffleBaseUrl && typeof localStorage !== "undefined") {
+    window.activeShuffleBaseUrl = localStorage.getItem("orborus_shuffle_base_url") || "";
+  }
 
-  if (currentAiKey || currentAiUrl || isLoggedIn || isBypassed) {
+  if (currentAiKey || currentAiUrl || isLoggedIn || isBypassed || isOAuthConnected) {
     dismissAuthErrorsIfConfigured();
   }
 
@@ -93,13 +177,85 @@ function updateAuthState(state) {
   const inputOrgId = document.getElementById("input-org-id");
   const inputAuthKey = document.getElementById("input-auth-key");
   const inputEnvName = document.getElementById("input-env-name");
-  if (inputBaseUrl && state.base_url) inputBaseUrl.value = state.base_url;
-  if (inputOrgId && state.org_id) inputOrgId.value = state.org_id;
-  if (inputAuthKey && state.auth) inputAuthKey.value = state.auth;
-  if (inputEnvName && state.environment) inputEnvName.value = state.environment;
+  if (!isOAuthConnected) {
+    if (inputAuthKey) inputAuthKey.value = "";
+    if (inputOrgId && state.org_id !== undefined) inputOrgId.value = state.org_id || "";
+    if (inputBaseUrl && state.base_url !== undefined) inputBaseUrl.value = state.base_url || "";
+    if (inputEnvName && state.environment !== undefined) inputEnvName.value = (state.environment === "standalone") ? "" : (state.environment || "");
+  } else {
+    if (inputBaseUrl && state.base_url !== undefined) inputBaseUrl.value = state.base_url;
+    if (inputOrgId && state.org_id !== undefined) inputOrgId.value = state.org_id;
+    if (inputAuthKey && state.auth !== undefined) inputAuthKey.value = state.auth;
+    if (inputEnvName && state.environment !== undefined) inputEnvName.value = state.environment;
+  }
 
   const authStatusDot = document.getElementById("settings-auth-status-dot");
   const authStatusText = document.getElementById("settings-auth-status-text");
+  const btnOAuthLabel = document.getElementById("lbl-btn-oauth-login");
+  const btnOAuth = document.getElementById("btn-oauth-login");
+  const btnOAuthCancel = document.getElementById("btn-oauth-cancel");
+  const btnOAuthLogout = document.getElementById("btn-oauth-logout");
+  const btnSidebarAuthLogout = document.getElementById("btn-sidebar-auth-logout");
+
+  const btnTestShuffle = document.getElementById("btn-test-shuffle-ai");
+  const statusTestShuffle = document.getElementById("shuffle-ai-test-status");
+  const tenantSelectorSection = document.getElementById("shuffle-tenant-selector-section");
+
+  const envLabel = (state.environment && state.environment !== "standalone") ? state.environment : "Active";
+
+  if (isOAuthConnected) {
+    if (authStatusDot) authStatusDot.className = "status-dot connected";
+    if (authStatusText) {
+      authStatusText.innerText = window.shuffleVerified
+        ? "Verified & Connected (" + envLabel + ")"
+        : "Connected via OAuth2 (" + envLabel + ")";
+      authStatusText.style.color = "var(--text-primary)";
+    }
+    if (btnOAuthLabel) btnOAuthLabel.innerText = "Shuffle Connected ✓";
+    if (btnOAuth) btnOAuth.title = "Connected with Shuffle OAuth2 (Click to re-authenticate)";
+    if (btnOAuthCancel) btnOAuthCancel.style.display = "none";
+    if (btnOAuthLogout) btnOAuthLogout.style.display = "inline-flex";
+    if (btnSidebarAuthLogout) btnSidebarAuthLogout.style.display = "inline-flex";
+    if (btnTestShuffle) btnTestShuffle.style.display = "inline-flex";
+    if (tenantSelectorSection) tenantSelectorSection.style.display = "flex";
+    if (typeof renderShuffleTenantDropdown === "function") {
+      renderShuffleTenantDropdown();
+    }
+    if ((!window.shuffleOrgs || window.shuffleOrgs.length === 0) && !window._fetchingShuffleTenants && !window._initialTenantsFetched && !window._tenantBridgeUnsupported && typeof refreshShuffleTenants === "function") {
+      window._initialTenantsFetched = true;
+      refreshShuffleTenants();
+    }
+  } else if (isOAuthPending) {
+    if (authStatusDot) authStatusDot.className = "status-dot standalone";
+    if (authStatusText) {
+      authStatusText.innerText = "Waiting for browser login...";
+      authStatusText.style.color = "var(--text-secondary)";
+    }
+    if (btnOAuthLabel) btnOAuthLabel.innerText = "Waiting for Login... (Re-open)";
+    if (btnOAuth) btnOAuth.title = "Click to re-open Shuffle AI login in browser";
+    if (btnOAuthCancel) btnOAuthCancel.style.display = "inline-flex";
+    if (btnOAuthLogout) btnOAuthLogout.style.display = "none";
+    if (btnSidebarAuthLogout) btnSidebarAuthLogout.style.display = "none";
+    if (btnTestShuffle) btnTestShuffle.style.display = "none";
+    if (statusTestShuffle) statusTestShuffle.style.display = "none";
+    if (tenantSelectorSection) tenantSelectorSection.style.display = "none";
+  } else {
+    window._initialTenantsFetched = false;
+    if (authStatusDot) authStatusDot.className = "status-dot disconnected";
+    if (authStatusText) {
+      authStatusText.innerText = "Disconnected (Not Verified)";
+      authStatusText.style.color = "var(--text-muted)";
+    }
+    if (btnOAuthLabel) btnOAuthLabel.innerText = "Connect Shuffle AI";
+    if (btnOAuth) btnOAuth.title = "Connect Shuffle AI";
+    if (btnOAuthCancel) btnOAuthCancel.style.display = "none";
+    if (btnOAuthLogout) btnOAuthLogout.style.display = "none";
+    if (btnSidebarAuthLogout) btnSidebarAuthLogout.style.display = "none";
+    if (btnTestShuffle) btnTestShuffle.style.display = "none";
+    if (statusTestShuffle) statusTestShuffle.style.display = "none";
+    if (tenantSelectorSection) tenantSelectorSection.style.display = "none";
+  }
+
   const footerDot = document.getElementById("footer-status-dot");
   const footerEnv = document.getElementById("footer-env-label");
   const footerModelSelect = document.getElementById("select-footer-model");
@@ -118,55 +274,56 @@ function updateAuthState(state) {
   }
 
   const hasCustomAi = !!(currentAiKey || currentAiUrl);
-  if (hasCustomAi) {
+  if (isOAuthConnected) {
     if (dot) dot.className = "status-dot connected";
-    if (label) label.innerText = "Custom AI Configured";
-    if (subtext) subtext.innerText = currentAiKey ? "Custom API key configured and active." : "Custom LLM endpoint active.";
+    if (label) label.innerText = window.shuffleVerified ? "Shuffle AI Verified" : "Shuffle AI Connected";
+    if (subtext) subtext.innerText = "Authenticated with Shuffle OAuth2. Workflows and cloud models enabled.";
+    if (details) details.classList.add("visible");
+    if (lblOrg) lblOrg.innerText = window.activeShuffleOrgName || state.org_id || "Shuffle";
+    if (lblEnv) lblEnv.innerText = envLabel;
+    if (btnAuth) {
+      btnAuth.className = "status-btn btn-manage";
+      if (btnLabel) btnLabel.innerText = "Shuffle Connected ✓";
+      btnAuth.onclick = () => handleAuthAction();
+    }
+    if (footerDot) footerDot.className = "status-dot connected";
+    if (footerEnv) footerEnv.innerText = "Shuffle Connected";
+  } else if (isOAuthPending) {
+    if (dot) dot.className = "status-dot standalone";
+    if (label) label.innerText = "Waiting for Login...";
+    if (subtext) subtext.innerText = "Complete login in your browser or cancel in Shuffle AI settings.";
+    if (details) details.classList.remove("visible");
+    if (btnAuth) {
+      btnAuth.className = "status-btn btn-login";
+      if (btnLabel) btnLabel.innerText = "Waiting for Login...";
+      btnAuth.onclick = () => handleAuthAction();
+    }
+    if (footerDot) footerDot.className = "status-dot standalone";
+    if (footerEnv) footerEnv.innerText = "Waiting for Login";
+  } else if (hasCustomAi) {
+    if (dot) dot.className = "status-dot standalone";
+    if (label) label.innerText = "Shuffle AI: Disconnected (BYOK)";
+    if (subtext) subtext.innerText = currentAiKey ? "Custom API key configured. Shuffle AI is disconnected." : "Custom LLM endpoint active. Shuffle AI is disconnected.";
     if (details) details.classList.add("visible");
     if (lblOrg) lblOrg.innerText = state.org_id || "standalone";
     if (lblEnv) lblEnv.innerText = state.environment || "standalone";
     if (btnAuth) {
       btnAuth.className = "status-btn btn-manage";
-      if (btnLabel) btnLabel.innerText = "Manage Authentication";
+      if (btnLabel) btnLabel.innerText = "Connect Shuffle AI";
       btnAuth.onclick = () => handleAuthAction();
     }
-    if (authStatusDot) authStatusDot.className = "status-dot connected";
-    const endpointLabel = currentAiUrl ? currentAiUrl : (activeAiModel || "Gemini");
-    if (authStatusText) authStatusText.innerText = "Custom AI Active (" + endpointLabel + ")";
     if (footerDot) footerDot.className = "status-dot connected";
     if (footerEnv) footerEnv.innerText = "Custom AI Configured";
-  } else if (isLoggedIn) {
-    if (dot) dot.className = "status-dot connected";
-    if (label) {
-      label.innerText = isBypassed ? "Ready (Standalone)" : "Connected via OAuth2";
-    }
-    if (subtext) {
-      subtext.innerText = isBypassed ? "Local execution active. Shuffle login optional." : "Authenticated with Shuffle.";
-    }
-    if (details) details.classList.add("visible");
-    if (lblOrg) lblOrg.innerText = state.org_id || "configured";
-    if (lblEnv) lblEnv.innerText = state.environment || "configured";
-    if (btnAuth) {
-      btnAuth.className = "status-btn btn-manage";
-      if (btnLabel) btnLabel.innerText = isBypassed ? "Manage Authentication" : "Connected to Shuffle";
-      btnAuth.onclick = () => handleAuthAction();
-    }
-    if (authStatusDot) authStatusDot.className = "status-dot connected";
-    if (authStatusText) authStatusText.innerText = "Connected to Shuffle (" + (state.environment || "Active") + ")";
-    if (footerDot) footerDot.className = "status-dot connected";
-    if (footerEnv) footerEnv.innerText = isBypassed ? "Shuffle Standalone" : (state.environment || "Shuffle Connected");
   } else {
     if (dot) dot.className = "status-dot standalone";
-    if (label) label.innerText = "Standalone Mode";
-    if (subtext) subtext.innerText = "Shuffle login is optional. Configure AI credentials or log in with OAuth.";
+    if (label) label.innerText = "Shuffle AI: Disconnected";
+    if (subtext) subtext.innerText = "Shuffle login is optional. Configure AI credentials or connect Shuffle AI.";
     if (details) details.classList.remove("visible");
     if (btnAuth) {
       btnAuth.className = "status-btn btn-login";
-      if (btnLabel) btnLabel.innerText = "Log in with Shuffle";
+      if (btnLabel) btnLabel.innerText = "Connect Shuffle AI";
       btnAuth.onclick = () => handleAuthAction();
     }
-    if (authStatusDot) authStatusDot.className = "status-dot standalone";
-    if (authStatusText) authStatusText.innerText = "Not Connected (Standalone / Local)";
     if (footerDot) footerDot.className = "status-dot disconnected";
     if (footerEnv) footerEnv.innerText = "Shuffle Standalone";
   }
@@ -174,6 +331,12 @@ function updateAuthState(state) {
   updateEnvDisplayInModal();
   if (typeof updateActiveModelLabel === "function") {
     updateActiveModelLabel();
+  }
+  if (typeof updateShuffleToolsButtonVisibility === "function") {
+    updateShuffleToolsButtonVisibility();
+  }
+  if (typeof syncGlobalApprovalQueueUI === "function") {
+    syncGlobalApprovalQueueUI();
   }
 }
 
@@ -262,7 +425,18 @@ function getFriendlyModelName(modelId) {
   return map[modelId] || modelId || "Gemini-3.8-Flash";
 }
 
-function openSettingsModal(initialTab, focusField) {
+function openSettingsForModel(modelKey, focusField) {
+  const targetTab = (typeof getSettingsTabForModel === "function")
+    ? getSettingsTabForModel(modelKey)
+    : ((modelKey === "shuffle-ai" || modelKey === "shuffle" || modelKey === "default")
+        ? "mode-shuffle"
+        : ((modelKey && (modelKey === "tendon-local" || String(modelKey).startsWith("tendon") || String(modelKey).startsWith("local")))
+            ? "mode-local"
+            : "mode-direct"));
+  openSettingsModal(targetTab, focusField, modelKey);
+}
+
+function openSettingsModal(initialTab, focusField, modelKey) {
   const modal = document.getElementById("settings-modal");
   if (modal) {
     modal.classList.add("visible");
@@ -289,23 +463,41 @@ function openSettingsModal(initialTab, focusField) {
       modelsDirInput.value = window.localModelsDir || localStorage.getItem("orborus_local_models_dir") || "models";
     }
 
-    setQueuedMessageMode(currentQueuedMessages || "queue");
+    setQueuedMessageMode(currentQueuedMessages || "queue", true);
   } catch (err) {
     console.warn("Error setting modal input values:", err);
   }
 
   try {
     renderSettingsProjectsList();
+    if (typeof loadApprovalRules === "function") {
+      loadApprovalRules();
+    } else if (typeof renderPermissionsSummaries === "function") {
+      renderPermissionsSummaries();
+    }
   } catch (err) {
     console.warn("Error rendering settings projects:", err);
   }
 
   try {
-    const targetTab = initialTab || (activeSettingsTab && !activeSettingsTab.startsWith("project:") ? activeSettingsTab : "general");
+    let targetTab = initialTab || (activeSettingsTab && !activeSettingsTab.startsWith("project:") ? activeSettingsTab : "general");
+    if (targetTab === "models") {
+      targetTab = (typeof getSettingsTabForModel === "function")
+        ? getSettingsTabForModel(modelKey)
+        : "mode-direct";
+    }
     switchSettingsTab(targetTab);
     updateEnvDisplayInModal();
     updateModesDisplay();
     if (targetTab === "models" || targetTab === "mode-direct" || targetTab === "direct") {
+      if (modelKey && modelKey !== "shuffle-ai" && modelKey !== "shuffle" && modelKey !== "tendon-local" && !String(modelKey).startsWith("local")) {
+        const byokInput = document.getElementById("input-byok-model-name");
+        if (byokInput) byokInput.value = modelKey;
+        const modelSelect = document.getElementById("select-ai-model");
+        if (modelSelect && Array.from(modelSelect.options || []).some(opt => opt.value === modelKey)) {
+          modelSelect.value = modelKey;
+        }
+      }
       setTimeout(() => {
         if (focusField === "model") {
           const byokInput = document.getElementById("input-byok-model-name");
@@ -332,8 +524,8 @@ function openSettingsModal(initialTab, focusField) {
       }, 60);
     } else if (targetTab === "auth" || targetTab === "mode-shuffle") {
       setTimeout(() => {
-        const tokenInput = document.getElementById("input-oauth-token");
-        if (tokenInput) tokenInput.focus();
+        const loginBtn = document.getElementById("btn-oauth-login");
+        if (loginBtn) loginBtn.focus();
       }, 60);
     }
   } catch (err) {
@@ -351,8 +543,9 @@ function closeSettingsModal() {
   }
 }
 
-function setQueuedMessageMode(mode) {
+function setQueuedMessageMode(mode, skipSave) {
   currentQueuedMessages = mode;
+  localStorage.setItem("orborus_queued_messages", mode);
   const btnQueue = document.getElementById("btn-queue-mode-queue");
   const btnImm = document.getElementById("btn-queue-mode-immediate");
   if (btnQueue && btnImm) {
@@ -363,6 +556,9 @@ function setQueuedMessageMode(mode) {
       btnQueue.classList.add("active");
       btnImm.classList.remove("active");
     }
+  }
+  if (!skipSave) {
+    autoSaveGeneralSettings();
   }
 }
 
@@ -382,9 +578,54 @@ function handleGlobalPresetChange() {
     if (fileAccess) fileAccess.value = "allow_all";
     if (terminal) terminal.value = "full_auto";
   }
+  autoSaveGeneralSettings();
+}
+
+function autoSaveGeneralSettings() {
+  const globalPreset = document.getElementById("select-global-preset");
+  const globalFileAccess = document.getElementById("select-global-file-access");
+  const globalTerminal = document.getElementById("select-global-terminal-policy");
+  const globalSandbox = document.getElementById("toggle-global-sandbox");
+
+  if (globalPreset) currentPermissionPolicy = globalPreset.value;
+  if (globalFileAccess) currentFileAccessPolicy = globalFileAccess.value;
+  if (globalTerminal) currentTerminalExecutionPolicy = globalTerminal.value;
+  if (globalSandbox) currentSandboxMode = !!globalSandbox.checked;
+
+  localStorage.setItem("orborus_permission_policy", currentPermissionPolicy || "ask_all");
+  localStorage.setItem("orborus_file_access_policy", currentFileAccessPolicy || "ask");
+  localStorage.setItem("orborus_terminal_execution_policy", currentTerminalExecutionPolicy || "sandbox");
+  localStorage.setItem("orborus_sandbox_mode", currentSandboxMode ? "true" : "false");
+
+  const payload = {
+    permission_policy: currentPermissionPolicy || "ask_all",
+    file_access_policy: currentFileAccessPolicy || "ask",
+    terminal_execution_policy: currentTerminalExecutionPolicy || "sandbox",
+    sandbox_mode: currentSandboxMode !== false,
+    queued_messages: currentQueuedMessages || "queue",
+    project_permissions: currentProjectPermissions || {},
+    ai_api_url: currentAiUrl || "",
+    ai_api_key: currentAiKey || "",
+    ai_model: activeAiModel || "tendon-local",
+    local_models_dir: window.localModelsDir || "",
+    local_model_path: window.localModelPath || "",
+    active_execution_mode: window.activeExecutionMode || localStorage.getItem("orborus_active_execution_mode") || "local"
+  };
+
+  if (typeof window.saveAllSettings === "function") {
+    window.saveAllSettings(payload).catch(() => {});
+  } else if (typeof window.bridgeCall === "function") {
+    window.bridgeCall("saveAllSettings", JSON.stringify(payload)).catch(() => {});
+  }
+  if (typeof syncGlobalApprovalQueueUI === "function") {
+    syncGlobalApprovalQueueUI();
+  }
 }
 
 function switchSettingsTab(tabName) {
+  const backBtn = document.getElementById("btn-permissions-detail-back");
+  if (backBtn) backBtn.style.display = "none";
+
   if (tabName && tabName.startsWith("project:")) {
     const projPath = tabName.replace("project:", "");
     selectSettingsProject(projPath);
@@ -401,7 +642,7 @@ function switchSettingsTab(tabName) {
   const titleEl = document.getElementById("settings-view-title");
   const descEl = document.getElementById("settings-view-desc");
 
-  if (tabName === "modes-overview") {
+  if (tabName === "modes-overview" || tabName === "mode-orborus") {
     switchSettingsTab("mode-shuffle");
     return;
   } else if (tabName === "mode-shuffle" || tabName === "auth") {
@@ -410,18 +651,15 @@ function switchSettingsTab(tabName) {
     if (btn) btn.classList.add("active");
     const panel = document.getElementById("settings-panel-mode-shuffle") || document.getElementById("settings-panel-auth");
     if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "Shuffle (OAuth2 Login) — Optional";
-    if (descEl) descEl.innerText = "Optional: Connect to Shuffle via OAuth2 for managed Shuffle AI and workflow sync.";
+    if (titleEl) titleEl.innerText = "Shuffle AI";
+    if (descEl) descEl.innerText = "Managed Shuffle AI workflows and agent executions.";
     updateModesDisplay();
-  } else if (tabName === "mode-orborus") {
-    activeSettingsTab = "mode-orborus";
-    const btn = document.getElementById("settings-tab-btn-mode-orborus");
-    if (btn) btn.classList.add("active");
-    const panel = document.getElementById("settings-panel-mode-orborus");
-    if (panel) panel.classList.add("active");
-    if (titleEl) titleEl.innerText = "Shuffle (Self-Hosted / Org ID) — Optional";
-    if (descEl) descEl.innerText = "Optional: Connect to a self-hosted Shuffle server/cluster via Org ID, Auth Key, and Base URL.";
-    updateModesDisplay();
+    if (typeof renderShuffleTenantDropdown === "function") {
+      renderShuffleTenantDropdown();
+    }
+    if (window.oauthLoggedIn && (!window.shuffleOrgs || window.shuffleOrgs.length === 0) && typeof refreshShuffleTenants === "function") {
+      refreshShuffleTenants();
+    }
   } else if (tabName === "mode-direct" || tabName === "direct" || tabName === "models") {
     activeSettingsTab = "mode-direct";
     const btn = document.getElementById("settings-tab-btn-mode-direct") || document.getElementById("settings-tab-btn-models");
@@ -439,7 +677,8 @@ function switchSettingsTab(tabName) {
     const panel = document.getElementById("settings-panel-mode-local");
     if (panel) panel.classList.add("active");
     if (titleEl) titleEl.innerText = "Local GPU Engine (CUDA)";
-    if (descEl) descEl.innerText = "Offline execution on your RTX 3080 Ti (12GB VRAM). Direct VRAM, 0 host RAM overhead.";
+    const gpuLabel = window.localGpuName || "Local GPU";
+    if (descEl) descEl.innerText = `Offline execution on ${gpuLabel}. Direct VRAM, 0 host RAM overhead.`;
     loadLocalModelsSettings();
     updateModesDisplay();
   } else if (tabName === "skills") {
@@ -459,6 +698,9 @@ function switchSettingsTab(tabName) {
     if (panel) panel.classList.add("active");
     if (titleEl) titleEl.innerText = "General";
     if (descEl) descEl.innerText = "Configure agent execution, queued message delivery, and permissions.";
+    if (typeof renderPermissionsSummaries === "function") {
+      renderPermissionsSummaries();
+    }
   }
 }
 
@@ -474,7 +716,7 @@ function updateModesDisplay() {
   const metaModelDirect = document.getElementById("meta-model-direct");
   const metaKeyDirect = document.getElementById("meta-key-direct");
   const hasDirectKey = !!(currentAiKey || localStorage.getItem("orborus_ai_key"));
-  if (metaModelDirect) metaModelDirect.innerText = activeAiModel || "gpt-4o";
+  if (metaModelDirect) metaModelDirect.innerText = activeAiModel || "gemini-3.8-flash";
   if (metaKeyDirect) metaKeyDirect.innerText = hasDirectKey ? "Configured" : "Not configured";
 
   const metaWeightLocal = document.getElementById("meta-weight-local");
@@ -515,8 +757,8 @@ function applyDirectLlmPreset(preset) {
     targetUrl = "https://api.anthropic.com/v1";
     targetModel = "claude-3-7-sonnet";
   } else if (preset === "gemini") {
-    targetUrl = "https://generativelanguage.googleapis.com/v1beta";
-    targetModel = "gemini-2.5-flash";
+    targetUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
+    targetModel = "gemini-3.8-flash";
   } else if (preset === "deepseek") {
     targetUrl = "https://api.deepseek.com/v1";
     targetModel = "deepseek-chat";
@@ -525,10 +767,10 @@ function applyDirectLlmPreset(preset) {
     targetModel = "llama-3.3-70b-versatile";
   } else if (preset === "ollama") {
     targetUrl = "http://localhost:11434/v1";
-    targetModel = "llama3.2";
+    targetModel = "llama3.3";
   } else if (preset === "openrouter") {
     targetUrl = "https://openrouter.ai/api/v1";
-    targetModel = "openai/gpt-4o";
+    targetModel = "anthropic/claude-3.7-sonnet";
   } else if (preset === "custom") {
     targetUrl = "http://localhost:8000/v1";
     targetModel = modelInput && modelInput.value.trim() ? modelInput.value.trim() : "custom-model";
@@ -564,7 +806,7 @@ function renderByokModelsSettings() {
   if (!container) return;
   container.innerHTML = "";
 
-  const standardPresets = ["gpt-4o", "claude-3-7-sonnet", "claude-3-5-sonnet"];
+  const standardPresets = ["claude-3-7-sonnet", "gpt-4o", "gemini-3.8-flash", "deepseek-chat"];
   const customList = (typeof getCustomByokModels === "function") ? getCustomByokModels() : [];
   const allModels = [];
 
@@ -689,12 +931,214 @@ function quickSelectByokModel(modelId) {
   showToast("Selected model: " + modelId);
 }
 
+async function testDirectLlmConfig() {
+  const urlInput = document.getElementById("input-ai-url");
+  const keyInput = document.getElementById("input-ai-key");
+  const modelInput = document.getElementById("input-byok-model-name");
+  const modelSelect = document.getElementById("select-ai-model");
+  const customModelInput = document.getElementById("input-settings-custom-model");
+  const testBtn = document.getElementById("btn-test-direct-llm");
+  const statusSpan = document.getElementById("direct-llm-save-status");
+
+  let chosenModel = "";
+  if (modelInput && modelInput.value.trim()) {
+    chosenModel = modelInput.value.trim();
+  } else if (modelSelect && modelSelect.value) {
+    chosenModel = modelSelect.value;
+    if (chosenModel === "custom" && customModelInput && customModelInput.value.trim()) {
+      chosenModel = customModelInput.value.trim();
+    }
+  }
+
+  const aiUrl = urlInput ? urlInput.value.trim() : "";
+  const aiKey = keyInput ? keyInput.value.trim() : "";
+  const targetModel = chosenModel || activeAiModel || "gemini-3.8-flash";
+
+  const origText = "Test Connection";
+  if (testBtn) {
+    testBtn.disabled = true;
+    testBtn.textContent = "Testing...";
+  }
+  if (statusSpan) {
+    statusSpan.textContent = "Testing " + targetModel + " via RunAiQuery()...";
+    statusSpan.style.color = "var(--text-muted)";
+    statusSpan.style.display = "inline";
+  }
+
+  let authOk = true;
+  let authError = "";
+  let parsed = null;
+
+  try {
+    if (typeof window.bridgeCall === "function") {
+      const testPromise = window.bridgeCall("testAiConfig", JSON.stringify({
+        url: aiUrl,
+        key: aiKey,
+        model: targetModel
+      }));
+      const timeoutPromise = new Promise(function(resolve) {
+        setTimeout(resolve, 12000, JSON.stringify({ status: "error", message: "Connection test timed out after 12s" }));
+      });
+      const testRespRaw = await Promise.race([testPromise, timeoutPromise]);
+      if (typeof testRespRaw === "string") {
+        try {
+          parsed = JSON.parse(testRespRaw);
+        } catch (e) {
+          parsed = { status: "ok", sample: testRespRaw };
+        }
+      } else {
+        parsed = testRespRaw;
+      }
+      if (parsed && (parsed.status === "error" || parsed.error)) {
+        authOk = false;
+        authError = parsed.message || parsed.error || "Connection test failed";
+      }
+    }
+  } catch (e) {
+    console.warn("Direct LLM test error:", e);
+    authOk = false;
+    authError = e.message || String(e);
+  } finally {
+    if (testBtn) {
+      testBtn.disabled = false;
+      testBtn.textContent = origText;
+    }
+  }
+
+  if (!authOk) {
+    if (statusSpan) {
+      statusSpan.textContent = "✗ Test failed: " + authError;
+      statusSpan.style.color = "var(--text-error, #f87171)";
+      statusSpan.style.display = "inline";
+    }
+    showToast("Test failed: " + authError);
+    return false;
+  }
+
+  const verifiedModel = (parsed && parsed.model) ? parsed.model : targetModel;
+  const durText = (parsed && parsed.duration_ms !== undefined) ? " (" + parsed.duration_ms + "ms)" : "";
+  const sampleText = (parsed && parsed.sample) ? " — \"" + parsed.sample + "\"" : "";
+
+  if (statusSpan) {
+    statusSpan.textContent = "✓ Verified " + verifiedModel + durText + sampleText;
+    statusSpan.style.color = "var(--text-success, #4ade80)";
+    statusSpan.style.display = "inline";
+  }
+  showToast("Verified " + verifiedModel + durText);
+  return true;
+}
+
+async function testShuffleAiConfig() {
+  const testBtn = document.getElementById("btn-test-shuffle-ai");
+  const testLbl = document.getElementById("lbl-btn-test-shuffle-ai");
+  const statusDiv = document.getElementById("shuffle-ai-test-status");
+
+  const targetModel = "shuffle-ai";
+
+  const origText = "Test Connection";
+  if (testLbl) {
+    testLbl.textContent = "Testing...";
+  }
+  if (testBtn) {
+    testBtn.disabled = true;
+  }
+  if (statusDiv) {
+    statusDiv.textContent = "Testing Shuffle AI via RunAiQuery()...";
+    statusDiv.style.color = "var(--text-muted)";
+    statusDiv.style.display = "block";
+  }
+
+  let authOk = true;
+  let authError = "";
+  let parsed = null;
+
+  try {
+    if (typeof window.bridgeCall === "function") {
+      const testPromise = window.bridgeCall("testAiConfig", JSON.stringify({
+        url: "shuffle",
+        key: "",
+        model: targetModel
+      }));
+      const timeoutPromise = new Promise(function(resolve) {
+        setTimeout(resolve, 12000, JSON.stringify({ status: "error", message: "Shuffle AI test timed out after 12s" }));
+      });
+      const testRespRaw = await Promise.race([testPromise, timeoutPromise]);
+      if (typeof testRespRaw === "string") {
+        try {
+          parsed = JSON.parse(testRespRaw);
+        } catch (e) {
+          parsed = { status: "ok", sample: testRespRaw };
+        }
+      } else {
+        parsed = testRespRaw;
+      }
+      if (parsed && (parsed.status === "error" || parsed.error)) {
+        authOk = false;
+        authError = parsed.message || parsed.error || "Shuffle AI test failed";
+      }
+    }
+  } catch (e) {
+    console.warn("Shuffle AI test error:", e);
+    authOk = false;
+    authError = e.message || String(e);
+  } finally {
+    if (testLbl) {
+      testLbl.textContent = origText;
+    }
+    if (testBtn) {
+      testBtn.disabled = false;
+    }
+  }
+
+  if (!authOk) {
+    window.shuffleVerified = false;
+    if (statusDiv) {
+      statusDiv.textContent = "✗ Test failed: " + authError;
+      statusDiv.style.color = "var(--text-error, #f87171)";
+      statusDiv.style.display = "block";
+    }
+    const authStatusText = document.getElementById("settings-auth-status-text");
+    if (authStatusText) {
+      authStatusText.innerText = window.oauthLoggedIn ? "Connected (Verification Failed)" : "Disconnected (Not Verified)";
+      authStatusText.style.color = "var(--text-muted)";
+    }
+    showToast("Shuffle AI test failed: " + authError);
+    return false;
+  }
+
+  window.shuffleVerified = true;
+  const verifiedModel = (parsed && parsed.model) ? parsed.model : targetModel;
+  const durText = (parsed && parsed.duration_ms !== undefined) ? " (" + parsed.duration_ms + "ms)" : "";
+  const sampleText = (parsed && parsed.sample) ? " — \"" + parsed.sample + "\"" : "";
+
+  if (statusDiv) {
+    statusDiv.textContent = "✓ Verified " + verifiedModel + durText + sampleText;
+    statusDiv.style.color = "var(--text-success, #4ade80)";
+    statusDiv.style.display = "block";
+  }
+  const authStatusDot = document.getElementById("settings-auth-status-dot");
+  const authStatusText = document.getElementById("settings-auth-status-text");
+  const sidebarLabel = document.getElementById("status-indicator-label");
+  if (authStatusDot && window.oauthLoggedIn) authStatusDot.className = "status-dot connected";
+  if (authStatusText) {
+    authStatusText.innerText = "Verified (" + verifiedModel + ")";
+    authStatusText.style.color = "var(--text-primary)";
+  }
+  if (sidebarLabel && window.oauthLoggedIn) {
+    sidebarLabel.innerText = "Shuffle AI Verified";
+  }
+  showToast("Shuffle AI verified: " + verifiedModel + durText);
+  return true;
+}
+
 async function saveDirectLlmSettings() {
   const urlInput = document.getElementById("input-ai-url");
   const keyInput = document.getElementById("input-ai-key");
   const modelInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
+  const saveBtn = document.getElementById("btn-save-direct-llm");
+  const statusSpan = document.getElementById("direct-llm-save-status");
 
   let chosenModel = "";
   if (modelInput && modelInput.value.trim()) {
@@ -711,7 +1155,7 @@ async function saveDirectLlmSettings() {
 
   currentAiUrl = aiUrl;
   currentAiKey = aiKey;
-  activeAiModel = chosenModel || "gpt-4o";
+  activeAiModel = chosenModel || "gemini-3.8-flash";
 
   if (activeAiModel && typeof addCustomByokModel === "function") {
     addCustomByokModel(activeAiModel);
@@ -722,6 +1166,71 @@ async function saveDirectLlmSettings() {
   localStorage.setItem("orborus_ai_model", activeAiModel);
   localStorage.setItem("orborus_custom_model", activeAiModel);
 
+  // Set testing UI state
+  const origText = "Save & Verify Key";
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Testing authentication...";
+  }
+  if (statusSpan) {
+    statusSpan.textContent = "Testing authentication...";
+    statusSpan.style.color = "var(--text-muted)";
+    statusSpan.style.display = "inline";
+  }
+
+  let authOk = true;
+  let authError = "";
+
+  try {
+    if (typeof window.bridgeCall === "function") {
+      const testPromise = window.bridgeCall("testAiConfig", JSON.stringify({
+        url: aiUrl,
+        key: aiKey,
+        model: activeAiModel
+      }));
+      const timeoutPromise = new Promise(function(resolve) {
+        setTimeout(resolve, 12000, JSON.stringify({ status: "error", message: "Authentication test timed out after 12s" }));
+      });
+      const testRespRaw = await Promise.race([testPromise, timeoutPromise]);
+      let parsed = null;
+      if (typeof testRespRaw === "string") {
+        try {
+          parsed = JSON.parse(testRespRaw);
+        } catch (e) {
+          parsed = { status: "ok" };
+        }
+      } else {
+        parsed = testRespRaw;
+      }
+      if (parsed && (parsed.status === "error" || parsed.error)) {
+        authOk = false;
+        authError = parsed.message || parsed.error || "Authentication failed";
+      }
+    }
+  } catch (e) {
+    console.warn("Authentication test error:", e);
+    authOk = false;
+    authError = e.message || String(e);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = origText;
+    }
+  }
+
+  if (!authOk) {
+    if (statusSpan) {
+      statusSpan.textContent = "Auth failed: " + authError;
+      statusSpan.style.color = "var(--text-error, #f87171)";
+      statusSpan.style.display = "inline";
+    }
+    updateEnvDisplayInModal();
+    renderByokModelsSettings();
+    showToast("Authentication failed: " + authError);
+    return;
+  }
+
+  // Auth test passed: persist configuration to backend
   if (typeof window.bridgeCall === "function") {
     try {
       await window.bridgeCall("setAiConfig", JSON.stringify({
@@ -733,6 +1242,16 @@ async function saveDirectLlmSettings() {
       console.warn("bridgeCall setAiConfig failed:", e);
     }
   }
+
+  if (statusSpan) {
+    statusSpan.textContent = "✓ Authentication verified & saved";
+    statusSpan.style.color = "var(--text-success, #4ade80)";
+    statusSpan.style.display = "inline";
+    setTimeout(() => {
+      if (statusSpan) statusSpan.style.display = "none";
+    }, 3500);
+  }
+
   updateEnvDisplayInModal();
   renderByokModelsSettings();
   updateModesDisplay();
@@ -742,7 +1261,7 @@ async function saveDirectLlmSettings() {
   if (typeof renderModelDropdown === "function") {
     renderModelDropdown();
   }
-  showToast("Direct LLM configuration saved");
+  showToast("Credentials verified & direct LLM saved");
 }
 
 async function submitOrborusAuth() {
@@ -785,11 +1304,55 @@ async function loadAndRenderSkills() {
     console.warn("Failed to query skills list:", err);
   }
 
+  if (typeof refreshShuffleSharedSkills === "function") {
+    try { await refreshShuffleSharedSkills(); } catch (_) {}
+  }
   renderSkillsView();
 }
 
 function renderSkillsView() {
+  const sharedContainer = document.getElementById("shuffle-shared-skills-container");
   const injContainer = document.getElementById("injected-skills-container");
+
+  if (sharedContainer) {
+    const catalog = (Array.isArray(window.shuffleSharedSkillsCatalog) && window.shuffleSharedSkillsCatalog.length > 0)
+      ? window.shuffleSharedSkillsCatalog
+      : (Array.isArray(window.DEFAULT_SHUFFLE_SHARED_SKILLS) ? window.DEFAULT_SHUFFLE_SHARED_SKILLS : []);
+    const attachedIds = new Set(Array.isArray(window.attachedShuffleSkills) ? window.attachedShuffleSkills : []);
+    sharedContainer.innerHTML = "";
+    catalog.forEach(skill => {
+      const sid = String(skill.id || "");
+      const isAttached = attachedIds.has(sid);
+      const reqApps = Array.isArray(skill.required_apps) && skill.required_apps.length > 0
+        ? skill.required_apps
+        : (Array.isArray(skill.tools) ? skill.tools.map(t => t.app_name).filter(Boolean) : []);
+      const toolBadgesHtml = reqApps.map(app => `<span class="skill-badge global">TOOL: ${escapeHtml(app)}</span>`).join("");
+      const descHtml = skill.description
+        ? `<div class="skill-card-desc">${escapeHtml(skill.description)}</div>`
+        : "";
+      const instructionsHtml = skill.instructions
+        ? `<details style="margin-top:8px;">
+             <summary style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;">View Predefined Template &amp; Tool Instructions</summary>
+             <pre class="skill-card-instructions">${escapeHtml(skill.instructions)}</pre>
+           </details>`
+        : "";
+      const card = document.createElement("div");
+      card.className = "skill-card";
+      card.innerHTML = `
+        <div class="skill-card-header">
+          <div class="skill-card-title-group" style="flex-wrap:wrap;">
+            <span class="skill-card-name">${escapeHtml(skill.name || sid)}</span>
+            <span class="skill-badge project">TEMPLATE: ${escapeHtml(skill.template || sid)}</span>
+            ${toolBadgesHtml}
+          </div>
+          <button type="button" class="btn-skill-revoke" onclick="toggleAttachShuffleSkill('${escapeJsAttr(sid)}', event)">${isAttached ? "Attached ✓" : "Attach"}</button>
+        </div>
+        ${descHtml}
+        ${instructionsHtml}
+      `;
+      sharedContainer.appendChild(card);
+    });
+  }
   const discContainer = document.getElementById("discovered-skills-container");
 
   if (injContainer) {
@@ -823,7 +1386,7 @@ function renderSkillsView() {
               <span class="skill-badge injected">INJECTED</span>
               ${controlBadge}
             </div>
-            <button type="button" class="btn-skill-revoke" onclick="removeInjectedSkill('${escapeHtml(skill.name)}')">Revoke</button>
+            <button type="button" class="btn-skill-revoke" onclick="removeInjectedSkill('${escapeJsAttr(skill.name)}')">Revoke</button>
           </div>
           ${descHtml}
           ${pathHtml}
@@ -1004,10 +1567,12 @@ async function removeInjectedSkill(skillName) {
   if (!skillName) return;
   try {
     let raw = null;
-    if (window.removeInjectedSkill) {
-      raw = await window.removeInjectedSkill(skillName);
-    } else if (window.bridgeCall) {
+    if (typeof window.removeInjectedSkillBackend === "function") {
+      raw = await window.removeInjectedSkillBackend(skillName);
+    } else if (typeof window.bridgeCall === "function") {
       raw = await window.bridgeCall("removeInjectedSkill", JSON.stringify({ name: skillName }));
+    } else if (typeof callGo === "function") {
+      raw = await callGo("removeInjectedSkill", JSON.stringify({ name: skillName }));
     }
 
     if (raw) {
@@ -1040,31 +1605,59 @@ function renderSettingsProjectsList() {
     return {};
   }
 
-  // Collect unique projects from allProjects or activeProjectPath
+  // Collect unique projects from allProjects, appConversations, or activeProjectPath in stable order
   const projectsMap = new Map();
-  if (activeProjectPath) {
-    let activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") || "";
-    if (!activeName || activeName === "Orborus Agent Runner") {
-      const parts = activeProjectPath === "." ? [] : activeProjectPath.split(/[/\\]/).filter(Boolean);
-      activeName = parts.length > 0 ? parts[parts.length - 1] : "Orborus Agent Runner";
+  const normKey = p => (p || "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+
+  const orderedSource = (typeof sortProjectsByStoredOrder === "function" && Array.isArray(allProjects))
+    ? sortProjectsByStoredOrder(allProjects)
+    : (Array.isArray(allProjects) ? allProjects : []);
+
+  orderedSource.forEach(p => {
+    if (!p) return;
+    const pPath = typeof p === "string" ? p : (p.Path || p.path || "");
+    if (!pPath || pPath === ".") return;
+    let pName = "";
+    if (typeof p === "object" && (p.Name || p.name)) {
+      pName = p.Name || p.name;
+    } else {
+      const parts = pPath.split(/[/\\]/).filter(Boolean);
+      pName = parts.length > 0 ? parts[parts.length - 1] : pPath;
     }
-    projectsMap.set(activeProjectPath, { name: activeName, path: activeProjectPath });
+    const key = normKey(pPath);
+    if (key && !projectsMap.has(key)) {
+      projectsMap.set(key, { name: pName, path: pPath });
+    }
+  });
+
+  if (Array.isArray(appConversations)) {
+    appConversations.forEach(c => {
+      if (!c) return;
+      const pPath = c.projectId || c.project_id || "";
+      if (!pPath || pPath === ".") return;
+      const key = normKey(pPath);
+      if (key && !projectsMap.has(key)) {
+        const pName = c.projectName || c.project_name || pPath.split(/[/\\]/).filter(Boolean).pop() || "Project";
+        projectsMap.set(key, { name: pName, path: pPath });
+      }
+    });
   }
 
-  if (Array.isArray(allProjects)) {
-    allProjects.forEach(p => {
-      if (!p) return;
-      const pPath = typeof p === "string" ? p : (p.Path || p.path || "");
-      if (!pPath) return;
-      let pName = "";
-      if (typeof p === "object" && (p.Name || p.name)) {
-        pName = p.Name || p.name;
-      } else {
-        const parts = pPath.split(/[/\\]/).filter(Boolean);
-        pName = parts.length > 0 ? parts[parts.length - 1] : pPath;
+  if (activeProjectPath && activeProjectPath !== ".") {
+    const activeKey = normKey(activeProjectPath);
+    if (activeKey && !projectsMap.has(activeKey)) {
+      let activeName = (document.getElementById("active-project-name") ? document.getElementById("active-project-name").innerText : "") || "";
+      if (!activeName || activeName === "Orborus Agent Runner" || activeName === "No project") {
+        const parts = activeProjectPath.split(/[/\\]/).filter(Boolean);
+        activeName = parts.length > 0 ? parts[parts.length - 1] : "Project";
       }
-      projectsMap.set(pPath, { name: pName, path: pPath });
-    });
+      projectsMap.set(activeKey, { name: activeName, path: activeProjectPath });
+    }
+  }
+
+  if (activeSettingsProject && !projectsMap.has(normKey(activeSettingsProject))) {
+    const fallbackName = activeSettingsProject === "." ? "Active Workspace" : (activeSettingsProject.split(/[/\\]/).filter(Boolean).pop() || "Project");
+    projectsMap.set(normKey(activeSettingsProject), { name: fallbackName, path: activeSettingsProject });
   }
 
   if (projectsMap.size === 0) {
@@ -1072,13 +1665,17 @@ function renderSettingsProjectsList() {
     return;
   }
 
+  const activeSettingsNorm = normKey(activeSettingsProject);
+  const activeProjNorm = normKey(activeProjectPath);
+
   projectsMap.forEach(proj => {
     const btn = document.createElement("button");
     btn.type = "button";
-    const isSelectedInSettings = activeSettingsProject === proj.path || activeSettingsTab === ("project:" + proj.path);
+    const projNorm = normKey(proj.path);
+    const isSelectedInSettings = (activeSettingsNorm && projNorm === activeSettingsNorm) || activeSettingsTab === ("project:" + proj.path);
     btn.className = "settings-nav-item project-item" + (isSelectedInSettings ? " active" : "");
     btn.dataset.projectPath = proj.path;
-    const isActiveProj = proj.path === activeProjectPath;
+    const isActiveProj = activeProjNorm && projNorm === activeProjNorm;
 
     const badgeHtml = isActiveProj ? '<span class="settings-project-badge">Active</span>' : '';
     btn.innerHTML = `
@@ -1096,8 +1693,22 @@ function renderSettingsProjectsList() {
   });
 }
 
+function openProjectSettings(projectPath, projectName, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const targetPath = projectPath || activeProjectPath || ".";
+  const targetName = projectName || (targetPath === "." ? "Active Workspace" : targetPath.split(/[/\\]/).filter(Boolean).pop()) || "Project";
+  activeSettingsProject = targetPath;
+  openSettingsModal("project:" + targetPath);
+  selectSettingsProject(targetPath, targetName);
+}
+
 function selectSettingsProject(path, name) {
   if (!path) return;
+  const backBtn = document.getElementById("btn-permissions-detail-back");
+  if (backBtn) backBtn.style.display = "none";
   activeSettingsTab = "project:" + path;
   activeSettingsProject = path;
 
@@ -1106,8 +1717,10 @@ function selectSettingsProject(path, name) {
   document.querySelectorAll(".settings-panel").forEach(el => el.classList.remove("active"));
 
   // Highlight this project button
+  const normTarget = (path || "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
   document.querySelectorAll(".settings-nav-item.project-item").forEach(btn => {
-    if (btn.dataset.projectPath === path) {
+    const btnNorm = (btn.dataset.projectPath || "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    if (btn.dataset.projectPath === path || (normTarget && btnNorm === normTarget)) {
       btn.classList.add("active");
     }
   });
@@ -1128,7 +1741,8 @@ function selectSettingsProject(path, name) {
 
   const btnActive = document.getElementById("btn-set-active-workspace");
   if (btnActive) {
-    if (path === activeProjectPath) {
+    const normActive = (activeProjectPath || "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    if (path === activeProjectPath || (normTarget && normTarget === normActive)) {
       btnActive.innerText = "Active Workspace";
       btnActive.classList.add("active");
       btnActive.disabled = true;
@@ -1171,6 +1785,267 @@ function selectSettingsProject(path, name) {
     }
   }
   if (inputCmds) inputCmds.value = perms.allowed_commands || "";
+  if (typeof renderProjectAttachedFolders === "function") {
+    renderProjectAttachedFolders(path);
+  }
+  if (typeof renderPermissionsSummaries === "function") {
+    renderPermissionsSummaries();
+  }
+}
+
+const MAX_PROJECT_FOLDERS = 5;
+
+function getOrInitProjectPermissionEntry(projPath) {
+  if (!projPath) return null;
+  if (!currentProjectPermissions) currentProjectPermissions = {};
+  if (currentProjectPermissions[projPath]) {
+    return { key: projPath, perms: currentProjectPermissions[projPath] };
+  }
+  const norm = String(projPath).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  for (const k of Object.keys(currentProjectPermissions)) {
+    if (String(k).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase() === norm) {
+      return { key: k, perms: currentProjectPermissions[k] };
+    }
+  }
+  currentProjectPermissions[projPath] = {
+    permission_policy: "inherit",
+    terminal_execution_policy: "inherit",
+    file_access_policy: "inherit",
+    sandbox_mode: null,
+    allowed_commands: "",
+    attached_folders: []
+  };
+  return { key: projPath, perms: currentProjectPermissions[projPath] };
+}
+
+function getProjectFoldersList(projPath) {
+  const target = (projPath || activeSettingsProject || activeProjectPath || "").trim();
+  if (!target || target === "." || target === "__NONE__") return [];
+  const normFn = p => String(p || "").trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const seen = new Set([normFn(target)]);
+  const folders = [target];
+
+  if (currentProjectPermissions) {
+    let perms = currentProjectPermissions[target];
+    if (!perms) {
+      const targetNorm = normFn(target);
+      for (const k of Object.keys(currentProjectPermissions)) {
+        if (normFn(k) === targetNorm) {
+          perms = currentProjectPermissions[k];
+          break;
+        }
+      }
+    }
+    if (perms && Array.isArray(perms.attached_folders)) {
+      for (const raw of perms.attached_folders) {
+        const clean = String(raw || "").trim();
+        if (!clean || clean === "." || clean === "__NONE__") continue;
+        const n = normFn(clean);
+        if (seen.has(n)) continue;
+        seen.add(n);
+        folders.push(clean);
+        if (folders.length >= MAX_PROJECT_FOLDERS) break;
+      }
+    }
+  }
+  return folders.slice(0, MAX_PROJECT_FOLDERS);
+}
+
+function renderProjectAttachedFolders(projPath) {
+  const targetPath = (projPath || activeSettingsProject || activeProjectPath || "").trim();
+  const listEl = document.getElementById("project-attached-folders-list");
+  const badgeEl = document.getElementById("project-folders-count-badge");
+  const btnAttach = document.getElementById("btn-attach-project-folder");
+  const btnInput = document.getElementById("btn-toggle-attach-folder-input");
+  if (!listEl) return;
+
+  const folders = getProjectFoldersList(targetPath);
+  const count = folders.length;
+  const atMax = count >= MAX_PROJECT_FOLDERS;
+
+  if (badgeEl) {
+    badgeEl.innerText = `${count} / ${MAX_PROJECT_FOLDERS}`;
+  }
+  if (btnAttach) {
+    btnAttach.disabled = atMax || !targetPath || targetPath === ".";
+    btnAttach.style.opacity = btnAttach.disabled ? "0.45" : "1";
+    btnAttach.style.cursor = btnAttach.disabled ? "not-allowed" : "pointer";
+    btnAttach.innerText = atMax ? "Max 5 Folders" : "+ Attach Folder";
+  }
+  if (btnInput) {
+    btnInput.disabled = atMax || !targetPath || targetPath === ".";
+    btnInput.style.opacity = btnInput.disabled ? "0.45" : "1";
+    btnInput.style.cursor = btnInput.disabled ? "not-allowed" : "pointer";
+  }
+  if (atMax) {
+    cancelAttachProjectFolderInput();
+  }
+
+  if (folders.length === 0) {
+    listEl.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:6px 0;">Select a project workspace to attach folders.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = "";
+  folders.forEach((folderPath, idx) => {
+    const isPrimary = idx === 0;
+    const parts = String(folderPath).split(/[/\\]/).filter(Boolean);
+    const folderName = parts.length > 0 ? parts[parts.length - 1] : folderPath;
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 2px;" +
+      (idx < folders.length - 1 ? " border-bottom:1px solid rgba(255, 255, 255, 0.05);" : "");
+
+    const rolePill = isPrimary
+      ? `<span style="font-size:10px; color:var(--text-muted); background:rgba(255, 255, 255, 0.06); padding:1px 6px; border-radius:4px; flex-shrink:0;">Primary Root</span>`
+      : `<span style="font-size:10px; color:var(--text-muted); background:rgba(255, 255, 255, 0.05); padding:1px 6px; border-radius:4px; flex-shrink:0;">Attached #${idx + 1}</span>`;
+
+    const actionHtml = isPrimary
+      ? ""
+      : `<button type="button" class="btn-perm-open" style="padding:2px 8px; font-size:11px; color:var(--text-muted);" title="Detach folder from project" onclick="removeProjectFolder('${escapeJsAttr(folderPath)}', '${escapeJsAttr(targetPath)}')">Detach</button>`;
+
+    row.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:2px; min-width:0; flex:1;">
+        <div style="display:flex; align-items:center; gap:7px; min-width:0;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); flex-shrink:0;">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span style="font-size:12px; font-weight:500; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folderName)}</span>
+          ${rolePill}
+        </div>
+        <div style="font-size:11px; font-family:ui-monospace,Menlo,Monaco,monospace; color:var(--text-muted); padding-left:20px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(folderPath)}">${escapeHtml(folderPath)}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+        ${actionHtml}
+      </div>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
+function toggleAttachProjectFolderInput() {
+  const row = document.getElementById("project-attach-folder-input-row");
+  const input = document.getElementById("input-attach-project-folder");
+  if (!row) return;
+  const targetPath = (activeSettingsProject || activeProjectPath || "").trim();
+  const folders = getProjectFoldersList(targetPath);
+  if (folders.length >= MAX_PROJECT_FOLDERS) {
+    showToast("Maximum of 5 primary folders can be attached to a project");
+    return;
+  }
+  const isVisible = row.style.display === "flex";
+  row.style.display = isVisible ? "none" : "flex";
+  if (!isVisible && input) {
+    input.value = "";
+    input.focus();
+  }
+}
+
+function cancelAttachProjectFolderInput() {
+  const row = document.getElementById("project-attach-folder-input-row");
+  const input = document.getElementById("input-attach-project-folder");
+  if (row) row.style.display = "none";
+  if (input) input.value = "";
+}
+
+function confirmAttachProjectFolderInput() {
+  const input = document.getElementById("input-attach-project-folder");
+  const rawVal = input ? input.value.trim() : "";
+  if (!rawVal) {
+    showToast("Please enter a folder path to attach");
+    return;
+  }
+  const targetPath = (activeSettingsProject || activeProjectPath || "").trim();
+  if (addAttachedFolderToProject(targetPath, rawVal)) {
+    cancelAttachProjectFolderInput();
+  }
+}
+
+function addAttachedFolderToProject(projPath, newFolderPath) {
+  const targetPath = (projPath || activeSettingsProject || activeProjectPath || "").trim();
+  const candidate = String(newFolderPath || "").trim();
+  if (!targetPath || targetPath === ".") {
+    showToast("Select a project first before attaching folders");
+    return false;
+  }
+  if (!candidate) return false;
+
+  const existing = getProjectFoldersList(targetPath);
+  if (existing.length >= MAX_PROJECT_FOLDERS) {
+    showToast("Maximum of 5 folders can be attached to a project");
+    return false;
+  }
+
+  const normFn = p => String(p || "").trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const candidateNorm = normFn(candidate);
+  if (existing.some(f => normFn(f) === candidateNorm)) {
+    showToast("That folder is already attached to this project");
+    return false;
+  }
+
+  const entry = getOrInitProjectPermissionEntry(targetPath);
+  if (!entry) return false;
+  if (!Array.isArray(entry.perms.attached_folders)) {
+    entry.perms.attached_folders = [];
+  }
+  if (entry.perms.attached_folders.length >= MAX_PROJECT_FOLDERS - 1) {
+    showToast("Maximum of 5 folders can be attached to a project");
+    return false;
+  }
+  entry.perms.attached_folders.push(candidate);
+  persistProjectPermissions(entry.key);
+  renderProjectAttachedFolders(targetPath);
+  if (typeof renderProjectTree === "function") renderProjectTree();
+  if (typeof renderSettingsProjectsList === "function") renderSettingsProjectsList();
+  showToast("Attached folder to project (" + (existing.length + 1) + "/" + MAX_PROJECT_FOLDERS + ")");
+  return true;
+}
+
+async function attachProjectFolder(projPath) {
+  const targetPath = (projPath || activeSettingsProject || activeProjectPath || "").trim();
+  if (!targetPath || targetPath === ".") {
+    showToast("Select a project first before attaching folders");
+    return;
+  }
+  const existing = getProjectFoldersList(targetPath);
+  if (existing.length >= MAX_PROJECT_FOLDERS) {
+    showToast("Maximum of 5 folders can be attached to a project");
+    return;
+  }
+
+  if (typeof window.chooseDirectory === "function") {
+    try {
+      const raw = await window.chooseDirectory();
+      const res = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (res && res.status === "ok" && res.path) {
+        addAttachedFolderToProject(targetPath, res.path);
+        return;
+      }
+      if (res && res.status === "cancelled") {
+        return;
+      }
+    } catch (err) {
+      console.warn("chooseDirectory failed, falling back to manual path input:", err);
+    }
+  }
+  toggleAttachProjectFolderInput();
+}
+
+function removeProjectFolder(folderPath, projPath) {
+  const targetPath = (projPath || activeSettingsProject || activeProjectPath || "").trim();
+  if (!targetPath || !folderPath) return;
+  const entry = getOrInitProjectPermissionEntry(targetPath);
+  if (!entry || !Array.isArray(entry.perms.attached_folders)) return;
+
+  const normFn = p => String(p || "").trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const targetFolderNorm = normFn(folderPath);
+  entry.perms.attached_folders = entry.perms.attached_folders.filter(f => normFn(f) !== targetFolderNorm);
+
+  persistProjectPermissions(entry.key);
+  renderProjectAttachedFolders(targetPath);
+  if (typeof renderProjectTree === "function") renderProjectTree();
+  if (typeof renderSettingsProjectsList === "function") renderSettingsProjectsList();
+  showToast("Detached folder from project");
 }
 
 function persistProjectPermissions(projPath) {
@@ -1198,6 +2073,9 @@ function updateProjectSettingField(field, value) {
   }
   currentProjectPermissions[activeSettingsProject][field] = value;
   persistProjectPermissions(activeSettingsProject);
+  if (typeof renderPermissionsSummaries === "function") {
+    renderPermissionsSummaries();
+  }
 }
 
 function updateProjectSandboxField(value) {
@@ -1226,7 +2104,7 @@ async function switchActiveWorkspaceFromSettings() {
   if (!activeSettingsProject) return;
   const nameEl = document.getElementById("lbl-project-name");
   const name = nameEl ? nameEl.innerText : activeSettingsProject.split(/[/\\]/).filter(Boolean).pop() || "Project";
-  await selectProject(activeSettingsProject, name);
+  await selectProject(activeSettingsProject, name, { preserveConversationProject: true });
   selectSettingsProject(activeSettingsProject, name);
   renderSettingsProjectsList();
   showToast("Switched active workspace to: " + name);
@@ -1247,7 +2125,7 @@ function populateAiModelSelect() {
     categories[cat].push(m);
   });
 
-  const orderedCategories = ["Local Models", "BYOK Models", "Shuffle AI"];
+  const orderedCategories = ["Shuffle AI", "Local Models", "BYOK Models"];
   Object.keys(categories).forEach(c => {
     if (!orderedCategories.includes(c)) orderedCategories.push(c);
   });
@@ -1298,7 +2176,7 @@ function updateEnvDisplayInModal() {
   const byokInput = document.getElementById("input-byok-model-name");
   const modelSelect = document.getElementById("select-ai-model");
   const customModelInput = document.getElementById("input-settings-custom-model");
-  let model = (byokInput && byokInput.value.trim()) || (modelSelect && modelSelect.value) || (activeAiModel || "gemini-3.8-flash");
+  let model = (byokInput && byokInput.value.trim()) || (modelSelect && modelSelect.value) || (activeAiModel || "tendon-local");
 
   if (model === "custom") {
     if (customModelInput) {
@@ -1312,7 +2190,15 @@ function updateEnvDisplayInModal() {
   }
 
   let defaultUrl = "";
-  if (model.startsWith("gemini")) {
+  const isShuffleEnv =
+    window.oauthLoggedIn ||
+    window.activeExecutionMode === "shuffle" ||
+    model === "shuffle-ai" ||
+    model === "shuffle" ||
+    (currentAiKey && currentAiKey.startsWith("shfl_"));
+  if (isShuffleEnv) {
+    defaultUrl = "https://uk.shuffler.io/api/v1 (Shuffle AI)";
+  } else if (model.startsWith("gemini")) {
     defaultUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
   } else if (model.startsWith("gpt")) {
     defaultUrl = "https://api.openai.com/v1";
@@ -1360,14 +2246,29 @@ async function saveSettings() {
     const globalTerminal = document.getElementById("select-global-terminal-policy");
     const globalSandbox = document.getElementById("toggle-global-sandbox");
 
-    const url = urlInput ? urlInput.value.trim() : (currentAiUrl || "");
+    let url = urlInput ? urlInput.value.trim() : (currentAiUrl || "");
     let key = keyInput ? keyInput.value.trim() : "";
     if (!key && currentAiKey && activeSettingsTab !== "models" && activeSettingsTab !== "mode-direct") {
       key = currentAiKey;
     }
-    let model = (byokModelInput && byokModelInput.value.trim()) || (modelSelect ? modelSelect.value : (activeAiModel || "gemini-3.8-flash"));
+    if (!window.oauthLoggedIn) {
+      if (key.startsWith("shfl_")) {
+        key = "";
+        if (keyInput && keyInput.value.trim().startsWith("shfl_")) keyInput.value = "";
+        localStorage.removeItem("orborus_ai_key");
+      }
+      if (url.includes("shuffler.io") || url.includes("shuffle")) {
+        url = "";
+        if (urlInput && (urlInput.value.includes("shuffler.io") || urlInput.value.includes("shuffle"))) urlInput.value = "";
+        localStorage.removeItem("orborus_ai_url");
+      }
+    }
+    let model = (byokModelInput && byokModelInput.value.trim()) || (modelSelect ? modelSelect.value : (activeAiModel || "tendon-local"));
     if (model === "custom" && customModelInput && customModelInput.value.trim()) {
       model = customModelInput.value.trim();
+    }
+    if (!window.oauthLoggedIn && (model === "shuffle-ai" || model === "shuffle")) {
+      model = "tendon-local";
     }
     const preset = globalPreset ? globalPreset.value : (currentPermissionPolicy || "ask_all");
     const fileAccess = globalFileAccess ? globalFileAccess.value : (currentFileAccessPolicy || "ask");
@@ -1395,7 +2296,7 @@ async function saveSettings() {
     }
     if (key) {
       localStorage.setItem("orborus_ai_key", key);
-    } else if (activeSettingsTab === "models" || activeSettingsTab === "mode-direct") {
+    } else if (!window.oauthLoggedIn || activeSettingsTab === "models" || activeSettingsTab === "mode-direct") {
       localStorage.removeItem("orborus_ai_key");
     }
     localStorage.setItem("orborus_ai_model", model);
@@ -1408,7 +2309,8 @@ async function saveSettings() {
 
     // Optimistically update Auth State UI immediately
     updateAuthState({
-      is_logged_in: !!(key || url),
+      is_logged_in: !!window.oauthLoggedIn,
+      oauth_logged_in: !!window.oauthLoggedIn,
       is_bypassed: true,
       ai_api_url: url,
       ai_api_key: key,
@@ -1517,7 +2419,8 @@ async function saveSettings() {
       updateAuthState(savedState);
     } else {
       updateAuthState({
-        is_logged_in: true,
+        is_logged_in: !!window.oauthLoggedIn,
+        oauth_logged_in: !!window.oauthLoggedIn,
         is_bypassed: true,
         ai_api_url: url,
         ai_api_key: key,
@@ -1537,9 +2440,9 @@ async function saveSettings() {
     if (baseUrlInput || orgIdInput || authKeyInput || envNameInput) {
       const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : "";
       const orgId = orgIdInput ? orgIdInput.value.trim() : "";
-      const auth = authKeyInput ? authKeyInput.value.trim() : "";
+      const auth = (window.oauthLoggedIn && authKeyInput) ? authKeyInput.value.trim() : "";
       const env = envNameInput ? envNameInput.value.trim() : "";
-      if (orgId || auth || env || baseUrl) {
+      if (window.oauthLoggedIn && (orgId || auth || env || baseUrl)) {
         if (typeof window.updateAuth === "function") {
           try {
             await window.updateAuth({
@@ -1579,35 +2482,206 @@ async function saveSettings() {
   }
 }
 
+async function logoutShuffle(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  isOAuthPending = false;
+  window.shuffleVerified = false;
+  window.oauthLoggedIn = false;
+  isLoggedIn = false;
+
+  const testStatusDiv = document.getElementById("shuffle-ai-test-status");
+  if (testStatusDiv) testStatusDiv.style.display = "none";
+
+  const inputAuthKey = document.getElementById("input-auth-key");
+  const inputOrgId = document.getElementById("input-org-id");
+  const inputEnvName = document.getElementById("input-env-name");
+  const inputBaseUrl = document.getElementById("input-base-url");
+  const inputAiKey = document.getElementById("input-ai-key");
+  const inputAiUrl = document.getElementById("input-ai-url");
+  if (inputAuthKey) inputAuthKey.value = "";
+  if (inputOrgId) inputOrgId.value = "";
+  if (inputEnvName) inputEnvName.value = "";
+  if (inputBaseUrl) inputBaseUrl.value = "";
+  if (inputAiKey && inputAiKey.value.trim().startsWith("shfl_")) inputAiKey.value = "";
+  if (inputAiUrl && (inputAiUrl.value.includes("shuffler.io") || inputAiUrl.value.includes("shuffle"))) inputAiUrl.value = "";
+
+  if (typeof currentAiKey !== "undefined" && currentAiKey && currentAiKey.startsWith("shfl_")) {
+    currentAiKey = "";
+  }
+  if (typeof currentAiUrl !== "undefined" && currentAiUrl && (currentAiUrl.includes("shuffler.io") || currentAiUrl.includes("shuffle"))) {
+    currentAiUrl = "";
+  }
+
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem("orborus_oauth_logged_in");
+    const currentStoredKey = localStorage.getItem("orborus_ai_key") || "";
+    const currentStoredUrl = localStorage.getItem("orborus_ai_url") || "";
+    if (currentStoredKey.startsWith("shfl_") || currentStoredUrl.includes("shuffler.io") || currentStoredUrl.includes("shuffle")) {
+      localStorage.removeItem("orborus_ai_key");
+      if (typeof currentAiKey !== "undefined") currentAiKey = "";
+    }
+    if (currentStoredUrl.includes("shuffler.io") || currentStoredUrl.includes("shuffle")) {
+      localStorage.removeItem("orborus_ai_url");
+      if (typeof currentAiUrl !== "undefined") currentAiUrl = "";
+    }
+  }
+
+  if (activeAiModel === "shuffle-ai" || activeAiModel === "shuffle") {
+    activeAiModel = "tendon-local";
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orborus_ai_model", "tendon-local");
+      localStorage.setItem("orborus_active_ai_model", "tendon-local");
+    }
+  }
+  if (activeExecutionMode === "cloud" || activeExecutionMode === "hybrid" || activeExecutionMode === "shuffle") {
+    activeExecutionMode = "local";
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orborus_active_execution_mode", "local");
+    }
+  }
+
+  const immediateResetState = {
+    oauth_logged_in: false,
+    is_logged_in: false,
+    oauth_token: "",
+    auth: "",
+    environment: "standalone",
+    org_id: "",
+    base_url: "",
+    ai_api_key: currentAiKey || "",
+    ai_api_url: currentAiUrl || "",
+    ai_model: activeAiModel,
+    active_execution_mode: activeExecutionMode
+  };
+
+  // Immediately update UI to disconnected before awaiting backend bridge
+  updateAuthState(immediateResetState);
+  if (typeof updateModesDisplay === "function") updateModesDisplay();
+  if (typeof populateAiModelSelect === "function") populateAiModelSelect();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+
+  try {
+    let resp = null;
+    const callLogoutBackend = async function() {
+      if (typeof window.logoutShuffleBridge === "function") {
+        return await window.logoutShuffleBridge();
+      }
+      if (typeof callGo === "function") {
+        return await callGo("logoutShuffle", "{}");
+      }
+      if (typeof window.bridgeCall === "function") {
+        return await window.bridgeCall("logoutShuffle", "{}");
+      }
+      return "{}";
+    };
+    const logoutPromise = callLogoutBackend();
+    const timeoutPromise = new Promise(function(resolve) {
+      setTimeout(resolve, 5000, "{}");
+    });
+    const respRaw = await Promise.race([logoutPromise, timeoutPromise]);
+    if (typeof respRaw === "string") {
+      try { resp = JSON.parse(respRaw); } catch (_) { resp = respRaw; }
+    } else {
+      resp = respRaw;
+    }
+
+    const backendState = (resp && resp.state) ? Object.assign({}, resp.state, {
+      oauth_logged_in: false,
+      is_logged_in: false,
+      oauth_token: "",
+      auth: ""
+    }) : immediateResetState;
+
+    updateAuthState(backendState);
+    if (typeof updateModesDisplay === "function") updateModesDisplay();
+    if (typeof populateAiModelSelect === "function") populateAiModelSelect();
+    if (typeof renderModelDropdown === "function") renderModelDropdown();
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof showToast === "function") {
+      showToast("Logged out of Shuffle AI. Configuration reset.");
+    }
+  } catch (err) {
+    console.error("[OAUTH] Logout error:", err);
+    updateAuthState(immediateResetState);
+    if (typeof updateModesDisplay === "function") updateModesDisplay();
+    if (typeof renderModelDropdown === "function") renderModelDropdown();
+    if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+    if (typeof showToast === "function") {
+      showToast("Logged out of Shuffle AI.");
+    }
+  }
+}
+window.logoutShuffle = logoutShuffle;
+
 window.onAuthUpdated = function(state) {
   console.log("[OAUTH] Dynamic auth updated:", state);
+  if (typeof state === "string") {
+    try { state = JSON.parse(state); } catch (_) {}
+  }
+  state = state || {};
+  const wasPending = isOAuthPending;
   isOAuthPending = false;
+  const isNowConnected = (state.oauth_logged_in === true) && !!(state.oauth_token || (state.auth && state.auth !== "local-tendon" && !state.auth.startsWith("sk-") && !state.auth.startsWith("AIza")));
+  if (isNowConnected) {
+    window.oauthLoggedIn = true;
+    window.shuffleVerified = true;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orborus_oauth_logged_in", "true");
+    }
+  } else {
+    window.oauthLoggedIn = false;
+    window.shuffleVerified = false;
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("orborus_oauth_logged_in");
+    }
+  }
+  const cancelBtn = document.getElementById("btn-oauth-cancel");
+  if (cancelBtn) cancelBtn.style.display = "none";
   updateAuthState(state);
   updateModesDisplay();
   dismissAuthErrorsIfConfigured();
+  if (typeof populateAiModelSelect === "function") populateAiModelSelect();
+  if (typeof renderModelDropdown === "function") renderModelDropdown();
+  if (typeof updateActiveModelLabel === "function") updateActiveModelLabel();
+  if (typeof showToast === "function") {
+    if (wasPending && isNowConnected) {
+      showToast("Shuffle OAuth2 authentication complete! Shuffle AI models enabled.");
+    } else if (wasPending && !isNowConnected) {
+      showToast("Shuffle AI authentication failed or was cancelled.", "error");
+    }
+  }
 };
 
 async function loginWithOAuth() {
-  if (isOAuthPending) return;
   isOAuthPending = true;
 
   const btnLabel = document.getElementById("lbl-btn-oauth-login") || document.getElementById("lbl-btn-auth");
+  const cancelBtn = document.getElementById("btn-oauth-cancel");
+  const authStatusText = document.getElementById("settings-auth-status-text");
+  const authStatusDot = document.getElementById("settings-auth-status-dot");
   if (btnLabel) btnLabel.innerText = "Opening Browser...";
+  if (cancelBtn) cancelBtn.style.display = "inline-flex";
+  if (authStatusDot) authStatusDot.className = "status-dot standalone";
+  if (authStatusText) {
+    authStatusText.innerText = "Opening browser for login...";
+    authStatusText.style.color = "var(--text-secondary)";
+  }
 
   try {
     let authUrl = "";
+    let respRaw = null;
     if (typeof window.startOAuthLogin === "function") {
-      const respRaw = await window.startOAuthLogin("https://shuffle.security");
-      let resp = respRaw;
-      if (typeof respRaw === "string") {
-        try { resp = JSON.parse(respRaw); } catch (_) {}
-      }
-      if (resp && resp.status === "error") {
-        throw new Error(resp.error || "Failed to start OAuth login");
-      }
-      if (resp && resp.url) authUrl = resp.url;
+      respRaw = await window.startOAuthLogin("https://shuffle.security");
+    } else if (typeof callGo === "function") {
+      respRaw = await callGo("startOAuthLogin", "https://shuffle.security");
     } else if (typeof window.bridgeCall === "function") {
-      const respRaw = await window.bridgeCall("startOAuthLogin", JSON.stringify({ base_url: "https://shuffle.security" }));
+      respRaw = await window.bridgeCall("startOAuthLogin", JSON.stringify({ base_url: "https://shuffle.security" }));
+    }
+
+    if (respRaw !== null && respRaw !== undefined) {
       let resp = respRaw;
       if (typeof respRaw === "string") {
         try { resp = JSON.parse(respRaw); } catch (_) {}
@@ -1621,15 +2695,50 @@ async function loginWithOAuth() {
       window.open(authUrl, "_blank");
     }
 
-    if (btnLabel) btnLabel.innerText = "Waiting for Login...";
-    showToast("Opening browser for Shuffle OAuth2 login...");
+    if (btnLabel) btnLabel.innerText = "Waiting for Login... (Re-open)";
+    if (authStatusText) authStatusText.innerText = "Waiting for browser login...";
+    const btnOAuth = document.getElementById("btn-oauth-login");
+    if (btnOAuth) btnOAuth.title = "Click to re-open Shuffle AI login in browser";
+    showToast("Opening browser for Shuffle AI login...");
   } catch (err) {
     console.error("Failed to start OAuth login:", err);
-    if (btnLabel) btnLabel.innerText = "Open Shuffle OAuth2 Login";
     isOAuthPending = false;
+    if (btnLabel) btnLabel.innerText = "Connect Shuffle AI";
+    if (cancelBtn) cancelBtn.style.display = "none";
+    updateAuthState({
+      oauth_logged_in: !!window.oauthLoggedIn,
+      is_logged_in: !!window.oauthLoggedIn
+    });
     showToast("Error opening login: " + (err.message || err));
   }
 }
+
+async function cancelOAuthLogin(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  isOAuthPending = false;
+  const btnLabel = document.getElementById("lbl-btn-oauth-login") || document.getElementById("lbl-btn-auth");
+  const cancelBtn = document.getElementById("btn-oauth-cancel");
+  if (btnLabel) btnLabel.innerText = "Connect Shuffle AI";
+  if (cancelBtn) cancelBtn.style.display = "none";
+
+  try {
+    if (typeof window.cancelOAuthLoginBridge === "function") {
+      await window.cancelOAuthLoginBridge();
+    } else if (typeof window.bridgeCall === "function") {
+      await window.bridgeCall("cancelOAuthLogin", "{}");
+    }
+  } catch (err) {
+    console.warn("Cancel OAuth login error:", err);
+  }
+  updateAuthState({
+    oauth_logged_in: !!window.oauthLoggedIn,
+    is_logged_in: !!window.oauthLoggedIn
+  });
+  showToast("Cancelled pending Shuffle AI login");
+}
+window.cancelOAuthLogin = cancelOAuthLogin;
 
 // --- Local Models Management & Storage (Native Tendon Engine) ---
 async function loadLocalModelsSettings() {
@@ -1642,7 +2751,7 @@ async function loadLocalModelsSettings() {
   // Update hardware telemetry badge
   const hwPill = document.getElementById("local-hardware-pill");
   if (hwPill) {
-    const gpuName = window.localGpuName || "RTX 3080 Ti";
+    const gpuName = window.localGpuName || "Local GPU";
     const vramFree = window.localVramFreeMB ? ` (${Math.round(window.localVramFreeMB / 1024 * 10) / 10}GB free)` : "";
     hwPill.innerHTML = `${escapeHtml(gpuName)}${vramFree} &bull; Direct VRAM`;
   }
@@ -1717,19 +2826,31 @@ async function scanLocalModels() {
       data = typeof raw === "string" ? JSON.parse(raw) : raw;
     }
 
+    if (data && typeof updateLocalModelCatalogState === "function") {
+      updateLocalModelCatalogState(
+        data.catalog,
+        data.free_disk_bytes,
+        data.free_disk_gb,
+        data.free_disk_display,
+        data.download_state
+      );
+    }
+
+    const diskSuffix = (data && data.free_disk_display) ? ` · ${data.free_disk_display}` : "";
+
     if (!data || !Array.isArray(data.models)) {
       if (container) {
         container.innerHTML = `<div style="padding:12px; text-align:center; color:var(--text-muted); font-size:12px;">
           No .gguf models found in <code>${escapeHtml(targetDir)}</code>
         </div>`;
       }
-      if (countEl) countEl.innerText = "0 models found";
+      if (countEl) countEl.innerText = `0 models found${diskSuffix}`;
       return;
     }
 
     const models = data.models;
     const activePath = data.active_model_path || window.localModelPath || "";
-    if (countEl) countEl.innerText = `${models.length} model${models.length === 1 ? "" : "s"} found`;
+    if (countEl) countEl.innerText = `${models.length} model${models.length === 1 ? "" : "s"} found${diskSuffix}`;
 
     // Update active model card
     const activeModel = models.find(m => m.is_active || m.path === activePath) || (models.length > 0 ? models[0] : null);
@@ -1748,29 +2869,53 @@ async function scanLocalModels() {
     if (container) {
       container.innerHTML = "";
       models.forEach(m => {
+        const memFit = (typeof checkLocalModelMemoryFit === "function") ? checkLocalModelMemoryFit(m) : { isOutsideRange: false };
+        const isOutOfRange = !!memFit.isOutsideRange;
         const row = document.createElement("div");
         const isActive = !!m.is_active || (activePath && (m.path === activePath || m.name === activePath.split(/[\\/]/).pop()));
-        row.className = "local-model-row" + (isActive ? " active" : "");
+        let rowClass = "local-model-row" + (isActive ? " active" : "");
+        if (isOutOfRange) {
+          rowClass += " disabled-range";
+          row.title = memFit.tooltip || memFit.reason;
+        }
+        row.className = rowClass;
 
+        const easyName = (typeof formatEasyModelName === "function") ? formatEasyModelName(m.name) : m.name;
+        const ramEst = (typeof estimateModelRam === "function") ? estimateModelRam(m.name, m.size_bytes) : "";
         const quantHtml = m.quant ? `<span class="local-model-quant-badge">${escapeHtml(m.quant)}</span>` : "";
         const sizeHtml = m.size_display ? `<span class="local-model-size-badge">${escapeHtml(m.size_display)}</span>` : "";
+        const ramBadgeClass = isOutOfRange ? "model-ram-badge outside-range" : "model-ram-badge";
+        const ramHtml = ramEst ? `<span class="${ramBadgeClass}" title="${escapeHtml(memFit.tooltip || ramEst)}">${escapeHtml(ramEst)}</span>` : "";
+        const statusPill = isOutOfRange ? `<span class="model-badge unavailable" title="${escapeHtml(memFit.tooltip || memFit.reason)}">Exceeds Range</span>` : "";
+
+        let btnHtml = "";
+        if (isActive) {
+          btnHtml = `<button type="button" class="btn-activate-model active">Active Model</button>`;
+        } else if (isOutOfRange) {
+          btnHtml = `<button type="button" class="btn-activate-model disabled" disabled title="${escapeHtml(memFit.tooltip || memFit.reason)}" style="opacity:0.4; cursor:not-allowed;">Unavailable</button>`;
+        } else {
+          btnHtml = `<button type="button" class="btn-activate-model">Activate</button>`;
+        }
 
         row.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; flex:1;">
-            <div class="local-model-name" title="${escapeHtml(m.path || m.name)}">${escapeHtml(m.name)}</div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="local-model-name" style="font-weight:600;" title="${escapeHtml(m.path || m.name)}">${escapeHtml(easyName)}</span>
+              ${ramHtml}
+              ${statusPill}
+            </div>
             <div class="local-model-meta">
+              <span style="font-size:11px; opacity:0.85; font-family:monospace;">${escapeHtml(m.name)}</span>
               ${sizeHtml}
               ${quantHtml}
               <span style="font-size:10.5px; opacity:0.7;">${escapeHtml(m.mod_time || "")}</span>
             </div>
           </div>
-          <button type="button" class="btn-activate-model${isActive ? " active" : ""}">
-            ${isActive ? "Active Model" : "Activate"}
-          </button>
+          ${btnHtml}
         `;
 
         const btn = row.querySelector(".btn-activate-model");
-        if (btn && !isActive) {
+        if (btn && !isActive && !isOutOfRange) {
           btn.onclick = (e) => {
             e.stopPropagation();
             selectLocalModel(m.path, m.name);
@@ -1796,13 +2941,17 @@ function updateActiveModelDisplay(model, fallbackPath) {
   const metaEl = document.getElementById("active-model-meta");
   const pillEl = document.getElementById("active-model-status-pill");
 
-  const name = model ? model.name : (fallbackPath ? fallbackPath.split(/[\\/]/).pop() : "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf");
+  const rawName = model ? model.name : (fallbackPath ? fallbackPath.split(/[\\/]/).pop() : "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf");
+  const easyName = (typeof formatEasyModelName === "function") ? formatEasyModelName(rawName) : rawName;
   const size = model && model.size_display ? model.size_display : "~12.1 GB";
   const quant = model && model.quant ? ` &bull; ${model.quant}` : "";
+  const ramEst = (typeof estimateModelRam === "function") ? estimateModelRam(rawName, model ? model.size_bytes : 0) : "~12 GB RAM";
 
-  if (filenameEl) filenameEl.innerText = name;
+  if (filenameEl) {
+    filenameEl.innerHTML = `<span>${escapeHtml(easyName)}</span> <span class="model-ram-badge" style="margin-left:6px;">${escapeHtml(ramEst)}</span>`;
+  }
   if (metaEl) {
-    metaEl.innerHTML = `Size: ${size}${quant} &bull; Direct GPU Allocation (0 Host RAM)`;
+    metaEl.innerHTML = `Weight: <code>${escapeHtml(rawName)}</code> &bull; Size: ${size}${quant}`;
   }
   if (pillEl) {
     pillEl.innerText = "ACTIVE";
@@ -1851,4 +3000,434 @@ async function selectLocalModel(modelPath, modelName) {
     showToast("Failed to switch model: " + (err.message || err));
   }
 }
+
+// --- Shuffle Multi-Tenant Selector & Region Helpers ---
+function parseShuffleRegionMeta(regionUrl) {
+  let raw = (regionUrl || "").trim();
+  if (!raw) raw = window.activeShuffleBaseUrl || "https://uk.shuffler.io";
+  if (!/^https?:\/\//i.test(raw)) {
+    if (raw.includes(".shuffler.io")) {
+      raw = "https://" + raw;
+    } else {
+      raw = "https://" + raw.toLowerCase() + ".shuffler.io";
+    }
+  }
+  raw = raw.replace(/\/+$/, "");
+
+  let host = "";
+  try {
+    host = new URL(raw).hostname.toLowerCase();
+  } catch (e) {
+    host = raw.replace(/^https?:\/\//i, "").split("/")[0].toLowerCase();
+  }
+
+  let sub = "uk";
+  if (host.endsWith(".shuffler.io")) {
+    sub = host.slice(0, -".shuffler.io".length) || "uk";
+  } else if (host === "shuffler.io") {
+    sub = "eu";
+  } else if (host) {
+    sub = host.split(".")[0] || "uk";
+  }
+
+  let flag = "🌐";
+  if (sub === "uk" || sub.startsWith("uk-") || sub === "gb") {
+    flag = "🇬🇧";
+  } else if (sub === "eu" || sub.startsWith("eu-")) {
+    flag = "🇪🇺";
+  } else if (sub === "us" || sub.startsWith("us-")) {
+    flag = "🇺🇸";
+  } else if (sub === "ca" || sub.startsWith("ca-")) {
+    flag = "🇨🇦";
+  } else if (sub === "de" || sub.startsWith("de-")) {
+    flag = "🇩🇪";
+  } else if (sub === "fr" || sub.startsWith("fr-")) {
+    flag = "🇫🇷";
+  } else if (sub === "jp" || sub.startsWith("jp-")) {
+    flag = "🇯🇵";
+  } else if (sub === "in" || sub.startsWith("in-")) {
+    flag = "🇮🇳";
+  } else if (sub === "au" || sub.startsWith("au-")) {
+    flag = "🇦🇺";
+  } else if (sub === "sg" || sub.startsWith("sg-")) {
+    flag = "🇸🇬";
+  }
+
+  return {
+    flag: flag,
+    code: sub.toUpperCase(),
+    baseUrl: raw
+  };
+}
+
+function renderShuffleTenantDropdown() {
+  const selectedDisplay = document.getElementById("shuffle-tenant-selected-display");
+  const menu = document.getElementById("shuffle-tenant-dropdown-menu");
+  const regionUrlLabel = document.getElementById("lbl-shuffle-tenant-region-url");
+  if (!selectedDisplay || !menu) return;
+
+  const orgs = Array.isArray(window.shuffleOrgs) ? window.shuffleOrgs : [];
+  const activeId = window.activeShuffleOrgId || "";
+
+  let activeOrg = orgs.find(o => o && o.id === activeId) || orgs[0] || null;
+  const activeMeta = parseShuffleRegionMeta(activeOrg ? activeOrg.region_url : (window.activeShuffleBaseUrl || "https://uk.shuffler.io"));
+  const activeName = activeOrg
+    ? (activeOrg.name || activeOrg.id)
+    : (window.activeShuffleOrgName || window.activeShuffleOrgId || "Default Tenant");
+
+  selectedDisplay.innerHTML =
+    `<span class="shuffle-tenant-flag">${escapeHtml(activeMeta.flag)}</span>` +
+    `<span class="shuffle-tenant-region-tag">${escapeHtml(activeMeta.code)}</span>` +
+    `<span class="shuffle-tenant-name">${escapeHtml(activeName)}</span>`;
+
+  if (regionUrlLabel) {
+    regionUrlLabel.innerText = activeMeta.baseUrl + (activeOrg && activeOrg.id ? ` • Org ID: ${activeOrg.id}` : "");
+  }
+
+  if (orgs.length === 0) {
+    menu.innerHTML = `<div style="padding:8px 10px; font-size:11.5px; color:var(--text-muted);">No additional tenants found. Click Refresh to query /api/v1/getinfo.</div>`;
+    return;
+  }
+
+  const orgIds = new Set(orgs.map(o => o && o.id).filter(Boolean));
+  const parents = [];
+  const childrenByParent = {};
+
+  for (const org of orgs) {
+    if (!org || !org.id) continue;
+    const parentId = (org.creator_org || "").trim();
+    if (parentId && parentId !== org.id && orgIds.has(parentId)) {
+      if (!childrenByParent[parentId]) childrenByParent[parentId] = [];
+      childrenByParent[parentId].push(org);
+    } else {
+      parents.push(org);
+    }
+  }
+
+  const ordered = [];
+  const visited = new Set();
+  for (const parent of parents) {
+    if (visited.has(parent.id)) continue;
+    visited.add(parent.id);
+    ordered.push({ org: parent, isChild: false });
+    const kids = childrenByParent[parent.id] || [];
+    for (const child of kids) {
+      if (visited.has(child.id)) continue;
+      visited.add(child.id);
+      ordered.push({ org: child, isChild: true });
+    }
+  }
+  for (const org of orgs) {
+    if (org && org.id && !visited.has(org.id)) {
+      visited.add(org.id);
+      ordered.push({ org: org, isChild: !!(org.creator_org && org.creator_org !== org.id) });
+    }
+  }
+
+  let html = "";
+  for (const item of ordered) {
+    const org = item.org;
+    const isSelected = (activeOrg && org.id === activeOrg.id) || (activeId && org.id === activeId);
+    const meta = parseShuffleRegionMeta(org.region_url);
+    const safeId = escapeHtml(org.id);
+    const safeName = escapeHtml(org.name || org.id);
+    const rowClass = "shuffle-tenant-option" + (item.isChild ? " child-tenant" : "") + (isSelected ? " active" : "");
+    html += `<button type="button" class="${rowClass}" onclick="selectShuffleTenant('${safeId}', event)" title="${safeName} (${escapeHtml(meta.baseUrl)})">` +
+      `<div class="shuffle-tenant-option-left">` +
+      (item.isChild ? `<span class="shuffle-tenant-child-branch">↳</span>` : ``) +
+      `<span class="shuffle-tenant-flag">${escapeHtml(meta.flag)}</span>` +
+      `<span class="shuffle-tenant-region-tag">${escapeHtml(meta.code)}</span>` +
+      `<span class="shuffle-tenant-name">${safeName}</span>` +
+      `</div>` +
+      (isSelected ? `<span class="shuffle-tenant-check">✓</span>` : ``) +
+      `</button>`;
+  }
+  menu.innerHTML = html;
+}
+
+function toggleShuffleTenantDropdown(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  const menu = document.getElementById("shuffle-tenant-dropdown-menu");
+  if (!menu) return;
+  const willShow = !menu.classList.contains("visible");
+  if (typeof closeAllDropdowns === "function") {
+    closeAllDropdowns(["shuffle-tenant-dropdown-menu"]);
+  }
+  if (willShow) {
+    renderShuffleTenantDropdown();
+    menu.classList.add("visible");
+  } else {
+    menu.classList.remove("visible");
+  }
+}
+
+async function resolveShuffleAuthToken() {
+  if (window.activeShuffleToken && typeof window.activeShuffleToken === "string" && window.activeShuffleToken.trim()) {
+    return window.activeShuffleToken.trim();
+  }
+  const inputAuthKey = document.getElementById("input-auth-key");
+  if (inputAuthKey && inputAuthKey.value && inputAuthKey.value.trim()) {
+    return inputAuthKey.value.trim();
+  }
+  if (typeof currentAiKey === "string" && currentAiKey.trim().startsWith("shfl_")) {
+    return currentAiKey.trim();
+  }
+  if (typeof localStorage !== "undefined") {
+    const cached = localStorage.getItem("orborus_shuffle_token");
+    if (cached && cached.trim()) return cached.trim();
+  }
+  if (typeof window.bridgeCall === "function") {
+    try {
+      const raw = await window.bridgeCall("getInitialState", "{}");
+      const st = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (st) {
+        const tok = st.oauth_token || st.auth || (typeof st.ai_api_key === "string" && st.ai_api_key.startsWith("shfl_") ? st.ai_api_key : "");
+        if (tok && typeof tok === "string" && tok.trim()) {
+          window.activeShuffleToken = tok.trim();
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("orborus_shuffle_token", window.activeShuffleToken);
+          }
+          return window.activeShuffleToken;
+        }
+      }
+    } catch (_) {}
+  }
+  return "";
+}
+
+async function fetchShuffleTenantsClientSide() {
+  const token = await resolveShuffleAuthToken();
+  const endpoints = ["https://uk.shuffler.io/api/v1/getinfo"];
+  if (window.activeShuffleBaseUrl) {
+    const meta = parseShuffleRegionMeta(window.activeShuffleBaseUrl);
+    const customEp = meta.baseUrl.replace(/\/+$/, "") + "/api/v1/getinfo";
+    if (!endpoints.includes(customEp)) endpoints.push(customEp);
+  }
+  if (!endpoints.includes("https://shuffler.io/api/v1/getinfo")) {
+    endpoints.push("https://shuffler.io/api/v1/getinfo");
+  }
+
+  for (const endpoint of endpoints) {
+    try {
+      const headers = { "Accept": "application/json" };
+      if (token) {
+        headers["Authorization"] = token.toLowerCase().startsWith("bearer ") ? token : ("Bearer " + token);
+      }
+      const res = await fetch(endpoint, {
+        method: "GET",
+        headers: headers
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && Array.isArray(data.orgs) && data.orgs.length > 0) {
+        const normalized = data.orgs
+          .filter(o => o && o.id)
+          .map(o => ({
+            id: String(o.id).trim(),
+            name: String(o.name || o.id).trim(),
+            region_url: String(o.region_url || "").trim(),
+            creator_org: String(o.creator_org || "").trim()
+          }));
+        if (normalized.length > 0) {
+          return {
+            shuffle_orgs: normalized,
+            active_org: data.active_org || null
+          };
+        }
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function selectShuffleTenant(orgId, event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  const menu = document.getElementById("shuffle-tenant-dropdown-menu");
+  if (menu) menu.classList.remove("visible");
+  if (!orgId) return;
+
+  try {
+    const matched = (window.shuffleOrgs || []).find(o => o && o.id === orgId);
+    const matchedMeta = parseShuffleRegionMeta(matched ? matched.region_url : (window.activeShuffleBaseUrl || "https://uk.shuffler.io"));
+
+    let raw = null;
+    if (typeof window.bridgeCall === "function" && !window._tenantBridgeUnsupported) {
+      raw = await window.bridgeCall("selectShuffleTenant", JSON.stringify({
+        org_id: orgId,
+        name: matched ? (matched.name || matched.id) : "",
+        region_url: matchedMeta.baseUrl
+      }));
+    }
+    let resp = null;
+    if (raw) {
+      try {
+        resp = typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch (e) {}
+    }
+    if (resp && resp.error === "unknown action") {
+      window._tenantBridgeUnsupported = true;
+      resp = null;
+    } else if (resp && resp.error) {
+      showToast("Failed to switch tenant: " + resp.error);
+      return;
+    }
+
+    if (window._tenantBridgeUnsupported && typeof window.bridgeCall === "function") {
+      const fallbackPayload = {
+        org_id: orgId,
+        base_url: matchedMeta.baseUrl
+      };
+      const tok = await resolveShuffleAuthToken();
+      if (tok) fallbackPayload.auth = tok;
+      await window.bridgeCall("updateAuth", JSON.stringify(fallbackPayload));
+      if (tok || (typeof currentAiKey === "string" && currentAiKey.startsWith("shfl_"))) {
+        await window.bridgeCall("setAiConfig", JSON.stringify({
+          url: matchedMeta.baseUrl,
+          key: tok || currentAiKey,
+          model: activeAiModel || "gemini-3.8-flash"
+        }));
+      }
+    }
+
+    if (resp && Array.isArray(resp.shuffle_orgs) && resp.shuffle_orgs.length > 0) {
+      window.shuffleOrgs = resp.shuffle_orgs;
+    }
+    window.activeShuffleOrgId = (resp && resp.org_id) ? resp.org_id : orgId;
+    if (resp && resp.org_name) {
+      window.activeShuffleOrgName = resp.org_name;
+    } else if (matched) {
+      window.activeShuffleOrgName = matched.name || matched.id;
+    }
+    if (resp && resp.base_url) {
+      window.activeShuffleBaseUrl = resp.base_url;
+      currentAiUrl = resp.base_url;
+    } else {
+      window.activeShuffleBaseUrl = matchedMeta.baseUrl;
+      currentAiUrl = matchedMeta.baseUrl;
+    }
+
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orborus_shuffle_org_id", window.activeShuffleOrgId || "");
+      localStorage.setItem("orborus_shuffle_org_name", window.activeShuffleOrgName || "");
+      localStorage.setItem("orborus_shuffle_base_url", window.activeShuffleBaseUrl || "");
+      if (Array.isArray(window.shuffleOrgs) && window.shuffleOrgs.length > 0) {
+        try { localStorage.setItem("orborus_shuffle_orgs", JSON.stringify(window.shuffleOrgs)); } catch (_) {}
+      }
+    }
+
+    const inputOrgId = document.getElementById("input-org-id");
+    if (inputOrgId) inputOrgId.value = window.activeShuffleOrgId;
+    const inputBaseUrl = document.getElementById("input-base-url");
+    if (inputBaseUrl && window.activeShuffleBaseUrl) inputBaseUrl.value = window.activeShuffleBaseUrl;
+    const lblOrg = document.getElementById("lbl-org");
+    if (lblOrg) lblOrg.innerText = window.activeShuffleOrgName || window.activeShuffleOrgId || "Shuffle";
+
+    renderShuffleTenantDropdown();
+    window.shuffleAuthenticatedApps = [];
+    if (typeof refreshShuffleAuthenticatedApps === "function") {
+      refreshShuffleAuthenticatedApps();
+    }
+    showToast("Switched Shuffle tenant to " + (window.activeShuffleOrgName || window.activeShuffleOrgId));
+  } catch (err) {
+    console.error("selectShuffleTenant error:", err);
+    showToast("Failed to switch tenant: " + (err.message || err));
+  }
+}
+
+async function refreshShuffleTenants(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  if (window._fetchingShuffleTenants) return;
+  window._fetchingShuffleTenants = true;
+  try {
+    let resp = null;
+    if (typeof window.bridgeCall === "function" && !window._tenantBridgeUnsupported) {
+      const raw = await window.bridgeCall("refreshShuffleTenants", "{}");
+      if (raw) {
+        try {
+          resp = typeof raw === "string" ? JSON.parse(raw) : raw;
+        } catch (e) {}
+      }
+      if (resp && resp.error === "unknown action") {
+        window._tenantBridgeUnsupported = true;
+        resp = null;
+      }
+    }
+
+    if (!resp || resp.error || !Array.isArray(resp.shuffle_orgs) || resp.shuffle_orgs.length === 0) {
+      const clientResult = await fetchShuffleTenantsClientSide();
+      if (clientResult && Array.isArray(clientResult.shuffle_orgs) && clientResult.shuffle_orgs.length > 0) {
+        const orgs = clientResult.shuffle_orgs;
+        let chosen = orgs.find(o => o.id === window.activeShuffleOrgId) || null;
+        if (!chosen && clientResult.active_org && clientResult.active_org.id) {
+          chosen = orgs.find(o => o.id === clientResult.active_org.id) || null;
+        }
+        if (!chosen) chosen = orgs[0];
+        const chosenMeta = parseShuffleRegionMeta(chosen ? chosen.region_url : window.activeShuffleBaseUrl);
+        resp = {
+          shuffle_orgs: orgs,
+          org_id: chosen ? chosen.id : window.activeShuffleOrgId,
+          org_name: chosen ? (chosen.name || chosen.id) : window.activeShuffleOrgName,
+          base_url: chosenMeta.baseUrl
+        };
+        if (window._tenantBridgeUnsupported && chosen && typeof window.bridgeCall === "function") {
+          const tok = await resolveShuffleAuthToken();
+          const syncPayload = { org_id: chosen.id, base_url: chosenMeta.baseUrl };
+          if (tok) syncPayload.auth = tok;
+          await window.bridgeCall("updateAuth", JSON.stringify(syncPayload));
+        }
+      }
+    }
+
+    if (resp) {
+      if (Array.isArray(resp.shuffle_orgs) && resp.shuffle_orgs.length > 0) {
+        window.shuffleOrgs = resp.shuffle_orgs;
+        if (typeof localStorage !== "undefined") {
+          try { localStorage.setItem("orborus_shuffle_orgs", JSON.stringify(resp.shuffle_orgs)); } catch (_) {}
+        }
+      }
+      if (resp.org_id) {
+        window.activeShuffleOrgId = resp.org_id;
+        if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_org_id", resp.org_id);
+      }
+      if (resp.org_name) {
+        window.activeShuffleOrgName = resp.org_name;
+        if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_org_name", resp.org_name);
+      }
+      if (resp.base_url) {
+        window.activeShuffleBaseUrl = resp.base_url;
+        if (typeof localStorage !== "undefined") localStorage.setItem("orborus_shuffle_base_url", resp.base_url);
+      }
+      const lblOrg = document.getElementById("lbl-org");
+      if (lblOrg && (window.activeShuffleOrgName || window.activeShuffleOrgId)) {
+        lblOrg.innerText = window.activeShuffleOrgName || window.activeShuffleOrgId;
+      }
+    }
+
+    renderShuffleTenantDropdown();
+    if (event) {
+      const count = (window.shuffleOrgs && window.shuffleOrgs.length) || 0;
+      showToast(count > 0 ? ("Synced " + count + " Shuffle tenant(s)") : "Could not load Shuffle tenants");
+    }
+  } catch (err) {
+    console.error("refreshShuffleTenants error:", err);
+  } finally {
+    window._fetchingShuffleTenants = false;
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.openSettingsForModel = openSettingsForModel;
+  window.toggleShuffleTenantDropdown = toggleShuffleTenantDropdown;
+  window.selectShuffleTenant = selectShuffleTenant;
+  window.refreshShuffleTenants = refreshShuffleTenants;
+  window.renderShuffleTenantDropdown = renderShuffleTenantDropdown;
+}
+
+
 

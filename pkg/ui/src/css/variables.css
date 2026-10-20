@@ -1,12 +1,15 @@
   :root {
     --bg-app: #09090b;
     --bg-sidebar: #111113;
+    --bg-secondary: #18181b;
+    --bg-dropdown: #18181b;
     --bg-card: #18181b;
     --bg-hover: #222226;
     --bg-active: #27272a;
     --bg-code: #131316;
     --border: #27272a;
     --border-hover: #3f3f46;
+    --border-focus: #3f3f46;
     --border-subtle: #1e1e22;
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
@@ -16,6 +19,7 @@
     --green: #10b981;
     --amber: #f59e0b;
     --red: #ef4444;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }

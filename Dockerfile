@@ -7,15 +7,16 @@ COPY go.mod go.sum ./
 RUN sed -i '/replace.*=> \.\.\//d' go.mod && go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /app/orborus orborus.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /app/tendon orborus.go
 
 FROM alpine:3.22.1
 
 RUN apk add --no-cache bash tzdata
-COPY --from=builder /app/orborus /orborus
+COPY --from=builder /app/tendon /tendon
+COPY --from=builder /app/tendon /orborus
 ENV ENVIRONMENT_NAME=Shuffle \
     BASE_URL=http://shuffle-backend:5001 \
     DOCKER_API_VERSION=1.44 \
     SHUFFLE_OPENSEARCH_URL=https://opensearch:9200
 
-CMD ["./orborus"]
+CMD ["./tendon"]
