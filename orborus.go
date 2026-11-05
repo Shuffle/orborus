@@ -5089,6 +5089,8 @@ func scheduleExecutionRerun(execution shuffle.ExecutionRequest) {
 		client.Timeout = 15 * time.Second
 		if err := requestExecutionRerun(client, baseUrl, execution); err != nil {
 			log.Printf("[WARNING][%s] Failed scheduled rerun check: %s", execution.ExecutionId, err)
+			// A transient backend failure must not permanently cancel recovery.
+			scheduleExecutionRerun(execution)
 		}
 	})
 }
@@ -5114,6 +5116,15 @@ func requestExecutionRerun(client *http.Client, backendUrl string, execution shu
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 1024))
 		return fmt.Errorf("rerun endpoint returned %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var acknowledgement struct {
+		Success bool `json:"success"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 4096)).Decode(&acknowledgement); err != nil {
+		return fmt.Errorf("invalid rerun acknowledgement: %w", err)
+	}
+	if !acknowledgement.Success {
+		return errors.New("backend did not acknowledge execution recovery")
 	}
 
 	return nil
