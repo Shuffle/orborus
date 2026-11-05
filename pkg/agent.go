@@ -46,11 +46,13 @@ func StartAgentLoop(ctx context.Context, cfg *Config, onStatus func(AgentStatus)
 }
 
 func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentStatus)) error {
-	fullURL := fmt.Sprintf("%s/api/v1/workflows/queue", cfg.BaseURL)
-	confirmURL := fmt.Sprintf("%s/api/v1/workflows/queue/confirm", cfg.BaseURL)
-	client := shuffle.GetExternalClient(cfg.BaseURL)
+	initBaseURL := strings.TrimRight(cfg.BaseURL, "/")
+	if initBaseURL == "" {
+		initBaseURL = "https://shuffler.io"
+	}
+	client := shuffle.GetExternalClient(initBaseURL)
 
-	log.Printf("[INFO] Starting agent queue worker targeting %s (Env: %s, Host: %s)", fullURL, cfg.Environment, cfg.Hostname)
+	log.Printf("[INFO] Starting agent queue worker targeting %s/api/v1/workflows/queue (Env: %s, Host: %s)", initBaseURL, cfg.Environment, cfg.Hostname)
 
 	currentSleep := cfg.PullTime
 	lastJobTime := int64(-1)
@@ -63,6 +65,13 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 			return nil
 		default:
 		}
+
+		baseURL := strings.TrimRight(cfg.BaseURL, "/")
+		if baseURL == "" {
+			baseURL = "https://shuffler.io"
+		}
+		fullURL := fmt.Sprintf("%s/api/v1/workflows/queue", baseURL)
+		confirmURL := fmt.Sprintf("%s/api/v1/workflows/queue/confirm", baseURL)
 
 		now := time.Now().Unix()
 		if currentSleep != cfg.PullTime && lastJobTime != -1 && now-lastJobTime > 60 {
@@ -104,6 +113,7 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 		}
 		if cfg.Org != "" {
 			req.Header.Set("Org", cfg.Org)
+			req.Header.Set("X-Shuffle-Org-Id", cfg.Org)
 		}
 		if cfg.OrborusLabel != "" {
 			req.Header.Set("X-Orborus-Label", cfg.OrborusLabel)
@@ -226,6 +236,7 @@ func runRemoteQueueLoop(ctx context.Context, cfg *Config, onStatus func(AgentSta
 					}
 					if cfg.Org != "" {
 						confirmReq.Header.Set("Org", cfg.Org)
+						confirmReq.Header.Set("X-Shuffle-Org-Id", cfg.Org)
 					}
 					confirmResp, err := client.Do(confirmReq)
 					if err == nil && confirmResp != nil && confirmResp.Body != nil {

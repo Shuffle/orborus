@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 )
 
 // ANSI Color constants
@@ -91,7 +92,66 @@ func stripAnsi(b []byte) []byte {
 	return buf.Bytes()
 }
 
-// SetupLogging initializes standard logger with color output for terminal and clean output for disk
+// MemoryLogWriter buffers the most recent log entries in-memory and notifies subscribers
+type MemoryLogWriter struct {
+	mu        sync.Mutex
+	lines     []string
+	maxLines  int
+	listeners []func(line string)
+}
+
+var globalLogWriter = &MemoryLogWriter{
+	maxLines: 500,
+	lines:    make([]string, 0, 500),
+}
+
+func (m *MemoryLogWriter) Write(p []byte) (n int, err error) {
+	clean := string(stripAnsi(p))
+	rawLines := strings.Split(strings.TrimRight(clean, "\r\n"), "\n")
+
+	m.mu.Lock()
+	for _, l := range rawLines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if len(m.lines) >= m.maxLines {
+			m.lines = m.lines[1:]
+		}
+		m.lines = append(m.lines, l)
+		for _, fn := range m.listeners {
+			go fn(l)
+		}
+	}
+	m.mu.Unlock()
+	return len(p), nil
+}
+
+func (m *MemoryLogWriter) GetRecentLogs() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	res := make([]string, len(m.lines))
+	copy(res, m.lines)
+	return res
+}
+
+func (m *MemoryLogWriter) AddListener(fn func(line string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.listeners = append(m.listeners, fn)
+}
+
+// GetRecentLogs returns buffered backend log lines for the UI
+func GetRecentLogs() []string {
+	return globalLogWriter.GetRecentLogs()
+}
+
+// RegisterLogListener adds a callback for each emitted log line
+func RegisterLogListener(fn func(string)) {
+	globalLogWriter.AddListener(fn)
+}
+
+// SetupLogging initializes standard logger with color output for terminal, clean output for disk, and in-memory buffer for UI
 func SetupLogging(logFilePath string) (cleanup func()) {
 	ConfigureWindowsConsole()
 	termWriter := NewColorWriter(os.Stdout)
@@ -99,13 +159,13 @@ func SetupLogging(logFilePath string) (cleanup func()) {
 	if logFilePath != "" {
 		if file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
 			cleanFileWriter := NewStripColorWriter(file)
-			log.SetOutput(io.MultiWriter(termWriter, cleanFileWriter))
+			log.SetOutput(io.MultiWriter(termWriter, cleanFileWriter, globalLogWriter))
 			return func() {
 				_ = file.Close()
 			}
 		}
 	}
 
-	log.SetOutput(termWriter)
+	log.SetOutput(io.MultiWriter(termWriter, globalLogWriter))
 	return func() {}
 }

@@ -11,9 +11,11 @@ import (
 // ApprovalRule represents a remembered permission rule
 type ApprovalRule struct {
 	ID        string `json:"id"`
-	Command   string `json:"command"`  // Command prefix, e.g. "git show"
-	Scope     string `json:"scope"`    // "conversation", "project", or "global"
-	ScopeID   string `json:"scope_id"` // Conversation ID or Project path
+	Command   string `json:"command"`            // Command prefix, path, URL, or tool name
+	Category  string `json:"category,omitempty"` // "file_read", "file_write", "network", "terminal", "sandbox_bypass", "mcp"
+	Action    string `json:"action,omitempty"`   // "allow" or "deny"
+	Scope     string `json:"scope"`              // "conversation", "project", or "global"
+	ScopeID   string `json:"scope_id"`           // Conversation ID or Project path
 	CreatedAt string `json:"created_at"`
 }
 
@@ -23,13 +25,22 @@ type ProjectPermission struct {
 	TerminalExecutionPolicy string `json:"terminal_execution_policy,omitempty"` // "inherit", "sandbox", "prompt", "safe_auto", "full_auto"
 	FileAccessPolicy        string `json:"file_access_policy,omitempty"`        // "inherit", "strict", "ask", "read_parent", "unrestricted"
 	SandboxMode             *bool  `json:"sandbox_mode,omitempty"`
-	AllowedCommands         string `json:"allowed_commands,omitempty"`          // comma separated command prefixes
+	AllowedCommands         string   `json:"allowed_commands,omitempty"` // comma separated command prefixes
+	AttachedFolders         []string `json:"attached_folders,omitempty"` // additional attached folder paths (max 5 primary folders total including root)
 }
 
 // StoredProject holds a saved workspace directory
 type StoredProject struct {
 	Name string `json:"name,omitempty"`
 	Path string `json:"path"`
+}
+
+// ShuffleOrg holds metadata for an available Shuffle tenant/organization
+type ShuffleOrg struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	RegionURL  string `json:"region_url"`
+	CreatorOrg string `json:"creator_org"`
 }
 
 // LocalAgentStore holds persisted settings, credentials, and session state
@@ -46,6 +57,8 @@ type LocalAgentStore struct {
 	Projects                []StoredProject              `json:"projects,omitempty"`
 	BaseURL                 string                       `json:"base_url,omitempty"`
 	OrgID                   string                       `json:"org_id,omitempty"`
+	OrgName                 string                       `json:"org_name,omitempty"`
+	ShuffleOrgs             []ShuffleOrg                 `json:"shuffle_orgs,omitempty"`
 	Environment             string                       `json:"environment,omitempty"`
 	OAuthToken              string                       `json:"oauth_token,omitempty"`
 	IsLoggedIn              bool                         `json:"is_logged_in,omitempty"`

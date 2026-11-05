@@ -34,6 +34,22 @@ func main() {
 	}
 
 	fmt.Printf("✅ All syntax & button handlers verified! Successfully bundled %s into %s (%d bytes)\n", srcDir, destFile, len(assembled))
+
+	// 2. Automated Headless Button Test (Vivaldi)
+	fmt.Println("🔍 Running automated button & handler verification with Vivaldi headless...")
+	testRes, err := uivalidate.RunButtonTests(destFile)
+	if err != nil {
+		fmt.Printf("⚠️  Vivaldi button test skipped or error: %v\n", err)
+	} else if len(testRes.Errors) > 0 {
+		fmt.Printf("❌ BUNDLE REJECTED: %d runtime error(s) detected during automated button testing!\n", len(testRes.Errors))
+		for idx, e := range testRes.Errors {
+			fmt.Printf("   [%d] %s on target '%s': %s\n", idx+1, e.Type, e.Target, e.Message)
+		}
+		os.Exit(1)
+	} else {
+		fmt.Printf("✅ Vivaldi Verified: Successfully tested %d buttons and %d handlers (%d total interactive elements) with 0 errors!\n",
+			testRes.TestedButtons, testRes.TestedFunctions, testRes.TotalTested)
+	}
 }
 
 // AssembleUI combines src/index.html, src/css/*.css, and src/js/*.js

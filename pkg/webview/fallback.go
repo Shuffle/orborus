@@ -46,6 +46,7 @@ var (
 	procIsWindowVisible              = user32.NewProc("IsWindowVisible")
 	procShowWindow                   = user32.NewProc("ShowWindow")
 	procIsZoomed                     = user32.NewProc("IsZoomed")
+	procIsIconic                     = user32.NewProc("IsIconic")
 	procReleaseCapture               = user32.NewProc("ReleaseCapture")
 	procLoadImageW                   = user32.NewProc("LoadImageW")
 	procFindWindowW                  = user32.NewProc("FindWindowW")
@@ -56,6 +57,9 @@ var (
 	procGetClassNameW                = user32.NewProc("GetClassNameW")
 	procDwmSetWindowAttribute        = dwmapi.NewProc("DwmSetWindowAttribute")
 	procDwmExtendFrameIntoClientArea = dwmapi.NewProc("DwmExtendFrameIntoClientArea")
+	procSetForegroundWindow          = user32.NewProc("SetForegroundWindow")
+	procBringWindowToTop             = user32.NewProc("BringWindowToTop")
+	procSwitchToThisWindow           = user32.NewProc("SwitchToThisWindow")
 )
 
 type winRect struct {
@@ -132,6 +136,35 @@ func (w *nonDarwinWindow) Show() {
 	}
 
 	w.isVisible = true
+
+	// If app window process is already running, restore only if minimized and bring to foreground
+	if w.cmd != nil && w.cmd.Process != nil {
+		if runtime.GOOS == "windows" {
+			targetHwnd := w.hwnd
+			if targetHwnd == 0 {
+				targetHwnd = findAppWindow(uint32(w.cmd.Process.Pid))
+				if targetHwnd != 0 {
+					w.hwnd = targetHwnd
+				}
+			}
+			if targetHwnd != 0 {
+				iconic, _, _ := procIsIconic.Call(targetHwnd)
+				if iconic != 0 {
+					procShowWindow.Call(targetHwnd, 9) // SW_RESTORE (only when minimized)
+				} else {
+					procShowWindow.Call(targetHwnd, 5) // SW_SHOW (preserves maximized/snapped/resized bounds)
+				}
+				procSetForegroundWindow.Call(targetHwnd)
+				procBringWindowToTop.Call(targetHwnd)
+				if procSwitchToThisWindow.Find() == nil {
+					procSwitchToThisWindow.Call(targetHwnd, 1)
+				}
+				return
+			}
+		}
+		return
+	}
+
 	w.launchAppWindow()
 }
 
@@ -172,19 +205,39 @@ func (w *nonDarwinWindow) startLocalServer() error {
 		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 		bridgeScript := fmt.Sprintf(`
 <script>
-window.bridgeCall = async function(action, payload) {
+window.bridgeCall = async function(action, payload, signal) {
+    let timeoutId = null;
+    let internalController = null;
     try {
-        const res = await fetch('/api/bridge', {
+        const fetchOpts = {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({action: action, payload: payload})
-        });
+        };
+        if (signal) {
+            fetchOpts.signal = signal;
+        } else if (action !== 'runPrompt' && action !== 'downloadLocalModel' && typeof AbortController !== 'undefined') {
+            internalController = new AbortController();
+            fetchOpts.signal = internalController.signal;
+            timeoutId = setTimeout(function() { internalController.abort(); }, 15000);
+        }
+        const res = await fetch('/api/bridge', fetchOpts);
+        if (timeoutId) clearTimeout(timeoutId);
         return await res.text();
     } catch (e) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (signal && signal.aborted) {
+            return JSON.stringify({status: 'interrupted', error: 'Generation stopped by user', error_type: 'user_cancelled'});
+        }
+        if (e && e.name === 'AbortError') {
+            return JSON.stringify({status: 'error', error: 'Bridge action timed out (' + action + ')'});
+        }
         console.error('bridge error', e);
-        return JSON.stringify({error: e.message});
+        return JSON.stringify({status: 'error', error: e.message || String(e)});
     }
 };
+window.stopExecutionBackend = function() { return window.bridgeCall('stopExecution', ''); };
+window.cancelPromptBackend = function() { return window.bridgeCall('cancelPrompt', ''); };
 window.onerror = function(msg, url, line, col, error) {
     try {
         fetch('/api/bridge', {
@@ -212,14 +265,19 @@ window.setTitlebarNoDragWidth = function() {};
 window.setModalActive = function() {};
 window.getInitialState = function() { return window.bridgeCall('getInitialState', ''); };
 window.listProjects = function() { return window.bridgeCall('listProjects', ''); };
-window.selectProject = function(path) { return window.bridgeCall('selectProject', path); };
+window.selectProjectBackend = function(path) { return window.bridgeCall('selectProject', path || ''); };
+window.openOrSelectDirectory = function(path) { return window.bridgeCall('selectProject', path || ''); };
+window.createProject = function(path) { return window.bridgeCall('createProject', typeof path === 'string' ? JSON.stringify({path: path}) : JSON.stringify(path || {})); };
+window.quickStartProject = function(baseDir) { return window.bridgeCall('quickStartProject', typeof baseDir === 'string' ? JSON.stringify({base_dir: baseDir}) : JSON.stringify(baseDir || {})); };
 window.setPermissionPolicy = function(policy) { return window.bridgeCall('setPermissionPolicy', policy); };
 window.runPrompt = function(prompt, bypass, convId) { return window.bridgeCall('runPrompt', JSON.stringify({prompt: prompt, bypass: bypass, conversation_id: convId || ''})); };
-window.respondApproval = function(id, approved) { return window.bridgeCall('respondApproval', JSON.stringify({id: id, approved: approved})); };
-window.respondApprovalWithOptions = function(id, option, commandPrefix, scope, scopeId) { return window.bridgeCall('respondApprovalWithOptions', JSON.stringify({id: id, option: option, commandPrefix: commandPrefix, scope: scope, scopeId: scopeId})); };
+window.stopExecutionBackend = function() { return window.bridgeCall('stopExecution', ''); };
+window.cancelPromptBackend = function() { return window.bridgeCall('cancelPrompt', ''); };
+window.respondApprovalBackend = function(id, approved) { return window.bridgeCall('respondApproval', JSON.stringify({id: id, approved: approved})); };
+window.respondApprovalWithOptions = function(id, option, commandPrefix, scope, scopeId) { return window.bridgeCall('respondApprovalWithOptions', JSON.stringify({id: id, option: option, command_prefix: commandPrefix, commandPrefix: commandPrefix, scope: scope, scope_id: scopeId, scopeId: scopeId})); };
 window.getApprovalRules = function() { return window.bridgeCall('getApprovalRules', ''); };
 window.addApprovalRule = function(rule) { return window.bridgeCall('addApprovalRule', typeof rule === 'string' ? rule : JSON.stringify(rule)); };
-window.revokeApprovalRule = function(id) { return window.bridgeCall('revokeApprovalRule', id); };
+window.revokeApprovalRuleBackend = function(id) { return window.bridgeCall('revokeApprovalRule', id); };
 window.clearApprovalRules = function() { return window.bridgeCall('clearApprovalRules', ''); };
 window.setPinnedConversations = function(pinned) { return window.bridgeCall('setPinnedConversations', typeof pinned === 'string' ? pinned : JSON.stringify(pinned)); };
 window.listConversations = function() { return window.bridgeCall('listConversations', ''); };
@@ -229,16 +287,31 @@ window.deleteConversation = function(id) { return window.bridgeCall('deleteConve
 window.archiveConversationBackend = function(id) { return window.bridgeCall('archiveConversation', id); };
 window.unarchiveConversationBackend = function(id) { return window.bridgeCall('unarchiveConversation', id); };
 window.getRightSidebarData = function() { return window.bridgeCall('getRightSidebarData', ''); };
+window.readFilePreview = function(path) { return window.bridgeCall('readFilePreview', typeof path === 'string' ? JSON.stringify({path: path}) : JSON.stringify(path || {})); };
+window.getChangedFiles = function(project) { return window.bridgeCall('getChangedFiles', typeof project === 'string' ? JSON.stringify({project: project}) : JSON.stringify(project || {})); };
+window.getRecentLogs = function() { return window.bridgeCall('getRecentLogs', ''); };
 window.listLocalModels = function(dir) { return window.bridgeCall('listLocalModels', JSON.stringify({directory: dir || ''})); };
 window.setLocalModel = function(path, dir) { return window.bridgeCall('setLocalModel', JSON.stringify({path: path || '', directory: dir || ''})); };
+window.getLocalModelCatalog = function(dir) { return window.bridgeCall('getLocalModelCatalog', JSON.stringify({directory: dir || ''})); };
+window.downloadLocalModel = function(modelKey, dir) { return window.bridgeCall('downloadLocalModel', JSON.stringify({model_key: modelKey || '', directory: dir || ''})); };
+window.cancelLocalModelDownload = function() { return window.bridgeCall('cancelLocalModelDownload', ''); };
+window.getLocalDownloadStatus = function() { return window.bridgeCall('getLocalDownloadStatus', ''); };
 window.getLocalExecutorStatus = function() { return window.bridgeCall('getLocalExecutorStatus', ''); };
 window.setActiveExecutionMode = function(mode) { return window.bridgeCall('setActiveExecutionMode', mode); };
 window.takeScreenshot = function() { return window.bridgeCall('takeScreenshot', ''); };
 window.inspectUI = function() { return window.bridgeCall('inspectUI', ''); };
 window.requestOSPermission = function(perm) { return window.bridgeCall('requestOSPermission', perm); };
 window.updateAuth = function(authData) { return window.bridgeCall('updateAuth', typeof authData === 'string' ? authData : JSON.stringify(authData)); };
-window.setAiConfig = function(url, key, policy, model) { return window.bridgeCall('setAiConfig', JSON.stringify({url: url, key: key, permission_policy: policy || '', model: model || ''})); };
+window.testAiConfig = function(url, key, model) { return window.bridgeCall('testAiConfig', JSON.stringify({url: url || '', key: key || '', model: model || ''})); };
+window.setAiConfig = function(url, key, policyOrModel, modelOrReasoning) {
+    var validPolicies = {ask_all: true, safe_auto: true, full_auto: true};
+    var policy = validPolicies[policyOrModel] ? policyOrModel : '';
+    var model = validPolicies[policyOrModel] ? (modelOrReasoning || '') : (policyOrModel || '');
+    return window.bridgeCall('setAiConfig', JSON.stringify({url: url, key: key, permission_policy: policy, model: model}));
+};
+window.logoutShuffleBridge = function() { return window.bridgeCall('logoutShuffle', '{}'); };
 window.startOAuthLogin = function(url) { return window.bridgeCall('startOAuthLogin', url || ''); };
+window.cancelOAuthLogin = function() { return window.bridgeCall('cancelOAuthLogin', ''); };
 window.setOAuthToken = function(token, org, env) { return window.bridgeCall('setOAuthToken', JSON.stringify({token: token, org: org, env: env})); };
 window.windowAction = function(act) { return window.bridgeCall('windowAction', act); };
 window.chooseDirectory = function() { return window.bridgeCall('chooseDirectory', ''); };
@@ -249,7 +322,7 @@ window.setProjectPermissions = function(project, perms) { return window.bridgeCa
 window.listSkills = function(proj) { return window.bridgeCall('listSkills', proj || ''); };
 window.injectSkillFile = function(path) { return window.bridgeCall('injectSkillFile', JSON.stringify({path: path || ''})); };
 window.injectSkill = function(skill) { return window.bridgeCall('injectSkill', typeof skill === 'string' ? skill : JSON.stringify(skill)); };
-window.removeInjectedSkill = function(name) { return window.bridgeCall('removeInjectedSkill', JSON.stringify({name: name})); };
+window.removeInjectedSkillBackend = function(name) { return window.bridgeCall('removeInjectedSkill', JSON.stringify({name: name})); };
 window.clearInjectedSkills = function() { return window.bridgeCall('clearInjectedSkills', ''); };
 window.getProjectContext = function(proj) { return window.bridgeCall('getProjectContext', proj || ''); };
 
@@ -357,7 +430,7 @@ evtSource.onmessage = function(e) {
 		rw.Header().Set("Cache-Control", "no-cache")
 		rw.Header().Set("Connection", "keep-alive")
 
-		msgChan := make(chan string, 16)
+		msgChan := make(chan string, 1024)
 		w.clientsMu.Lock()
 		w.clients[msgChan] = true
 		w.clientsMu.Unlock()
@@ -378,7 +451,11 @@ evtSource.onmessage = function(e) {
 				if !ok {
 					return
 				}
-				fmt.Fprintf(rw, "data: %s\n\n", msg)
+				lines := strings.Split(msg, "\n")
+				for _, line := range lines {
+					fmt.Fprintf(rw, "data: %s\n", line)
+				}
+				fmt.Fprintf(rw, "\n")
 				flusher.Flush()
 			}
 		}

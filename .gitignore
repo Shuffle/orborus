@@ -1,3 +1,20 @@
 *.swo
 *.swp
 *.swn
+
+# Executables & binaries
+*.exe
+*.dll
+*.so
+*.dylib
+shuffle-agent.exe
+
+# Logs
+*.log
+shuffle-agent.log
+
+# Build & caches
+bin/
+obj/
+dist/
+models/

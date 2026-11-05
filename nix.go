@@ -100,7 +100,7 @@ func (m *LocalExecutorManager) GetOrInitEngine() (executor.Engine, error) {
 		ModelPath: modelPath,
 		Driver:    executor.DriverNative,
 		LoadMode:  "none", // Direct VRAM loading with zero host RAM ballooning
-		MaxTokens: 2048,
+		MaxTokens: 4096,
 	}
 
 	eng, err := executor.New(cfg)
@@ -201,8 +201,14 @@ func (m *LocalExecutorManager) ExecutePrompt(ctx context.Context, prompt, execID
 		}
 		if delta.IsReasoning {
 			reasoningBuilder.WriteString(delta.Reasoning)
+			if globalBridge != nil {
+				globalBridge.StreamChunk(execID, delta.Reasoning, true)
+			}
 		} else if delta.Text != "" {
 			replyBuilder.WriteString(delta.Text)
+			if globalBridge != nil {
+				globalBridge.StreamChunk(execID, delta.Text, false)
+			}
 		}
 	}
 
@@ -219,6 +225,15 @@ func (m *LocalExecutorManager) ExecutePrompt(ctx context.Context, prompt, execID
 func (m *LocalExecutorManager) buildExecutionResult(execID, prompt, outText, reasoningText string, duration time.Duration) (string, *shuffle.WorkflowExecution, bool, error) {
 	actionID := fmt.Sprintf("act-%d", time.Now().UnixNano())
 	now := time.Now().Unix()
+
+	if pkg.IsGenericPlaceholderOutput(outText) && strings.TrimSpace(reasoningText) != "" {
+		extracted := pkg.ExtractAnswerFromReasoning(reasoningText)
+		if extracted != "" {
+			outText = extracted
+		} else {
+			outText = strings.TrimSpace(reasoningText)
+		}
+	}
 
 	var decisions []shuffle.AgentDecision
 	if reasoningText != "" {
@@ -247,7 +262,12 @@ func (m *LocalExecutorManager) buildExecutionResult(execID, prompt, outText, rea
 		},
 	})
 
-	decisionsJSON, _ := json.Marshal(decisions)
+	agentOut := shuffle.AgentOutput{
+		Status:    "FINISHED",
+		Output:    outText,
+		Decisions: decisions,
+	}
+	agentOutJSON, _ := json.Marshal(agentOut)
 
 	exec := &shuffle.WorkflowExecution{
 		Type:              "LOCAL_TENDON_AGENT",
@@ -266,7 +286,7 @@ func (m *LocalExecutorManager) buildExecutionResult(execID, prompt, outText, rea
 					AppName: "Tendon Native Engine",
 				},
 				ExecutionId: execID,
-				Result:      string(decisionsJSON),
+				Result:      string(agentOutJSON),
 				Status:      "SUCCESS",
 			},
 		},
@@ -334,12 +354,12 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 	}
 
 	win := webview.New(webview.WindowConfig{
-		Title:       "Shuffle Agent",
-		Width:       950,
-		Height:      700,
+		Title:       "Shuffle Tendon",
+		Width:       1200,
+		Height:      800,
 		HTML:        pkg.GetAgentHTML(),
 		IconPNG:     iconBytes,
-		ProcessName: "Shuffle Agent",
+		ProcessName: "Shuffle Tendon",
 		BridgeHandler: func(action, payload string) string {
 			if globalBridge == nil {
 				return `{"error": "bridge not initialized"}`
@@ -350,12 +370,34 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 				if localExecMgr == nil {
 					return `{"status": "unavailable", "error": "local executor manager not initialized"}`
 				}
-				eng, err := localExecMgr.GetOrInitEngine()
-				if err != nil {
-					return fmt.Sprintf(`{"status": "error", "error": %q}`, err.Error())
+				tendonVer := pkg.GetTendonVersion()
+				localExecMgr.mu.Lock()
+				eng := localExecMgr.engine
+				disco := localExecMgr.disco
+				localExecMgr.mu.Unlock()
+
+				if eng == nil {
+					gpuName := ""
+					vramTotal := 0
+					vramFree := 0
+					if disco != nil {
+						gpuName = disco.GPUName
+						vramTotal = disco.VRAMTotalMB
+						vramFree = disco.VRAMFreeMB
+					}
+					data, _ := json.Marshal(map[string]interface{}{
+						"status":             "stopped",
+						"gpu_name":           gpuName,
+						"vram_total_mb":      vramTotal,
+						"vram_free_mb":       vramFree,
+						"models_dir":         globalBridge.GetLocalModelsDir(),
+						"model_path":         globalBridge.GetLocalModelPath(),
+						"tendon_version":     tendonVer,
+						"tendon_release_url": pkg.GetTendonReleaseURL(tendonVer),
+					})
+					return string(data)
 				}
 				st := eng.Status()
-				tendonVer := pkg.GetTendonVersion()
 				data, _ := json.Marshal(map[string]interface{}{
 					"status":             "ready",
 					"engine":             st,
@@ -431,6 +473,30 @@ func getOrCreateAgentWindow(cfg *pkg.Config) webview.Window {
 		win.EvaluateJS(js)
 	})
 
+	globalBridge.SetOnChunkWithReasoning(func(execID, chunk string, isReasoning bool) {
+		chunkJSON, err := json.Marshal(chunk)
+		if err == nil {
+			js := fmt.Sprintf("if (typeof window.onAgentChunk === 'function') { window.onAgentChunk(%q, %s, %t); }", execID, string(chunkJSON), isReasoning)
+			win.EvaluateJS(js)
+		}
+	})
+
+	globalBridge.SetOnApprovalRequest(func(reqJSON string) {
+		js := fmt.Sprintf("if (typeof window.onApprovalRequest === 'function') { window.onApprovalRequest(%s); }", reqJSON)
+		win.EvaluateJS(js)
+		if !strings.Contains(reqJSON, `"sync_queue":true`) {
+			win.Show()
+		}
+	})
+
+	pkg.RegisterLogListener(func(line string) {
+		lineJSON, err := json.Marshal(line)
+		if err == nil {
+			js := fmt.Sprintf("if (typeof window.onBackendLog === 'function') { window.onBackendLog(%s); }", string(lineJSON))
+			win.EvaluateJS(js)
+		}
+	})
+
 	agentWindow = win
 	return win
 }
@@ -479,10 +545,9 @@ func onReady(cfg *pkg.Config) {
 
 	mQuit := systray.AddMenuItem("Quit Shuffle Agent", "Exit the agent runner")
 
-	// Optimisation: Only create and show WebView on boot if explicitly requested (e.g. standalone UI flag).
-	// Otherwise, WebView is lazily initialized on demand when the user clicks "Open Window".
-	if cfg.IsStandalone && (os.Getenv("OPEN_WINDOW") == "true" || os.Getenv("OPEN_WINDOW") == "1") {
-		log.Println("[INFO] Standalone mode: opening dashboard window on boot")
+	// Launch UI window automatically on startup (unless TRAY_ONLY is set)
+	if !strings.EqualFold(os.Getenv("TRAY_ONLY"), "true") && os.Getenv("TRAY_ONLY") != "1" {
+		log.Println("[INFO] Auto-launching Shuffle Tendon UI window on boot")
 		win := getOrCreateAgentWindow(cfg)
 		win.Show()
 	}
